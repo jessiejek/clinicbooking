@@ -1,0 +1,132 @@
+<app-auth-layout>
+  <div class="login-page">
+  <h2 class="page-heading">Welcome Back</h2>
+  <p class="page-sub">Sign in to your account</p>
+
+  <app-banner
+    *ngIf="error$ | async as err"
+    variant="danger"
+    [message]="err"
+    class="login-error-banner"
+  ></app-banner>
+
+  <form [formGroup]="loginForm" (ngSubmit)="onLogin()" novalidate>
+    <ion-item class="clinic-input" lines="full">
+      <ion-label position="floating">Email Address</ion-label>
+      <ion-input type="email" formControlName="email" autocomplete="email"></ion-input>
+    </ion-item>
+    <div
+      class="form-error-message"
+      *ngIf="loginForm.get('email')?.touched && loginForm.get('email')?.invalid"
+    >
+      <ion-icon name="alert-circle-outline" aria-hidden="true"></ion-icon>
+      <span *ngIf="loginForm.get('email')?.errors?.['required']">Email is required</span>
+      <span *ngIf="loginForm.get('email')?.errors?.['email']">Please enter a valid email</span>
+    </div>
+
+    <ion-item class="clinic-input" lines="full">
+      <ion-label position="floating">Password</ion-label>
+      <ion-input
+        [type]="showPassword ? 'text' : 'password'"
+        formControlName="password"
+        autocomplete="current-password"
+      ></ion-input>
+      <ion-button
+        slot="end"
+        fill="clear"
+        type="button"
+        aria-label="Toggle password visibility"
+        (click)="showPassword = !showPassword"
+      >
+        <ion-icon [name]="showPassword ? 'eye-off-outline' : 'eye-outline'"></ion-icon>
+      </ion-button>
+    </ion-item>
+    <div
+      class="form-error-message"
+      *ngIf="loginForm.get('password')?.touched && loginForm.get('password')?.errors?.['required']"
+    >
+      <ion-icon name="alert-circle-outline" aria-hidden="true"></ion-icon>
+      Password is required
+    </div>
+
+    <div class="forgot-row">
+      <a routerLink="/auth/forgot-password" class="link-forgot">Forgot password?</a>
+    </div>
+
+    <button class="btn-primary login-submit" type="submit" [disabled]="(isLoading$ | async) === true">
+      <ion-spinner
+        *ngIf="(isLoading$ | async) === true"
+        name="crescent"
+        style="width: 16px; height: 16px; margin-right: 8px"
+      ></ion-spinner>
+      {{ (isLoading$ | async) ? 'Signing in...' : 'Sign In' }}
+    </button>
+  </form>
+
+  <div class="auth-divider">
+    <hr />
+    <span>OR</span>
+    <hr />
+  </div>
+
+  <button type="button" class="btn-social" (click)="onSocialClick()">
+    <span class="btn-social__icon" aria-hidden="true">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+        <path
+          d="M21.805 12.228c0-.776-.069-1.52-.202-2.228H12v4.214h5.52c-.241 1.26-.963 2.328-2.053 3.048v2.524h3.322c1.944-1.791 3.066-4.428 3.066-7.558z"
+          fill="#4285F4"
+        />
+        <path
+          d="M12 22c2.76 0 5.074-.912 6.768-2.472l-3.322-2.524c-.912.608-2.08.968-3.446.968-2.648 0-4.89-1.788-5.688-4.188H3.098v2.616C4.778 19.522 8.088 22 12 22z"
+          fill="#34A853"
+        />
+        <path
+          d="M6.312 13.784c-.208-.624-.328-1.288-.328-1.984s.12-1.36.328-1.984V7.2H3.098A9.98 9.98 0 003 11.8c0 1.616.388 3.144 1.098 4.492l3.214-2.508z"
+          fill="#FBBC05"
+        />
+        <path
+          d="M12 6.628c1.496 0 2.836.516 3.892 1.524l2.922-2.922C17.068 3.512 14.756 2.4 12 2.4 8.088 2.4 4.778 4.878 3.098 8.308l3.214 2.508C7.11 8.416 9.352 6.628 12 6.628z"
+          fill="#EA4335"
+        />
+      </svg>
+    </span>
+    Continue with Google
+  </button>
+
+  <button type="button" class="btn-social" (click)="onSocialClick()">
+    <span class="btn-social__icon" aria-hidden="true">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="#1877F2">
+        <path
+          d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.99 3.66 9.13 8.44 9.88v-6.99h-2.54V12h2.54V9.79c0-2.51 1.49-3.89 3.78-3.89 1.09 0 2.23.19 2.23.19v2.47h-1.26c-1.24 0-1.63.77-1.63 1.56V12h2.78l-.45 2.89h-2.33v6.99C18.34 21.13 22 16.99 22 12z"
+        />
+      </svg>
+    </span>
+    Continue with Facebook
+  </button>
+
+  <p class="register-hint">
+    Don't have an account?
+    <a routerLink="/auth/register">Create one</a>
+  </p>
+
+  <div *ngIf="!isProduction" class="dev-credentials">
+    <button type="button" class="dev-credentials__toggle" (click)="devExpanded = !devExpanded">
+      Quick Login (Dev Only) {{ devExpanded ? '▼' : '▶' }}
+    </button>
+    <div *ngIf="devExpanded" class="dev-credentials__body">
+      <button type="button" class="dev-chip" (click)="fillCreds('admin@clinic.ph', 'Admin@123456')">
+        Admin
+      </button>
+      <button type="button" class="dev-chip" (click)="fillCreds('staff@clinic.ph', 'Staff@123456')">
+        Staff
+      </button>
+      <button type="button" class="dev-chip" (click)="fillCreds('dr.santos@clinic.ph', 'Doctor@123456')">
+        Doctor
+      </button>
+      <button type="button" class="dev-chip" (click)="fillCreds('dr.reyes@clinic.ph', 'Doctor@123456')">
+        First-Login Doctor
+      </button>
+    </div>
+  </div>
+</div>
+</app-auth-layout>
