@@ -1,34 +1,34 @@
 import { Component, Input } from '@angular/core';
-import { NgIf, NgOptimizedImage } from '@angular/common';
+import { NgClass, NgIf } from '@angular/common';
 
-export type AvatarSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+export type AvatarSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 
 @Component({
   selector: 'app-avatar',
   standalone: true,
-  imports: [NgIf, NgOptimizedImage],
+  imports: [NgIf, NgClass],
   template: `
-    <div class="avatar" [class]="avatarClass" [attr.aria-label]="name">
-      <img
-        *ngIf="src; else initialsTpl"
-        [ngSrc]="src"
-        [alt]="name"
-        width="80"
-        height="80"
-        style="width: 100%; height: 100%; border-radius: var(--radius-full)"
-      />
-      <ng-template #initialsTpl>{{ initials }}</ng-template>
-    </div>
+    <img
+      *ngIf="imageUrl; else initialsTpl"
+      [src]="imageUrl"
+      [alt]="name"
+      [ngClass]="['avatar', avatarClass]"
+    />
+    <ng-template #initialsTpl>
+      <div [ngClass]="['avatar', avatarClass]" [attr.aria-label]="name">
+        {{ initials }}
+      </div>
+    </ng-template>
   `,
   styleUrl: './avatar.component.scss'
 })
 export class AvatarComponent {
-  @Input({ required: true }) name!: string;
-  @Input() src: string | null = null;
+  @Input() name = '';
+  @Input() imageUrl?: string;
   @Input() size: AvatarSize = 'md';
 
   get avatarClass(): string {
-    return `avatar avatar--${this.size}`;
+    return `avatar--${this.size}`;
   }
 
   get initials(): string {
@@ -36,9 +36,12 @@ export class AvatarComponent {
       .split(' ')
       .map((p) => p.trim())
       .filter(Boolean);
-    const a = parts.at(0)?.[0] ?? '';
-    const b = parts.length > 1 ? parts.at(-1)?.[0] ?? '' : '';
-    return (a + b).toUpperCase();
+    if (!parts.length) {
+      return '';
+    }
+    if (parts.length === 1) {
+      return parts[0].slice(0, 2).toUpperCase();
+    }
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   }
 }
-

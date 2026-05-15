@@ -4,10 +4,14 @@
 
 .page-header {
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
+  align-items: flex-start;
   gap: var(--space-4);
   margin-bottom: var(--space-8);
+}
+
+.page-header__main {
+  flex: 1;
+  min-width: 0;
 }
 
 .page-title {
@@ -15,12 +19,13 @@
   font-weight: var(--font-bold);
   color: var(--clinic-text-primary);
   line-height: var(--leading-tight);
+  margin: 0;
 }
 
 .page-subtitle {
   font-size: var(--text-sm);
   color: var(--clinic-text-muted);
-  margin-top: var(--space-1);
+  margin: var(--space-1) 0 0 0;
 }
 
 .page-header__actions {

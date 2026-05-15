@@ -1,47 +1,58 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { NgIf } from '@angular/common';
-import { IonButton, IonIcon } from '@ionic/angular/standalone';
+import { NgClass, NgIf } from '@angular/common';
+import { IonIcon } from '@ionic/angular/standalone';
 
-export type BannerVariant = 'warning' | 'danger' | 'info';
+export type BannerVariant = 'warning' | 'danger' | 'info' | 'success';
 
 @Component({
   selector: 'app-banner',
   standalone: true,
-  imports: [NgIf, IonIcon, IonButton],
+  imports: [NgIf, NgClass, IonIcon],
   template: `
-    <div class="banner" [class]="bannerClass">
-      <ion-icon [name]="iconName"></ion-icon>
-      <div style="flex: 1">
-        <div style="font-weight: var(--font-semibold)">{{ title }}</div>
-        <div style="margin-top: 2px; opacity: 0.85">{{ message }}</div>
-      </div>
-      <ion-button *ngIf="closable" fill="clear" size="small" (click)="close.emit()">
-        Close
-      </ion-button>
+    <div *ngIf="visible" class="banner" [ngClass]="'banner--' + variant">
+      <ion-icon [name]="iconResolved" aria-hidden="true"></ion-icon>
+      <span class="banner__message">{{ message }}</span>
+      <button
+        *ngIf="dismissible"
+        type="button"
+        class="btn-ghost"
+        style="margin-left: auto; padding: var(--space-1) var(--space-2)"
+        (click)="onDismiss()"
+      >
+        ×
+      </button>
     </div>
   `,
   styleUrl: './banner.component.scss'
 })
 export class BannerComponent {
   @Input() variant: BannerVariant = 'info';
-  @Input({ required: true }) title!: string;
-  @Input({ required: true }) message!: string;
-  @Input() closable = false;
-  @Output() close = new EventEmitter<void>();
+  @Input() message = '';
+  @Input() dismissible = false;
+  @Input() icon?: string;
 
-  get bannerClass(): string {
-    return `banner banner--${this.variant}`;
-  }
+  @Output() dismissed = new EventEmitter<void>();
 
-  get iconName(): string {
+  visible = true;
+
+  get iconResolved(): string {
+    if (this.icon) {
+      return this.icon;
+    }
     switch (this.variant) {
       case 'warning':
         return 'warning-outline';
       case 'danger':
         return 'alert-circle-outline';
+      case 'success':
+        return 'checkmark-circle-outline';
       default:
         return 'information-circle-outline';
     }
   }
-}
 
+  onDismiss(): void {
+    this.visible = false;
+    this.dismissed.emit();
+  }
+}

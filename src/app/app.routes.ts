@@ -1,34 +1,45 @@
 import { Routes } from '@angular/router';
-import { PublicLayoutComponent } from './layouts/public-layout/public-layout.component';
-import { AdminLayoutComponent } from './layouts/admin-layout/admin-layout.component';
-import { DoctorLayoutComponent } from './layouts/doctor-layout/doctor-layout.component';
-import { StaffLayoutComponent } from './layouts/staff-layout/staff-layout.component';
+import { authGuard } from './core/guards/auth.guard';
+import { roleGuard } from './core/guards/role.guard';
+import { firstLoginGuard } from './core/guards/first-login.guard';
 
 export const routes: Routes = [
   { path: '', redirectTo: 'public', pathMatch: 'full' },
   {
     path: 'public',
-    component: PublicLayoutComponent,
     loadChildren: () => import('./portals/public/public.routes').then((m) => m.PUBLIC_ROUTES)
   },
   {
+    path: 'auth',
+    loadChildren: () => import('./auth/auth.routes').then((m) => m.AUTH_ROUTES)
+  },
+  {
     path: 'admin',
-    component: AdminLayoutComponent,
+    canActivate: [authGuard, roleGuard, firstLoginGuard],
+    data: { roles: ['Admin'] },
     loadChildren: () => import('./portals/admin/admin.routes').then((m) => m.ADMIN_ROUTES)
   },
   {
     path: 'staff',
-    component: StaffLayoutComponent,
+    canActivate: [authGuard, roleGuard, firstLoginGuard],
+    data: { roles: ['Staff'] },
     loadChildren: () => import('./portals/staff/staff.routes').then((m) => m.STAFF_ROUTES)
   },
   {
     path: 'doctor',
-    component: DoctorLayoutComponent,
+    canActivate: [authGuard, roleGuard, firstLoginGuard],
+    data: { roles: ['Doctor'] },
     loadChildren: () => import('./portals/doctor/doctor.routes').then((m) => m.DOCTOR_ROUTES)
   },
   {
     path: 'patient',
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['Patient'] },
     loadChildren: () => import('./portals/patient/patient.routes').then((m) => m.PATIENT_ROUTES)
+  },
+  {
+    path: 'dev',
+    loadChildren: () => import('./dev/dev.routes').then((m) => m.DEV_ROUTES)
   },
   { path: '**', redirectTo: 'public' }
 ];

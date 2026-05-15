@@ -2,9 +2,14 @@ import { AuthUser } from '../../core/models';
 
 export interface AuthState {
   user: AuthUser | null;
+  accessToken: string | null;
+  isLoading: boolean;
+  error: string | null;
 }
 
 export const initialAuthState: AuthState = {
-  user: null
+  user: null,
+  accessToken: null,
+  isLoading: false,
+  error: null
 };
-

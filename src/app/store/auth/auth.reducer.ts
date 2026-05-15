@@ -1,11 +1,5 @@
-import { Action, createReducer } from '@ngrx/store';
-import { AuthState, initialAuthState } from './auth.state';
+import { createReducer } from '@ngrx/store';
+import { initialAuthState } from './auth.state';
 
-export const authFeatureKey = 'auth';
-
-const internalReducer = createReducer<AuthState>(initialAuthState);
-
-export function authReducer(state: AuthState | undefined, action: Action): AuthState {
-  return internalReducer(state, action);
-}
-
+export const authReducer = createReducer(initialAuthState);
+// Actions will be added in Phase 2

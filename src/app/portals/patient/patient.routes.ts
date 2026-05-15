@@ -1,25 +1,16 @@
 import { Component } from '@angular/core';
 import { Routes } from '@angular/router';
-import { IonContent, IonHeader, IonTitle, IonToolbar } from '@ionic/angular/standalone';
+import { IonContent } from '@ionic/angular/standalone';
 
 @Component({
   standalone: true,
-  imports: [IonHeader, IonToolbar, IonTitle, IonContent],
+  imports: [IonContent],
   template: `
-    <ion-header>
-      <ion-toolbar>
-        <ion-title>Patient Portal (Stub)</ion-title>
-      </ion-toolbar>
-    </ion-header>
-    <ion-content class="ion-padding">
-      <div class="clinic-card">
-        <div class="section-heading">Phase 1</div>
-        <p>Patient portal will be built in a later phase.</p>
-      </div>
+    <ion-content>
+      <p style="padding: 2rem">Patient — Phase 1 coming soon</p>
     </ion-content>
   `
 })
-class PatientStubPage {}
+class PlaceholderPage {}
 
-export const PATIENT_ROUTES: Routes = [{ path: '', component: PatientStubPage }];
-
+export const PATIENT_ROUTES: Routes = [{ path: '', component: PlaceholderPage }];

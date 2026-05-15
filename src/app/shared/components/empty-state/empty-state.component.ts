@@ -1,31 +1,39 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { NgIf } from '@angular/common';
-import { IonButton, IonIcon } from '@ionic/angular/standalone';
+import { RouterLink } from '@angular/router';
+import { IonIcon } from '@ionic/angular/standalone';
 
 @Component({
   selector: 'app-empty-state',
   standalone: true,
-  imports: [NgIf, IonIcon, IonButton],
+  imports: [NgIf, IonIcon, RouterLink],
   template: `
     <div class="empty-state">
-      <div class="empty-state__icon" *ngIf="icon">
+      <div class="empty-state__icon">
         <ion-icon [name]="icon"></ion-icon>
       </div>
-      <div class="empty-state__title">{{ title }}</div>
-      <div class="empty-state__description">{{ description }}</div>
-
-      <ion-button *ngIf="ctaText" class="btn-primary" fill="clear" (click)="cta.emit()">
-        {{ ctaText }}
-      </ion-button>
+      <h3 class="empty-state__title">{{ title }}</h3>
+      <p class="empty-state__description">{{ description }}</p>
+      <button
+        *ngIf="ctaLabel && ctaRoute"
+        type="button"
+        class="btn-primary"
+        [routerLink]="ctaRoute"
+      >
+        {{ ctaLabel }}
+      </button>
+      <button *ngIf="ctaLabel && !ctaRoute" type="button" class="btn-primary" (click)="ctaClick.emit()">
+        {{ ctaLabel }}
+      </button>
     </div>
   `,
   styleUrl: './empty-state.component.scss'
 })
 export class EmptyStateComponent {
-  @Input({ required: true }) title!: string;
-  @Input({ required: true }) description!: string;
-  @Input() icon?: string;
-  @Input() ctaText?: string;
-  @Output() cta = new EventEmitter<void>();
+  @Input() icon = 'folder-open-outline';
+  @Input() title = 'Nothing here';
+  @Input() description = '';
+  @Input() ctaLabel?: string;
+  @Input() ctaRoute?: string;
+  @Output() ctaClick = new EventEmitter<void>();
 }
-

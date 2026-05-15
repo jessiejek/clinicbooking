@@ -1,7 +1,6 @@
 import { CanActivateFn } from '@angular/router';
 
 export const roleGuard: CanActivateFn = () => {
-  console.warn('[Phase 1] roleGuard is stubbed and always returns true.');
+  console.warn('Guard stub — Phase 2 will implement real logic');
   return true;
 };
-

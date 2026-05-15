@@ -8,14 +8,14 @@ export class PesoPipe implements PipeTransform {
   private readonly formatter = new Intl.NumberFormat('en-PH', {
     style: 'currency',
     currency: 'PHP',
-    currencyDisplay: 'symbol',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
   });
 
   transform(value: number | null | undefined): string {
-    if (value === null || value === undefined) return '—';
+    if (value === null || value === undefined) {
+      return '—';
+    }
     return this.formatter.format(value);
   }
 }
-

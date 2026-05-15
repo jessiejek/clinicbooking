@@ -15,11 +15,12 @@
 }
 
 .swatch__chip {
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-md);
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-sm);
   border: 1px solid rgba(0, 0, 0, 0.06);
   box-shadow: var(--shadow-xs);
+  flex-shrink: 0;
 }
 
 .swatch__name {
@@ -78,8 +79,12 @@
   }
 }
 
+.gallery-content {
+  --background: var(--clinic-bg);
+}
+
 ion-toolbar {
-  --background: white;
+  --background: var(--clinic-bg-elevated);
   --border-color: var(--clinic-border);
   --color: var(--clinic-text-primary);
 }
