@@ -1,0 +1,297 @@
+import { AsyncPipe, DatePipe, NgFor, NgIf } from '@angular/common';
+import { Component, OnInit, inject } from '@angular/core';
+import { Router, RouterLink } from '@angular/router';
+import { Store } from '@ngrx/store';
+import { combineLatest, map, of, switchMap } from 'rxjs';
+import { AuthUser, Booking, Consultation, Doctor, Patient, Prescription, Service } from '../../../core/models';
+import { MockDataService } from '../../../core/services/mock-data.service';
+import { loadBookings } from '../../../store/bookings/bookings.actions';
+import { selectBookingsByPatientId, selectPendingProofBookingsByPatientId, selectUpcomingBookingsByPatientId } from '../../../store/bookings/bookings.selectors';
+import { loadDoctors } from '../../../store/doctors/doctors.actions';
+import { loadPatients } from '../../../store/patients/patients.actions';
+import { selectCurrentPatient } from '../../../store/patients/patients.selectors';
+import { BannerComponent } from '../../../shared/components/banner/banner.component';
+import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { MedicalRecordCardComponent } from '../components/medical-record-card/medical-record-card.component';
+import { PrescriptionCardComponent } from '../components/prescription-card/prescription-card.component';
+import { UpcomingAppointmentCardComponent } from '../components/upcoming-appointment-card/upcoming-appointment-card.component';
+import { selectCurrentUser } from '../../../store/auth/auth.selectors';
+import { PatientService } from '../services/patient.service';
+import { BookingTimerComponent } from '../../../shared/components/booking-timer/booking-timer.component';
+import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
+
+interface DashboardVm {
+  user: AuthUser | null;
+  patient: Patient | undefined;
+  upcomingBookings: Booking[];
+  pendingProofBookings: Booking[];
+  consultations: Consultation[];
+  prescriptions: Prescription[];
+  latestBooking?: Booking;
+  latestBookingDoctor?: Doctor;
+  latestBookingService?: Service;
+  recentConsultations: Array<{ consultation: Consultation; doctor?: Doctor }>;
+  recentPrescriptions: Array<{ prescription: Prescription; doctor?: Doctor }>;
+  showEmailWarning: boolean;
+  showConsentWarning: boolean;
+  upcomingCount: number;
+  pendingProofCount: number;
+  completedVisitCount: number;
+  activePrescriptionCount: number;
+}
+
+@Component({
+  selector: 'app-patient-dashboard-page',
+  standalone: true,
+  imports: [
+    AsyncPipe,
+    DatePipe,
+    NgFor,
+    NgIf,
+    RouterLink,
+    BannerComponent,
+    EmptyStateComponent,
+    UpcomingAppointmentCardComponent,
+    MedicalRecordCardComponent,
+    PrescriptionCardComponent
+  ],
+  template: `
+    <section class="page-shell" *ngIf="vm$ | async as vm">
+      <div class="dashboard-hero">
+        <div>
+          <div class="dashboard-hero__eyebrow">Patient Portal</div>
+          <h2 class="page-title">Welcome back, {{ vm.patient?.firstName || getWelcomeName(vm.user) || 'Juan' }}</h2>
+          <p class="page-subtitle">Manage your appointments and health records.</p>
+        </div>
+      </div>
+
+      <app-banner
+        *ngIf="vm.showEmailWarning"
+        variant="warning"
+        message="Your email is not verified. Some notifications may not be delivered."
+      ></app-banner>
+
+      <app-banner
+        *ngIf="vm.showConsentWarning"
+        variant="info"
+        message="Please review and accept the latest privacy consent."
+      ></app-banner>
+      <div class="dashboard-consent-cta" *ngIf="vm.showConsentWarning">
+        <button type="button" class="btn-outline" routerLink="/patient/privacy-consent">
+          Review Consent
+        </button>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card stat-card--blue">
+          <div class="stat-card__icon">&#128197;</div>
+          <div class="stat-card__value">{{ vm.upcomingCount }}</div>
+          <div class="stat-card__label">Upcoming Appointments</div>
+        </div>
+        <div class="stat-card stat-card--amber">
+          <div class="stat-card__icon">&#128221;</div>
+          <div class="stat-card__value">{{ vm.pendingProofCount }}</div>
+          <div class="stat-card__label">Pending Payment Proof</div>
+        </div>
+        <div class="stat-card stat-card--green">
+          <div class="stat-card__icon">&#10003;</div>
+          <div class="stat-card__value">{{ vm.completedVisitCount }}</div>
+          <div class="stat-card__label">Completed Visits</div>
+        </div>
+        <div class="stat-card stat-card--red">
+          <div class="stat-card__icon">&#128138;</div>
+          <div class="stat-card__value">{{ vm.activePrescriptionCount }}</div>
+          <div class="stat-card__label">Active Prescriptions</div>
+        </div>
+      </div>
+
+      <div class="dashboard-section" *ngIf="vm.latestBooking; else noUpcomingTpl">
+        <app-upcoming-appointment-card
+          [booking]="vm.latestBooking"
+          [doctor]="vm.latestBookingDoctor"
+          [service]="vm.latestBookingService"
+          [canSubmitProof]="canSubmitProof(vm.latestBooking)"
+          [canCancel]="false"
+          (viewDetails)="openBooking($event)"
+          (submitProof)="openBooking($event)"
+        ></app-upcoming-appointment-card>
+      </div>
+      <ng-template #noUpcomingTpl>
+        <app-empty-state
+          icon="calendar-outline"
+          title="No upcoming appointment"
+          description="Your next booking will appear here once it is scheduled."
+          ctaLabel="Book Now"
+          ctaRoute="/public/booking"
+        ></app-empty-state>
+      </ng-template>
+
+      <div class="dashboard-grid">
+        <div class="dashboard-panel">
+          <div class="section-heading">Recent Medical Records</div>
+          <ng-container *ngIf="vm.recentConsultations.length > 0; else noRecordsTpl">
+            <app-medical-record-card
+              *ngFor="let item of vm.recentConsultations"
+              [consultation]="item.consultation"
+              [doctor]="item.doctor"
+              (viewDetails)="showPhaseNineToast()"
+            ></app-medical-record-card>
+          </ng-container>
+          <ng-template #noRecordsTpl>
+            <app-empty-state
+              icon="document-text-outline"
+              title="No medical records yet"
+              description="Your completed consultations will appear here."
+            ></app-empty-state>
+          </ng-template>
+        </div>
+
+        <div class="dashboard-panel">
+          <div class="section-heading">Recent Prescriptions</div>
+          <ng-container *ngIf="vm.recentPrescriptions.length > 0; else noRxTpl">
+            <app-prescription-card
+              *ngFor="let item of vm.recentPrescriptions"
+              [prescription]="item.prescription"
+              [doctor]="item.doctor"
+              (download)="showPhaseTenToast()"
+            ></app-prescription-card>
+          </ng-container>
+          <ng-template #noRxTpl>
+            <app-empty-state
+              icon="medkit-outline"
+              title="No prescriptions yet"
+              description="Active prescriptions will appear here once issued."
+            ></app-empty-state>
+          </ng-template>
+        </div>
+      </div>
+    </section>
+  `,
+  styleUrl: './patient-dashboard.page.scss'
+})
+export class PatientDashboardPage implements OnInit {
+  private readonly store = inject(Store);
+  private readonly router = inject(Router);
+  private readonly mockData = inject(MockDataService);
+  private readonly patientService = inject(PatientService);
+
+  readonly currentUser$ = this.store.select(selectCurrentUser);
+  readonly patient$ = this.currentUser$.pipe(
+    switchMap((user) => (user ? this.store.select(selectCurrentPatient(user.id)) : of(undefined)))
+  );
+
+  readonly upcomingBookings$ = this.patient$.pipe(
+    switchMap((patient) =>
+      patient ? this.store.select(selectUpcomingBookingsByPatientId(patient.id)) : of([])
+    )
+  );
+
+  readonly pendingProofBookings$ = this.patient$.pipe(
+    switchMap((patient) =>
+      patient ? this.store.select(selectPendingProofBookingsByPatientId(patient.id)) : of([])
+    )
+  );
+
+  vm$ = combineLatest([
+    this.currentUser$,
+    this.patient$,
+    this.upcomingBookings$,
+    this.pendingProofBookings$
+  ]).pipe(
+    switchMap(([user, patient, upcomingBookings, pendingProofBookings]) => {
+      if (!patient) {
+        return of({
+          user,
+          patient,
+          upcomingBookings,
+          pendingProofBookings,
+          consultations: [],
+          prescriptions: [],
+          latestBooking: undefined,
+          latestBookingDoctor: undefined,
+          latestBookingService: undefined,
+          recentConsultations: [],
+          recentPrescriptions: [],
+          showEmailWarning: false,
+          showConsentWarning: false,
+          upcomingCount: 0,
+          pendingProofCount: 0,
+          completedVisitCount: 0,
+          activePrescriptionCount: 0
+        } satisfies DashboardVm);
+      }
+
+      return combineLatest([
+        this.patientService.getPatientConsultations(patient.id),
+        this.patientService.getPatientPrescriptions(patient.id)
+      ]).pipe(
+        map(([consultations, prescriptions]) => {
+          const latestBooking = upcomingBookings[0];
+          const latestBookingDoctor = latestBooking
+            ? this.mockData.getDoctorById(latestBooking.doctorId)
+            : undefined;
+          const latestBookingService = latestBooking
+            ? this.mockData.getServiceById(latestBooking.serviceId)
+            : undefined;
+
+          return {
+            user,
+            patient,
+            upcomingBookings,
+            pendingProofBookings,
+            consultations,
+            prescriptions,
+            latestBooking,
+            latestBookingDoctor,
+            latestBookingService,
+            recentConsultations: consultations.slice(0, 2).map((consultation) => ({
+              consultation,
+              doctor: this.mockData.getDoctorById(consultation.doctorId)
+            })),
+            recentPrescriptions: prescriptions.slice(0, 2).map((prescription) => ({
+              prescription,
+              doctor: this.mockData.getDoctorById(prescription.doctorId)
+            })),
+            showEmailWarning: patient.isEmailVerified === false,
+            showConsentWarning:
+              patient.consentVersion !== this.mockData.getClinicSettings().consentVersion,
+            upcomingCount: upcomingBookings.length,
+            pendingProofCount: pendingProofBookings.length,
+            completedVisitCount: consultations.length,
+            activePrescriptionCount: prescriptions.filter((item) => item.status === 'Active').length
+          } satisfies DashboardVm;
+        })
+      );
+    })
+  );
+
+  ngOnInit(): void {
+    this.store.dispatch(loadBookings());
+    this.store.dispatch(loadDoctors());
+    this.store.dispatch(loadPatients());
+  }
+
+  canSubmitProof(booking: Booking): boolean {
+    return (
+      booking.paymentMode === 'Online' &&
+      booking.paymentStatus === 'Unpaid' &&
+      ['Pending', 'OnHold'].includes(booking.status)
+    );
+  }
+
+  openBooking(bookingId: string): void {
+    void this.router.navigate(['/patient/bookings', bookingId]);
+  }
+
+  showPhaseNineToast(): void {
+    void this.router.navigate(['/patient/medical-records']);
+  }
+
+  showPhaseTenToast(): void {
+    void this.router.navigate(['/patient/prescriptions']);
+  }
+
+  getWelcomeName(user: AuthUser | null): string {
+    return user?.fullName?.split(' ')?.[0] ?? '';
+  }
+}

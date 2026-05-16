@@ -16,6 +16,13 @@ export const selectPatientByCode = (code: string) =>
     patients.find((patient) => patient.patientCode === code)
   );
 
+export const selectPatientByUserId = (userId: string) =>
+  createSelector(selectAllPatients, (patients: Patient[]) =>
+    patients.find((patient) => patient.userId === userId)
+  );
+
+export const selectCurrentPatient = (userId: string) => selectPatientByUserId(userId);
+
 export const selectPatientsLoading = createSelector(selectPatientsState, (state) => state.isLoading);
 
 export const selectFilteredPatients = (query: string) =>

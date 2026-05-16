@@ -6,6 +6,7 @@ import {
   BookingStatus,
   ClinicSettings,
   DayOfWeek,
+  Consultation,
   DoctorBlockedDate,
   Doctor,
   DoctorSchedule,
@@ -15,6 +16,9 @@ import {
   PaymentMode,
   PaymentSettings,
   PaymentStatus,
+  Prescription,
+  PrescriptionItem,
+  ProofType,
   Review,
   Role,
   Service,
@@ -292,19 +296,31 @@ export class MockDataService {
     }
   ];
 
-  private readonly _patients: Patient[] = [
+  private _patients: Patient[] = [
     {
       id: 'pat-1',
       patientCode: 'PT-2025-00001',
       firstName: 'Juan',
+      middleName: 'Santos',
       lastName: 'dela Cruz',
       dateOfBirth: '1990-05-15',
       sex: 'Male',
+      address: '123 Mango Street, Buaya',
+      city: 'Lapu-Lapu City',
+      zipCode: '6015',
       contactNumber: '09171234567',
       email: 'patient@clinic.ph',
+      emergencyContactName: 'Maria dela Cruz',
+      emergencyContactNumber: '09171230000',
+      emergencyContactRelationship: 'Spouse',
       bloodType: 'O+',
+      hmoProvider: 'Maxicare',
+      hmoCardNumber: 'HMO-2025-0001',
+      philHealthNumber: '12-345678901-2',
+      consentedAt: '2025-03-01T08:30:00Z',
+      consentVersion: 'v0.9',
+      isEmailVerified: false,
       isGuest: false,
-      consentVersion: 'v1.0',
       userId: 'user-patient-1'
     },
     {
@@ -574,6 +590,63 @@ export class MockDataService {
       comment: 'Highly recommended OB.',
       patientName: 'Ana G.',
       createdAt: '2025-04-11T16:00:00Z'
+    }
+  ];
+
+  private readonly _consultations: Consultation[] = [
+    {
+      id: 'consult-1',
+      patientId: 'pat-1',
+      doctorId: 'doc-1',
+      bookingId: 'bk-007',
+      consultationDate: new Date(Date.now() - 86400000 * 10).toISOString().slice(0, 10),
+      consultationTime: '09:30',
+      chiefComplaint: 'Fever and cough',
+      historyOfPresentIllness: 'Symptoms started three days before the consultation with mild body aches.',
+      peGeneralFindings: 'Mild congestion, afebrile, stable vital signs.',
+      assessment: 'Upper respiratory tract infection',
+      plan: 'Rest, hydration, medication, follow-up if symptoms persist',
+      followUpDate: new Date(Date.now() + 86400000 * 7).toISOString().slice(0, 10),
+      isLocked: true
+    },
+    {
+      id: 'consult-2',
+      patientId: 'pat-1',
+      doctorId: 'doc-1',
+      bookingId: 'bk-010',
+      consultationDate: new Date(Date.now() - 86400000 * 30).toISOString().slice(0, 10),
+      consultationTime: '10:15',
+      chiefComplaint: 'Headache',
+      historyOfPresentIllness: 'Intermittent headache associated with poor sleep and stress.',
+      peGeneralFindings: 'No neurologic deficit, normal hydration status.',
+      assessment: 'Tension headache',
+      plan: 'Pain reliever as needed and sleep hygiene',
+      isLocked: true
+    }
+  ];
+
+  private readonly _prescriptions: Prescription[] = [
+    {
+      id: 'rx-1',
+      consultationId: 'consult-1',
+      patientId: 'pat-1',
+      doctorId: 'doc-1',
+      prescriptionDate: new Date(Date.now() - 86400000 * 10).toISOString(),
+      status: 'Active',
+      notes: 'Take after meals and complete the full course.',
+      items: [
+        {
+          id: 'rx-item-1',
+          prescriptionId: 'rx-1',
+          genericName: 'Paracetamol',
+          brandName: 'Biogesic',
+          dosageForm: 'Tablet',
+          strength: '500 mg',
+          quantity: 12,
+          sig: 'Take 1 tablet every 6 hours as needed for fever.',
+          isControlledSubstance: false
+        } as PrescriptionItem
+      ]
     }
   ];
 
@@ -880,6 +953,14 @@ export class MockDataService {
     return [...this._bookings];
   }
 
+  getConsultations(): Consultation[] {
+    return [...this._consultations];
+  }
+
+  getPrescriptions(): Prescription[] {
+    return [...this._prescriptions];
+  }
+
   getBookingById(id: string): Booking | undefined {
     return this._bookings.find((booking) => booking.id === id);
   }
@@ -979,6 +1060,48 @@ export class MockDataService {
     }
 
     return slots;
+  }
+
+  updatePatient(patient: Patient): void {
+    this._patients = this._patients.map((item) => (item.id === patient.id ? { ...patient } : item));
+  }
+
+  updatePatientConsent(patientId: string, consentVersion: string): void {
+    this._patients = this._patients.map((patient) =>
+      patient.id === patientId
+        ? {
+            ...patient,
+            consentVersion,
+            consentedAt: new Date().toISOString()
+          }
+        : patient
+    );
+  }
+
+  submitBookingProof(bookingId: string, proofType: ProofType, proofValue: string): void {
+    this._bookings = this._bookings.map((booking) =>
+      booking.id === bookingId
+        ? {
+            ...booking,
+            status: 'ProofSubmitted',
+            proofType,
+            proofValue,
+            proofSubmittedAt: new Date().toISOString()
+          }
+        : booking
+    );
+  }
+
+  cancelBooking(bookingId: string, reason: string): void {
+    this._bookings = this._bookings.map((booking) =>
+      booking.id === bookingId
+        ? {
+            ...booking,
+            status: 'Cancelled',
+            cancellationReason: reason
+          }
+        : booking
+    );
   }
 
   private makeBooking(

@@ -125,6 +125,7 @@ export interface Patient {
   hmoProvider?: string;
   hmoCardNumber?: string;
   userId?: string;
+  isEmailVerified?: boolean;
   isGuest: boolean;
   consentedAt?: string;
   consentVersion?: string;

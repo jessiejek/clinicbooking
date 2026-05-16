@@ -1,0 +1,63 @@
+.profile-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-6);
+}
+
+.profile-card {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.profile-grid__fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.profile-actions {
+  margin-top: var(--space-2);
+}
+
+.password-strength {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: calc(-1 * var(--space-2));
+}
+
+.password-strength__bar {
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--clinic-border);
+}
+
+.password-strength__bar.is-active.password-strength__bar--weak {
+  background: var(--ion-color-danger);
+}
+
+.password-strength__bar.is-active.password-strength__bar--fair {
+  background: var(--ion-color-warning);
+}
+
+.password-strength__bar.is-active.password-strength__bar--good {
+  background: var(--ion-color-secondary);
+}
+
+.password-strength__bar.is-active.password-strength__bar--strong {
+  background: var(--ion-color-success);
+}
+
+.password-strength__label {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--clinic-text-secondary);
+}
+
+@media (max-width: 1024px) {
+  .profile-grid,
+  .profile-grid__fields {
+    grid-template-columns: 1fr;
+  }
+}

@@ -59,6 +59,37 @@ export const selectBookingsByPatient = (patientId: string) =>
     bookings.filter((booking) => booking.patientId === patientId)
   );
 
+export const selectBookingsByPatientId = (patientId: string) =>
+  createSelector(selectBookings, (bookings: Booking[]) =>
+    bookings.filter((booking) => booking.patientId === patientId)
+  );
+
+const toBookingDateTime = (booking: Booking): number =>
+  new Date(`${booking.appointmentDate}T${booking.slotStartTime}:00`).getTime();
+
+const isPatientUpcomingBooking = (booking: Booking): boolean =>
+  ['Pending', 'ProofSubmitted', 'Confirmed', 'OnHold'].includes(booking.status) &&
+  toBookingDateTime(booking) >= Date.now();
+
+const isPendingProofBooking = (booking: Booking): boolean =>
+  booking.paymentMode === 'Online' &&
+  booking.paymentStatus === 'Unpaid' &&
+  ['Pending', 'OnHold'].includes(booking.status);
+
+export const selectUpcomingBookingsByPatientId = (patientId: string) =>
+  createSelector(selectBookings, (bookings: Booking[]) =>
+    bookings
+      .filter((booking) => booking.patientId === patientId && isPatientUpcomingBooking(booking))
+      .sort((a, b) => toBookingDateTime(a) - toBookingDateTime(b))
+  );
+
+export const selectPendingProofBookingsByPatientId = (patientId: string) =>
+  createSelector(selectBookings, (bookings: Booking[]) =>
+    bookings
+      .filter((booking) => booking.patientId === patientId && isPendingProofBooking(booking))
+      .sort((a, b) => toBookingDateTime(a) - toBookingDateTime(b))
+  );
+
 export const selectTodaysBookings = createSelector(selectBookings, (bookings: Booking[]) => {
   const today = toLocalIsoDate();
   return bookings.filter((booking) => booking.appointmentDate === today);
