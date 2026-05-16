@@ -77,7 +77,7 @@ import { formatClinicOperatingLines } from '../../utils/time-format';
         </div>
 
         <div class="footer-bottom">
-          <span>© 2025 Maliksi Family Clinic. All rights reserved.</span>
+          <span>© 2026 Dr. Grace E. Gavino Medical Clinic. All rights reserved.</span>
           <span class="footer-powered">Powered by ClinicSystem</span>
         </div>
       </div>
