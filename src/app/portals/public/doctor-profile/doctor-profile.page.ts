@@ -1,17 +1,21 @@
 import { NgClass, NgFor, NgIf } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, Signal, inject } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { Store } from '@ngrx/store';
 import { forkJoin } from 'rxjs';
 import { addIcons } from 'ionicons';
-import { personOutline } from 'ionicons/icons';
+import { alertCircleOutline, personOutline, warningOutline } from 'ionicons/icons';
 import { Doctor, Review, Service, ServiceCategory } from '../../../core/models';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
+import { BannerComponent } from '../../../shared/components/banner/banner.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 import { PesoPipe } from '../../../shared/pipes/peso.pipe';
 import { ReviewCardComponent } from '../components/review-card/review-card.component';
 import { PublicService } from '../services/public.service';
 import { formatDoctorScheduleLines } from '../utils/time-format';
+import { selectDoctorDayStatus } from '../../../store/doctors/doctors.selectors';
+import { DoctorDayStatus } from '../../../core/models';
 
 @Component({
   selector: 'app-doctor-profile-page',
@@ -21,6 +25,7 @@ import { formatDoctorScheduleLines } from '../utils/time-format';
     NgFor,
     NgClass,
     RouterLink,
+    BannerComponent,
     EmptyStateComponent,
     StatusBadgeComponent,
     AvatarComponent,
@@ -55,6 +60,22 @@ import { formatDoctorScheduleLines } from '../utils/time-format';
                 <span class="profile-spec-badge">{{ d.specialization }}</span>
                 <app-status-badge [status]="d.status"></app-status-badge>
               </div>
+              <app-banner
+                *ngIf="dayStatus?.status === 'RunningLate'"
+                variant="warning"
+                [message]="
+                  'Dr. ' +
+                  d.fullName +
+                  ' is running approximately ' +
+                  (dayStatus?.runningLateMinutes ?? 15) +
+                  ' minutes late today.'
+                "
+              ></app-banner>
+              <app-banner
+                *ngIf="dayStatus?.status === 'UnavailableToday'"
+                variant="danger"
+                [message]="'Dr. ' + d.fullName + ' is not available today. Please book a different date.'"
+              ></app-banner>
               <p class="profile-fee">{{ d.consultationFee | peso }} <span>per consultation</span></p>
               <a
                 class="profile-book-btn"
@@ -119,6 +140,7 @@ import { formatDoctorScheduleLines } from '../utils/time-format';
   styleUrl: './doctor-profile.page.scss'
 })
 export class DoctorProfilePage implements OnInit {
+  private readonly store = inject(Store);
   private readonly route = inject(ActivatedRoute);
   private readonly publicService = inject(PublicService);
 
@@ -127,9 +149,10 @@ export class DoctorProfilePage implements OnInit {
   reviews: Review[] = [];
   services: Service[] = [];
   scheduleLines: string[] = [];
+  private dayStatusSignal?: Signal<DoctorDayStatus | undefined>;
 
   constructor() {
-    addIcons({ personOutline });
+    addIcons({ alertCircleOutline, personOutline, warningOutline });
   }
 
   badgeClass(cat: ServiceCategory): string {
@@ -143,6 +166,7 @@ export class DoctorProfilePage implements OnInit {
       this.isLoading = false;
       return;
     }
+    this.dayStatusSignal = this.store.selectSignal(selectDoctorDayStatus(id));
     forkJoin({
       doctor: this.publicService.getDoctorById(id),
       reviews: this.publicService.getDoctorReviews(id),
@@ -155,5 +179,9 @@ export class DoctorProfilePage implements OnInit {
       this.scheduleLines = formatDoctorScheduleLines(schedules);
       this.isLoading = false;
     });
+  }
+
+  get dayStatus(): DoctorDayStatus | undefined {
+    return this.dayStatusSignal?.();
   }
 }
