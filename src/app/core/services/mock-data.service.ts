@@ -102,8 +102,8 @@ export class MockDataService {
     },
     {
       id: 'user-doctor-1',
-      fullName: 'Dr. Grace E. Gavino',
-      email: 'dr.gavino@gavino.clinic',
+      fullName: 'Dr. Santos',
+      email: 'dr.santos@clinic.ph',
       password: 'Doctor@123456',
       role: 'Doctor',
       isFirstLogin: false
@@ -138,9 +138,9 @@ export class MockDataService {
     {
       id: 'doc-1',
       userId: 'user-doctor-1',
-      fullName: 'Dr. Grace E. Gavino',
+      fullName: 'Dr. Santos',
       specialization: 'Family Medicine / Adult & Pedia',
-      bio: 'Dr. Gavino is a dedicated specialist in Family Medicine, providing comprehensive healthcare for both adults and children with over 15 years of clinical experience.',
+      bio: 'Dr. Santos is a dedicated specialist in Family Medicine, providing comprehensive healthcare for both adults and children with over 15 years of clinical experience.',
       consultationFee: 500,
       slotDurationMinutes: 30,
       slotCapacity: 1,
@@ -841,7 +841,10 @@ export class MockDataService {
     return [...this._doctorSchedules];
   }
 
-  getDoctorBlockedDates(doctorId: string): DoctorBlockedDate[] {
+  getDoctorBlockedDates(doctorId?: string): DoctorBlockedDate[] {
+    if (!doctorId) {
+      return [...this._doctorBlockedDates];
+    }
     return this._doctorBlockedDates.filter((blockedDate) => blockedDate.doctorId === doctorId);
   }
 

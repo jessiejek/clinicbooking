@@ -1,0 +1,57 @@
+:host {
+  display: block;
+}
+
+.doctor-status-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.doctor-status-panel__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.section-label {
+  margin: 0 0 4px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--clinic-text-muted);
+}
+
+.doctor-status-panel__head h2 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.doctor-status-panel__summary {
+  margin: 0;
+  color: var(--clinic-text-secondary);
+}
+
+.doctor-status-panel__actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.running-late-box {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.running-late-box label {
+  font-size: 12px;
+  color: var(--clinic-text-muted);
+}
+
+@media (max-width: 900px) {
+  .doctor-status-panel__actions {
+    grid-template-columns: 1fr;
+  }
+}

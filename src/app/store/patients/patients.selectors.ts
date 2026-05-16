@@ -37,3 +37,12 @@ export const selectFilteredPatients = (query: string) =>
       return haystack.includes(q);
     });
   });
+
+export const selectPatientsByIds = (patientIds: string[]) =>
+  createSelector(selectAllPatients, (patients: Patient[]) => {
+    if (patientIds.length === 0) {
+      return [];
+    }
+    const lookup = new Set(patientIds);
+    return patients.filter((patient) => lookup.has(patient.id));
+  });

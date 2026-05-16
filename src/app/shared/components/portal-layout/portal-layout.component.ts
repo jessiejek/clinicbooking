@@ -176,6 +176,7 @@ export class PortalLayoutComponent implements OnInit {
   ngOnInit(): void {
     this.clinicName = this.clinicSettingsService.load().clinicName;
     this.resolvedNavItems = (this.route.snapshot.data['navItems'] as NavItem[]) ?? this.navItems;
+    this.portalLabel = (this.route.snapshot.data['portalLabel'] as string | undefined) ?? this.portalLabel;
     this.mobileNavItems = this.resolvedNavItems.slice(0, 5);
     this.updatePageTitle();
 

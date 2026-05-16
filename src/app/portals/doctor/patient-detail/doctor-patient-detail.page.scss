@@ -1,0 +1,56 @@
+:host {
+  display: block;
+}
+
+.tab-card {
+  margin-bottom: var(--space-5);
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.8fr);
+  gap: var(--space-5);
+}
+
+.detail-main,
+.detail-side {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.info-grid span,
+.history-item p,
+.muted-text {
+  display: block;
+  margin: 0;
+  color: var(--clinic-text-muted);
+  font-size: 13px;
+}
+
+.history-list {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.history-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--clinic-border);
+  border-radius: 16px;
+}
+
+@media (max-width: 900px) {
+  .detail-grid,
+  .info-grid {
+    grid-template-columns: 1fr;
+  }
+}

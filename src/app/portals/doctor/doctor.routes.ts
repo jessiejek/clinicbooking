@@ -1,16 +1,97 @@
-import { Component } from '@angular/core';
-import { Routes } from '@angular/router';
-import { IonContent } from '@ionic/angular/standalone';
+import { inject } from '@angular/core';
+import { ResolveFn, Routes } from '@angular/router';
+import { Store } from '@ngrx/store';
+import { of } from 'rxjs';
+import { authGuard } from '../../core/guards/auth.guard';
+import { roleGuard } from '../../core/guards/role.guard';
+import { NavItem } from '../../core/models';
+import { loadBookings } from '../../store/bookings/bookings.actions';
+import { loadDoctors, loadSchedules } from '../../store/doctors/doctors.actions';
+import { loadNotifications } from '../../store/notifications/notifications.actions';
+import { loadPatients } from '../../store/patients/patients.actions';
+import { PortalLayoutComponent } from '../../shared/components/portal-layout/portal-layout.component';
 
-@Component({
-  standalone: true,
-  imports: [IonContent],
-  template: `
-    <ion-content>
-      <p style="padding: 2rem">Doctor — Phase 1 coming soon</p>
-    </ion-content>
-  `
-})
-class PlaceholderPage {}
+export const DOCTOR_NAV_ITEMS: NavItem[] = [
+  { label: 'Dashboard', route: '/doctor/dashboard', icon: 'grid-outline', section: 'Main' },
+  { label: 'Appointments', route: '/doctor/appointments', icon: 'calendar-outline' },
+  { label: 'Patients', route: '/doctor/patients', icon: 'people-outline', section: 'Records' },
+  { label: 'Schedule', route: '/doctor/schedule', icon: 'time-outline', section: 'Tools' },
+  { label: 'My Profile', route: '/doctor/profile', icon: 'person-outline', section: 'Account' }
+];
 
-export const DOCTOR_ROUTES: Routes = [{ path: '', component: PlaceholderPage }];
+const preloadDoctorData: ResolveFn<boolean> = () => {
+  const store = inject(Store);
+  store.dispatch(loadBookings());
+  store.dispatch(loadDoctors());
+  store.dispatch(loadSchedules());
+  store.dispatch(loadPatients());
+  store.dispatch(loadNotifications());
+  return of(true);
+};
+
+export const DOCTOR_ROUTES: Routes = [
+  {
+    path: '',
+    component: PortalLayoutComponent,
+    canActivate: [authGuard, roleGuard],
+    data: {
+      roles: ['Doctor'],
+      navItems: DOCTOR_NAV_ITEMS,
+      portalLabel: 'Doctor Portal',
+      title: 'Dashboard'
+    },
+    resolve: { preload: preloadDoctorData },
+    children: [
+      { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+      {
+        path: 'dashboard',
+        loadComponent: () =>
+          import('./dashboard/doctor-dashboard.page').then((m) => m.DoctorDashboardPage),
+        data: { title: 'Dashboard' }
+      },
+      {
+        path: 'appointments',
+        loadComponent: () =>
+          import('./appointments/doctor-appointments.page').then((m) => m.DoctorAppointmentsPage),
+        data: { title: 'Appointments' }
+      },
+      {
+        path: 'appointments/:id',
+        loadComponent: () =>
+          import('./appointment-detail/doctor-appointment-detail.page').then(
+            (m) => m.DoctorAppointmentDetailPage
+          ),
+        data: { title: 'Appointment Detail' }
+      },
+      {
+        path: 'patients',
+        loadComponent: () => import('./patients/doctor-patients.page').then((m) => m.DoctorPatientsPage),
+        data: { title: 'Patients' }
+      },
+      {
+        path: 'patients/:id',
+        loadComponent: () =>
+          import('./patient-detail/doctor-patient-detail.page').then((m) => m.DoctorPatientDetailPage),
+        data: { title: 'Patient Detail' }
+      },
+      {
+        path: 'schedule',
+        loadComponent: () => import('./schedule/doctor-schedule.page').then((m) => m.DoctorSchedulePage),
+        data: { title: 'Schedule' }
+      },
+      {
+        path: 'consultation/:id',
+        loadComponent: () =>
+          import('./consultation/doctor-consultation-stub.page').then(
+            (m) => m.DoctorConsultationStubPage
+          ),
+        data: { title: 'Consultation Form' }
+      },
+      {
+        path: 'profile',
+        loadComponent: () => import('./profile/doctor-profile.page').then((m) => m.DoctorProfilePage),
+        data: { title: 'My Profile' }
+      }
+    ]
+  }
+];

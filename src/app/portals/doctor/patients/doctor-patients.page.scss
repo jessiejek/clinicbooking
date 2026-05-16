@@ -1,0 +1,31 @@
+:host {
+  display: block;
+}
+
+.filter-card {
+  margin-bottom: var(--space-5);
+}
+
+.search-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.search-field span {
+  font-size: 13px;
+  color: var(--clinic-text-secondary);
+}
+
+.search-field input {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--clinic-border);
+  border-radius: 12px;
+  background: white;
+}
+
+.patients-list {
+  display: grid;
+  gap: var(--space-4);
+}

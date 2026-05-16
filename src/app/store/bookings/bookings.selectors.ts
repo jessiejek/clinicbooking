@@ -49,6 +49,11 @@ export const selectBookingsByDoctor = (doctorId: string) =>
     bookings.filter((booking) => booking.doctorId === doctorId)
   );
 
+export const selectBookingsByDoctorId = (doctorId: string) =>
+  createSelector(selectBookings, (bookings: Booking[]) =>
+    bookings.filter((booking) => booking.doctorId === doctorId)
+  );
+
 export const selectBookingsByPatient = (patientId: string) =>
   createSelector(selectBookings, (bookings: Booking[]) =>
     bookings.filter((booking) => booking.patientId === patientId)
@@ -58,6 +63,24 @@ export const selectTodaysBookings = createSelector(selectBookings, (bookings: Bo
   const today = toLocalIsoDate();
   return bookings.filter((booking) => booking.appointmentDate === today);
 });
+
+export const selectTodaysBookingsByDoctorId = (doctorId: string) =>
+  createSelector(selectBookings, (bookings: Booking[]) => {
+    const today = toLocalIsoDate();
+    return bookings
+      .filter((booking) => booking.doctorId === doctorId && booking.appointmentDate === today)
+      .sort((a, b) => (a.queueNumber ?? 0) - (b.queueNumber ?? 0));
+  });
+
+export const selectUpcomingBookingsByDoctorId = (doctorId: string) =>
+  createSelector(selectBookings, (bookings: Booking[]) => {
+    const today = toLocalIsoDate();
+    return bookings
+      .filter((booking) => booking.doctorId === doctorId && booking.appointmentDate > today)
+      .sort((a, b) =>
+        `${a.appointmentDate} ${a.slotStartTime}`.localeCompare(`${b.appointmentDate} ${b.slotStartTime}`)
+      );
+  });
 
 export const selectPendingVerifications = createSelector(selectBookings, (bookings: Booking[]) =>
   bookings.filter((booking) => booking.status === 'ProofSubmitted')

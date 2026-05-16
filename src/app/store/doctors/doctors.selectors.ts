@@ -11,6 +11,11 @@ export const selectDoctorById = (id: string) =>
     doctors.find((doctor) => doctor.id === id)
   );
 
+export const selectDoctorByUserId = (userId: string) =>
+  createSelector(selectAllDoctors, (doctors: Doctor[]) =>
+    doctors.find((doctor) => doctor.userId === userId)
+  );
+
 export const selectDoctorSchedules = (doctorId: string) =>
   createSelector(selectDoctorsState, (state) =>
     state.schedules.filter((schedule: DoctorSchedule) => schedule.doctorId === doctorId)

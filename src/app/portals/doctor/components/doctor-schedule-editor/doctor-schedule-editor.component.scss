@@ -1,0 +1,76 @@
+:host {
+  display: block;
+}
+
+.schedule-editor {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.schedule-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.schedule-card__head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.section-label {
+  margin: 0 0 4px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--clinic-text-muted);
+}
+
+.schedule-card__head h2 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.schedule-table ion-input {
+  min-width: 120px;
+}
+
+.blocked-form {
+  display: grid;
+  grid-template-columns: 180px 1fr auto;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.blocked-list {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.blocked-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--clinic-border);
+  border-radius: 16px;
+  background: var(--clinic-surface);
+}
+
+.blocked-item p {
+  margin: 4px 0 0;
+  color: var(--clinic-text-muted);
+  font-size: 13px;
+}
+
+.preview-picker {
+  max-width: 220px;
+}
+
+@media (max-width: 900px) {
+  .blocked-form {
+    grid-template-columns: 1fr;
+  }
+}
