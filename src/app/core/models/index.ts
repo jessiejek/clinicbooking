@@ -16,8 +16,8 @@ export type PaymentMode = 'Online' | 'PayAtClinic';
 export type PaymentMethod = 'GCash' | 'Maya' | 'BankTransfer' | 'PayAtClinic';
 export type ServiceCategory = 'Consultation' | 'Procedure' | 'Laboratory' | 'Diagnostic';
 export type ProofType = 'ReferenceNumber' | 'Screenshot';
-export type PrescriptionStatus = 'Active' | 'Filled' | 'Expired' | 'Cancelled';
-export type DiagnosisType = 'Primary' | 'Secondary' | 'Comorbidity';
+export type PrescriptionStatus = 'Active' | 'Completed' | 'Filled' | 'Expired' | 'Cancelled';
+export type DiagnosisType = 'Primary' | 'Secondary' | 'Differential' | 'Comorbidity';
 export type AllergenType = 'Drug' | 'Food' | 'Environmental' | 'Other';
 export type AllergySeverity = 'Mild' | 'Moderate' | 'Severe';
 export type AttachmentType =
@@ -178,76 +178,97 @@ export interface Payment {
 
 export interface Consultation {
   id: string;
+  bookingId: string;
   patientId: string;
   doctorId: string;
-  bookingId?: string;
   consultationDate: string;
-  consultationTime: string;
   chiefComplaint: string;
+  subjective: string;
+  objective: string;
+  assessment: string;
+  plan: string;
+  vitalSigns?: VitalSigns;
+  diagnoses: Diagnosis[];
+  prescriptionIds: string[];
+  labRequestIds: string[];
+  followUpDate?: string;
+  status: 'Draft' | 'Completed' | 'Locked' | 'Amended';
+  isLocked: boolean;
+  createdAt: string;
+  updatedAt: string;
+  consultationTime?: string;
   historyOfPresentIllness?: string;
   peGeneralFindings?: string;
-  assessment?: string;
-  plan?: string;
-  followUpDate?: string;
-  isLocked: boolean;
   visitSummaryUrl?: string;
 }
 
 export interface VitalSigns {
-  id: string;
-  consultationId: string;
-  patientId: string;
+  id?: string;
+  consultationId?: string;
+  patientId?: string;
   bloodPressureSystolic?: number;
   bloodPressureDiastolic?: number;
   heartRate?: number;
   respiratoryRate?: number;
+  temperatureCelsius?: number;
   temperature?: number;
   oxygenSaturation?: number;
+  weightKg?: number;
   weight?: number;
+  heightCm?: number;
   height?: number;
   bmi?: number;
-  createdAt: string;
+  createdAt?: string;
 }
 
 export interface Diagnosis {
   id: string;
-  consultationId: string;
-  patientId: string;
-  icd10Code: string;
-  icd10Description: string;
+  code: string;
+  description: string;
   type: DiagnosisType;
+  consultationId?: string;
+  patientId?: string;
+  icd10Code?: string;
+  icd10Description?: string;
 }
 
 export interface Prescription {
   id: string;
-  consultationId?: string;
+  consultationId: string;
   patientId: string;
   doctorId: string;
-  prescriptionDate: string;
-  status: PrescriptionStatus;
-  notes?: string;
+  issuedAt: string;
+  status: 'Active' | 'Completed' | 'Cancelled';
   items: PrescriptionItem[];
+  notes?: string;
+  prescriptionDate?: string;
 }
 
 export interface PrescriptionItem {
   id: string;
-  prescriptionId: string;
-  genericName: string;
-  brandName?: string;
-  dosageForm: string;
+  medicineName: string;
+  genericName?: string;
+  dosageForm: 'Tablet' | 'Capsule' | 'Syrup' | 'Injection' | 'Cream' | 'Drops' | 'Others';
   strength: string;
   quantity: number;
   sig: string;
-  isControlledSubstance: boolean;
+  frequency?: string;
+  duration?: string;
+  instructions?: string;
+  isControlledSubstance?: boolean;
+  prescriptionId?: string;
+  brandName?: string;
 }
 
 export interface Allergy {
   id: string;
   patientId: string;
-  allergenName: string;
-  allergenType: AllergenType;
+  allergen: string;
+  reaction: string;
   severity: AllergySeverity;
-  reaction?: string;
+  allergenName?: string;
+  allergenType?: AllergenType;
+  notes?: string;
 }
 
 export interface PatientAttachment {
@@ -267,11 +288,52 @@ export interface VaccinationRecord {
   patientId: string;
   vaccineName: string;
   brandName?: string;
-  doseNumber?: number;
+  doseNumber?: number | string;
   lotNumber?: string;
-  dateAdministered: string;
-  administeredByUserId: string;
+  dateGiven: string;
+  administeredBy?: string;
+  dateAdministered?: string;
+  administeredByUserId?: string;
   nextDoseDate?: string;
+  remarks?: string;
+}
+
+export interface LabRequest {
+  id: string;
+  consultationId: string;
+  patientId: string;
+  doctorId: string;
+  testName: string;
+  reason?: string;
+  status: 'Requested' | 'Completed' | 'Cancelled';
+  requestedAt: string;
+}
+
+export interface LabResult {
+  id: string;
+  labRequestId: string;
+  patientId: string;
+  fileName: string;
+  resultDate: string;
+  notes?: string;
+  consultationId?: string;
+}
+
+export interface FollowUp {
+  id: string;
+  consultationId: string;
+  patientId: string;
+  doctorId: string;
+  followUpDate: string;
+  reason: string;
+  status: 'Pending' | 'Completed' | 'Cancelled';
+  reminderEnabled?: boolean;
+}
+
+export interface MockDrug {
+  id: string;
+  medicineName: string;
+  genericName?: string;
 }
 
 export interface Announcement {

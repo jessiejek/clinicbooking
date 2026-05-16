@@ -16,6 +16,8 @@ import { DoctorsEffects } from './store/doctors/doctors.effects';
 import { doctorsReducer } from './store/doctors/doctors.reducer';
 import { NotificationsEffects } from './store/notifications/notifications.effects';
 import { notificationsReducer } from './store/notifications/notifications.reducer';
+import { MedicalRecordsEffects } from './store/medical-records/medical-records.effects';
+import { medicalRecordsReducer } from './store/medical-records/medical-records.reducer';
 import { PatientsEffects } from './store/patients/patients.effects';
 import { patientsReducer } from './store/patients/patients.reducer';
 
@@ -32,7 +34,15 @@ export const appConfig: ApplicationConfig = {
     provideState({ name: 'doctors', reducer: doctorsReducer }),
     provideState({ name: 'patients', reducer: patientsReducer }),
     provideState({ name: 'notifications', reducer: notificationsReducer }),
-    provideEffects([AuthEffects, BookingsEffects, DoctorsEffects, PatientsEffects, NotificationsEffects]),
+    provideState({ name: 'medicalRecords', reducer: medicalRecordsReducer }),
+    provideEffects([
+      AuthEffects,
+      BookingsEffects,
+      DoctorsEffects,
+      PatientsEffects,
+      NotificationsEffects,
+      MedicalRecordsEffects
+    ]),
     provideStoreDevtools({
       maxAge: 25,
       logOnly: false

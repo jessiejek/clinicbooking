@@ -8,9 +8,10 @@ import { MockDataService } from '../../../core/services/mock-data.service';
 import { loadPatients } from '../../../store/patients/patients.actions';
 import { selectCurrentUser } from '../../../store/auth/auth.selectors';
 import { selectCurrentPatient } from '../../../store/patients/patients.selectors';
+import { loadMedicalRecords } from '../../../store/medical-records/medical-records.actions';
+import { selectPrescriptionsByPatientId } from '../../../store/medical-records/medical-records.selectors';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { PrescriptionCardComponent } from '../components/prescription-card/prescription-card.component';
-import { PatientService } from '../services/patient.service';
 
 interface PrescriptionVm {
   user: AuthUser | null;
@@ -54,7 +55,6 @@ interface PrescriptionVm {
 export class PatientPrescriptionsPage implements OnInit {
   private readonly store = inject(Store);
   private readonly mockData = inject(MockDataService);
-  private readonly patientService = inject(PatientService);
   private readonly toastCtrl = inject(ToastController);
 
   readonly currentUser$ = this.store.select(selectCurrentUser);
@@ -63,26 +63,25 @@ export class PatientPrescriptionsPage implements OnInit {
   );
 
   vm$ = combineLatest([this.currentUser$, this.patient$]).pipe(
-    switchMap(([user, patient]) => {
-      if (!patient) {
-        return of({ user, patient, prescriptions: [] } satisfies PrescriptionVm);
-      }
-
-      return this.patientService.getPatientPrescriptions(patient.id).pipe(
-        map((prescriptions) => ({
-          user,
-          patient,
-          prescriptions: prescriptions.map((prescription) => ({
-            prescription,
-            doctor: this.mockData.getDoctorById(prescription.doctorId)
-          }))
-        }))
-      );
-    })
+    switchMap(([user, patient]) =>
+      patient
+        ? this.store.select(selectPrescriptionsByPatientId(patient.id)).pipe(
+            map((prescriptions) => ({
+              user,
+              patient,
+              prescriptions: prescriptions.map((prescription) => ({
+                prescription,
+                doctor: this.mockData.getDoctorById(prescription.doctorId)
+              }))
+            }))
+          )
+        : of({ user, patient, prescriptions: [] } satisfies PrescriptionVm)
+    )
   );
 
   ngOnInit(): void {
     this.store.dispatch(loadPatients());
+    this.store.dispatch(loadMedicalRecords());
   }
 
   async showDownloadToast(): Promise<void> {

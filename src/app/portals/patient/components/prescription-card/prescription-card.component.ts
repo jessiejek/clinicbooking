@@ -19,7 +19,7 @@ import { StatusBadgeComponent } from '../../../../shared/components/status-badge
 
       <ul class="prescription-card__items">
         <li *ngFor="let item of prescription.items">
-          <div class="prescription-card__item-title">{{ item.genericName }}</div>
+          <div class="prescription-card__item-title">{{ item.medicineName || item.genericName }}</div>
           <div class="prescription-card__item-meta">
             {{ item.strength }} | {{ item.dosageForm }} | Qty {{ item.quantity }}
           </div>

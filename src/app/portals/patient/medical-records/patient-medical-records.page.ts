@@ -8,10 +8,11 @@ import { MockDataService } from '../../../core/services/mock-data.service';
 import { loadPatients } from '../../../store/patients/patients.actions';
 import { selectCurrentUser } from '../../../store/auth/auth.selectors';
 import { selectCurrentPatient } from '../../../store/patients/patients.selectors';
+import { loadMedicalRecords } from '../../../store/medical-records/medical-records.actions';
+import { selectConsultationsByPatientId } from '../../../store/medical-records/medical-records.selectors';
 import { BannerComponent } from '../../../shared/components/banner/banner.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { MedicalRecordCardComponent } from '../components/medical-record-card/medical-record-card.component';
-import { PatientService } from '../services/patient.service';
 import { ToastController } from '@ionic/angular/standalone';
 
 interface MedicalRecordsVm {
@@ -38,7 +39,7 @@ interface MedicalRecordsVm {
           *ngFor="let item of vm.records"
           [consultation]="item.consultation"
           [doctor]="item.doctor"
-          (viewDetails)="showPhaseNineToast()"
+          (viewDetails)="showReadOnlyToast()"
         ></app-medical-record-card>
       </ng-container>
 
@@ -56,7 +57,6 @@ interface MedicalRecordsVm {
 export class PatientMedicalRecordsPage implements OnInit {
   private readonly store = inject(Store);
   private readonly mockData = inject(MockDataService);
-  private readonly patientService = inject(PatientService);
   private readonly toastCtrl = inject(ToastController);
 
   readonly currentUser$ = this.store.select(selectCurrentUser);
@@ -65,31 +65,30 @@ export class PatientMedicalRecordsPage implements OnInit {
   );
 
   vm$ = combineLatest([this.currentUser$, this.patient$]).pipe(
-    switchMap(([user, patient]) => {
-      if (!patient) {
-        return of({ user, patient, records: [] } satisfies MedicalRecordsVm);
-      }
-
-      return this.patientService.getPatientConsultations(patient.id).pipe(
-        map((consultations) => ({
-          user,
-          patient,
-          records: consultations.map((consultation) => ({
-            consultation,
-            doctor: this.mockData.getDoctorById(consultation.doctorId)
-          }))
-        }))
-      );
-    })
+    switchMap(([user, patient]) =>
+      patient
+        ? this.store.select(selectConsultationsByPatientId(patient.id)).pipe(
+            map((consultations) => ({
+              user,
+              patient,
+              records: consultations.map((consultation) => ({
+                consultation,
+                doctor: this.mockData.getDoctorById(consultation.doctorId)
+              }))
+            }))
+          )
+        : of({ user, patient, records: [] } satisfies MedicalRecordsVm)
+    )
   );
 
   ngOnInit(): void {
     this.store.dispatch(loadPatients());
+    this.store.dispatch(loadMedicalRecords());
   }
 
-  async showPhaseNineToast(): Promise<void> {
+  async showReadOnlyToast(): Promise<void> {
     const toast = await this.toastCtrl.create({
-      message: 'Detailed consultation view will be available in Phase 9.',
+      message: 'Medical records are read-only in the patient portal.',
       duration: 2200,
       position: 'top'
     });

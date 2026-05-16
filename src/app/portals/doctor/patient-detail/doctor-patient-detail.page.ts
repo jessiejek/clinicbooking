@@ -4,16 +4,27 @@ import { ActivatedRoute } from '@angular/router';
 import { Store } from '@ngrx/store';
 import { combineLatest, of } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
-import { Booking, Patient } from '../../../core/models';
+import { Allergy, Booking, Consultation, FollowUp, LabResult, Patient, Prescription, VaccinationRecord } from '../../../core/models';
 import { selectCurrentUser } from '../../../store/auth/auth.selectors';
 import { selectDoctorByUserId } from '../../../store/doctors/doctors.selectors';
 import { selectBookingsByDoctorId } from '../../../store/bookings/bookings.selectors';
 import { selectPatientById } from '../../../store/patients/patients.selectors';
+import { loadMedicalRecords } from '../../../store/medical-records/medical-records.actions';
+import {
+  selectAllergiesByPatientId,
+  selectConsultationsByPatientId,
+  selectFollowUpsByPatientId,
+  selectLabResultsByPatientId,
+  selectPrescriptionsByPatientId,
+  selectVaccinationsByPatientId
+} from '../../../store/medical-records/medical-records.selectors';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 import { FormsModule } from '@angular/forms';
 import { IonLabel, IonSegment, IonSegmentButton } from '@ionic/angular/standalone';
+import { ConsultationTimelineComponent } from '../../admin/components/consultation-timeline/consultation-timeline.component';
+import { VitalsTrendChartComponent } from '../components/vitals-trend-chart/vitals-trend-chart.component';
 
 @Component({
   standalone: true,
@@ -28,6 +39,8 @@ import { IonLabel, IonSegment, IonSegmentButton } from '@ionic/angular/standalon
     IonSegmentButton,
     PageHeaderComponent,
     EmptyStateComponent,
+    ConsultationTimelineComponent,
+    VitalsTrendChartComponent,
     StatusBadgeComponent
   ],
   template: `
@@ -92,11 +105,35 @@ import { IonLabel, IonSegment, IonSegmentButton } from '@ionic/angular/standalon
       </section>
 
       <section *ngIf="activeTab === 'records'">
-        <app-empty-state
-          icon="document-text-outline"
-          title="Medical Records"
-          description="Consultation history will be implemented in Phase 9."
-        ></app-empty-state>
+        <div class="records-grid">
+          <app-consultation-timeline [consultations]="consultations"></app-consultation-timeline>
+          <app-vitals-trend-chart [consultations]="consultations"></app-vitals-trend-chart>
+          <section class="clinic-card">
+            <h3>Allergies</h3>
+            <p *ngFor="let allergy of allergies">{{ allergy.allergen }} • {{ allergy.severity }}</p>
+            <p *ngIf="allergies.length === 0">No allergies recorded.</p>
+          </section>
+          <section class="clinic-card">
+            <h3>Prescriptions</h3>
+            <p *ngFor="let prescription of prescriptions">{{ prescription.items.length }} medicine(s)</p>
+            <p *ngIf="prescriptions.length === 0">No prescriptions recorded.</p>
+          </section>
+          <section class="clinic-card">
+            <h3>Lab Results</h3>
+            <p *ngFor="let labResult of labResults">{{ labResult.fileName }} • {{ labResult.resultDate }}</p>
+            <p *ngIf="labResults.length === 0">No lab results recorded.</p>
+          </section>
+          <section class="clinic-card">
+            <h3>Vaccinations</h3>
+            <p *ngFor="let vaccination of vaccinations">{{ vaccination.vaccineName }} • {{ vaccination.dateGiven }}</p>
+            <p *ngIf="vaccinations.length === 0">No vaccination records.</p>
+          </section>
+          <section class="clinic-card">
+            <h3>Follow-Ups</h3>
+            <p *ngFor="let followUp of followUps">{{ followUp.followUpDate }} • {{ followUp.reason }}</p>
+            <p *ngIf="followUps.length === 0">No follow-ups scheduled.</p>
+          </section>
+        </div>
       </section>
     </ng-container>
 
@@ -117,6 +154,12 @@ export class DoctorPatientDetailPage {
   private readonly route = inject(ActivatedRoute);
 
   activeTab: 'overview' | 'records' = 'overview';
+  consultations: Consultation[] = [];
+  prescriptions: Prescription[] = [];
+  allergies: Allergy[] = [];
+  labResults: LabResult[] = [];
+  vaccinations: VaccinationRecord[] = [];
+  followUps: FollowUp[] = [];
 
   readonly currentDoctor$ = this.store.select(selectCurrentUser).pipe(
     switchMap((user) => (user ? this.store.select(selectDoctorByUserId(user.id)) : of(undefined)))
@@ -170,5 +213,16 @@ export class DoctorPatientDetailPage {
   lastCompletedVisit(bookings: Booking[]): string {
     const completed = bookings.filter((booking) => booking.status === 'Completed');
     return completed[0]?.appointmentDate ?? '';
+  }
+
+  ngOnInit(): void {
+    const patientId = this.route.snapshot.paramMap.get('id') ?? '';
+    this.store.dispatch(loadMedicalRecords());
+    this.store.select(selectConsultationsByPatientId(patientId)).subscribe((consultations) => (this.consultations = consultations));
+    this.store.select(selectPrescriptionsByPatientId(patientId)).subscribe((prescriptions) => (this.prescriptions = prescriptions));
+    this.store.select(selectAllergiesByPatientId(patientId)).subscribe((allergies) => (this.allergies = allergies));
+    this.store.select(selectLabResultsByPatientId(patientId)).subscribe((labResults) => (this.labResults = labResults));
+    this.store.select(selectVaccinationsByPatientId(patientId)).subscribe((vaccinations) => (this.vaccinations = vaccinations));
+    this.store.select(selectFollowUpsByPatientId(patientId)).subscribe((followUps) => (this.followUps = followUps));
   }
 }

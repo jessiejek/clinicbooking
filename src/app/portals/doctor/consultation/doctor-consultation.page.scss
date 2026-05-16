@@ -1,0 +1,83 @@
+.consultation-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  width: 100%;
+  margin-top: var(--space-4);
+}
+
+.consultation-header__copy h2,
+.summary-card h3,
+.record-list h3,
+.side-card h3 {
+  margin: 0;
+}
+
+.consultation-header__copy p {
+  margin: 4px 0 0;
+  color: var(--clinic-text-secondary);
+}
+
+.consultation-header__actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.summary-card,
+.record-list,
+.side-card {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.consultation-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.consultation-main,
+.consultation-side {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.record-item {
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--clinic-border);
+  background: var(--color-neutral-50);
+}
+
+.record-item strong {
+  display: block;
+}
+
+.record-item p {
+  margin: 4px 0 0;
+  color: var(--clinic-text-secondary);
+}
+
+@media (max-width: 1100px) {
+  .consultation-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .consultation-header,
+  .summary-grid {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+}

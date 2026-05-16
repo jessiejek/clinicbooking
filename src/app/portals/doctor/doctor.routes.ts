@@ -7,6 +7,7 @@ import { roleGuard } from '../../core/guards/role.guard';
 import { NavItem } from '../../core/models';
 import { loadBookings } from '../../store/bookings/bookings.actions';
 import { loadDoctors, loadSchedules } from '../../store/doctors/doctors.actions';
+import { loadMedicalRecords } from '../../store/medical-records/medical-records.actions';
 import { loadNotifications } from '../../store/notifications/notifications.actions';
 import { loadPatients } from '../../store/patients/patients.actions';
 import { PortalLayoutComponent } from '../../shared/components/portal-layout/portal-layout.component';
@@ -25,6 +26,7 @@ const preloadDoctorData: ResolveFn<boolean> = () => {
   store.dispatch(loadDoctors());
   store.dispatch(loadSchedules());
   store.dispatch(loadPatients());
+  store.dispatch(loadMedicalRecords());
   store.dispatch(loadNotifications());
   return of(true);
 };
@@ -80,10 +82,10 @@ export const DOCTOR_ROUTES: Routes = [
         data: { title: 'Schedule' }
       },
       {
-        path: 'consultation/:id',
+        path: 'consultation/:bookingId',
         loadComponent: () =>
-          import('./consultation/doctor-consultation-stub.page').then(
-            (m) => m.DoctorConsultationStubPage
+          import('./consultation/doctor-consultation.page').then(
+            (m) => m.DoctorConsultationPage
           ),
         data: { title: 'Consultation Form' }
       },

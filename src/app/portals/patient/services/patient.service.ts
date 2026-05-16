@@ -64,7 +64,8 @@ export class PatientService {
         .filter((prescription) => prescription.patientId === patientId)
         .sort(
           (a, b) =>
-            new Date(b.prescriptionDate).getTime() - new Date(a.prescriptionDate).getTime()
+            new Date(b.issuedAt ?? b.prescriptionDate ?? '').getTime() -
+            new Date(a.issuedAt ?? a.prescriptionDate ?? '').getTime()
         )
     ).pipe(delay(300));
   }

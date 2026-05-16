@@ -3,14 +3,23 @@ import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Store } from '@ngrx/store';
-import { Booking, Patient } from '../../../core/models';
-import { MockDataService } from '../../../core/services/mock-data.service';
+import { Allergy, Booking, Consultation, FollowUp, LabResult, Patient, Prescription, VaccinationRecord } from '../../../core/models';
 import { updatePatient } from '../../../store/patients/patients.actions';
 import { selectBookingsByPatient } from '../../../store/bookings/bookings.selectors';
 import { selectPatientById } from '../../../store/patients/patients.selectors';
+import { loadMedicalRecords } from '../../../store/medical-records/medical-records.actions';
+import {
+  selectAllergiesByPatientId,
+  selectConsultationsByPatientId,
+  selectFollowUpsByPatientId,
+  selectLabResultsByPatientId,
+  selectPrescriptionsByPatientId,
+  selectVaccinationsByPatientId
+} from '../../../store/medical-records/medical-records.selectors';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
+import { MedicalRecordsTabComponent } from '../components/medical-records-tab/medical-records-tab.component';
 import { IonLabel, IonModal, IonSegment, IonSegmentButton } from '@ionic/angular/standalone';
 
 @Component({
@@ -26,6 +35,7 @@ import { IonLabel, IonModal, IonSegment, IonSegmentButton } from '@ionic/angular
     DatePipe,
     AvatarComponent,
     EmptyStateComponent,
+    MedicalRecordsTabComponent,
     StatusBadgeComponent,
     IonSegment,
     IonSegmentButton,
@@ -95,7 +105,15 @@ import { IonLabel, IonModal, IonSegment, IonSegmentButton } from '@ionic/angular
       </div>
 
       <div *ngIf="selectedTab === 'records'" class="clinic-card">
-        <app-empty-state icon="document-text-outline" title="Medical Records" description="Medical records module coming in Phase 9."></app-empty-state>
+        <app-medical-records-tab
+          [patientId]="patient?.id || ''"
+          [consultations]="consultations"
+          [prescriptions]="prescriptions"
+          [allergies]="allergies"
+          [labResults]="labResults"
+          [vaccinations]="vaccinations"
+          [followUps]="followUps"
+        ></app-medical-records-tab>
       </div>
     </section>
 
@@ -130,10 +148,15 @@ export class PatientDetailPage implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly fb = inject(FormBuilder);
-  private readonly mockData = inject(MockDataService);
 
   patient: Patient | null = null;
   bookings: Booking[] = [];
+  consultations: Consultation[] = [];
+  prescriptions: Prescription[] = [];
+  allergies: Allergy[] = [];
+  labResults: LabResult[] = [];
+  vaccinations: VaccinationRecord[] = [];
+  followUps: FollowUp[] = [];
   selectedTab: 'overview' | 'bookings' | 'records' = 'overview';
   editOpen = false;
   form = this.fb.group({
@@ -155,9 +178,16 @@ export class PatientDetailPage implements OnInit {
       this.patient = patient ?? null;
       if (patient) {
         this.form.patchValue(patient);
+        this.store.select(selectConsultationsByPatientId(patient.id)).subscribe((consultations) => (this.consultations = consultations));
+        this.store.select(selectPrescriptionsByPatientId(patient.id)).subscribe((prescriptions) => (this.prescriptions = prescriptions));
+        this.store.select(selectAllergiesByPatientId(patient.id)).subscribe((allergies) => (this.allergies = allergies));
+        this.store.select(selectLabResultsByPatientId(patient.id)).subscribe((labResults) => (this.labResults = labResults));
+        this.store.select(selectVaccinationsByPatientId(patient.id)).subscribe((vaccinations) => (this.vaccinations = vaccinations));
+        this.store.select(selectFollowUpsByPatientId(patient.id)).subscribe((followUps) => (this.followUps = followUps));
       }
     });
     this.store.select(selectBookingsByPatient(id)).subscribe((bookings) => (this.bookings = bookings));
+    this.store.dispatch(loadMedicalRecords());
   }
 
   back(): void {
