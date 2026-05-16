@@ -18,16 +18,15 @@ import { selectIsAuthenticated } from '../../../../store/auth/auth.selectors';
         <div class="empty-state__icon">
           <ion-icon name="lock-closed-outline"></ion-icon>
         </div>
-        <h3>Login Required</h3>
+        <h3>Account Required</h3>
         <p>
-          Please log in or create an account to complete your booking. Your slot is still
-          reserved.
+          You need to sign in or create a free account to complete your booking. Registration
+          only takes a minute.
         </p>
 
         <div class="auth-check-actions">
           <button type="button" class="btn-primary" (click)="goToLogin()">Sign In</button>
           <button type="button" class="btn-outline" (click)="goToRegister()">Create Account</button>
-          <button type="button" class="btn-ghost" (click)="continueAsGuest()">Continue as Guest</button>
         </div>
       </div>
 
@@ -60,10 +59,6 @@ export class StepAuthCheckComponent {
 
   goToRegister(): void {
     this.router.navigate(['/auth/register'], { queryParams: { returnUrl: '/public/booking' } });
-  }
-
-  continueAsGuest(): void {
-    this.store.dispatch(nextStep());
   }
 
   goBack(): void {

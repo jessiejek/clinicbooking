@@ -1,10 +1,12 @@
 import { NgClass, NgIf } from '@angular/common';
 import { Component, Input, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
+import { Store } from '@ngrx/store';
 import { IonIcon } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { closeOutline, menuOutline } from 'ionicons/icons';
 import { ClinicSettingsService } from '../../../../core/services/clinic-settings.service';
+import { selectCurrentUser, selectIsAuthenticated } from '../../../../store/auth/auth.selectors';
 
 @Component({
   selector: 'app-public-navbar',
@@ -27,9 +29,17 @@ import { ClinicSettingsService } from '../../../../core/services/clinic-settings
         <a routerLink="/public/doctors" routerLinkActive="active">Doctors</a>
         <a routerLink="/public/services" routerLinkActive="active">Services</a>
         <a routerLink="/public/announcements" routerLinkActive="active">Announcements</a>
-        <div class="navbar__cta">
-          <a routerLink="/public/booking" class="navbar-book-btn">Book Appointment</a>
-        </div>
+      </div>
+
+      <div class="navbar__auth">
+        <a *ngIf="!isAuthenticated(); else portalLink" routerLink="/auth/login" class="navbar-login-btn">Login</a>
+        <ng-template #portalLink>
+          <a routerLink="/patient/dashboard" class="navbar-portal-btn">My Portal</a>
+        </ng-template>
+      </div>
+
+      <div class="navbar__cta">
+        <a routerLink="/public/booking" class="navbar-book-btn">Book Appointment</a>
       </div>
 
       <button
@@ -59,6 +69,21 @@ import { ClinicSettingsService } from '../../../../core/services/clinic-settings
       <a routerLink="/public/booking" class="navbar-book-btn mobile-cta" (click)="closeMobile()"
         >Book Appointment</a
       >
+      <a
+        *ngIf="!isAuthenticated(); else mobilePortalLink"
+        routerLink="/auth/login"
+        class="navbar-login-btn mobile-login"
+        (click)="closeMobile()"
+        >Login</a
+      >
+      <ng-template #mobilePortalLink>
+        <a
+          routerLink="/patient/dashboard"
+          class="navbar-portal-btn mobile-portal"
+          (click)="closeMobile()"
+          >My Portal</a
+        >
+      </ng-template>
     </div>
   `,
   styleUrl: './public-navbar.component.scss'
@@ -67,8 +92,11 @@ export class PublicNavbarComponent {
   /** Vertical scroll position of `.public-main` (body/window does not scroll with Ionic defaults). */
   @Input() mainScrollTop = 0;
 
+  private readonly store = inject(Store);
   private readonly clinicSettings = inject(ClinicSettingsService);
   readonly settings = this.clinicSettings.load();
+  readonly isAuthenticated = this.store.selectSignal(selectIsAuthenticated);
+  readonly currentUser = this.store.selectSignal(selectCurrentUser);
 
   menuOpen = false;
 
