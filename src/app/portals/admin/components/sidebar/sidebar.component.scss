@@ -55,8 +55,12 @@
   color: rgba(255, 255, 255, 0.3);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  padding: var(--space-3) var(--space-5);
-  margin-top: var(--space-3);
+  padding: var(--space-6) var(--space-5) var(--space-2);
+  margin-top: 0;
+}
+
+.nav-section-label:first-of-type {
+  padding-top: var(--space-3);
 }
 
 .nav-item {
@@ -64,7 +68,7 @@
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-3) var(--space-5);
-  margin: 1px var(--space-2);
+  margin: 1px var(--space-3);
   border-radius: var(--radius-md);
   cursor: pointer;
   text-decoration: none;
