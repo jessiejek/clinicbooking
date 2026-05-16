@@ -29,37 +29,63 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
       <input class="filter-input" [formControl]="searchControl" placeholder="Search by name, code, contact, or email" />
 
       <div class="clinic-card">
-        <table class="clinic-table" *ngIf="!isLoading && filteredPatients.length > 0">
-          <thead>
-            <tr>
-              <th>Code</th>
-              <th>Name</th>
-              <th>Sex</th>
-              <th>DOB</th>
-              <th>Contact</th>
-              <th>Email</th>
-              <th>Registered</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              *ngFor="let patient of filteredPatients"
-              tabindex="0"
-              role="button"
-              [attr.aria-label]="'Open patient profile for ' + patient.firstName + ' ' + patient.lastName"
-              (click)="openDetail(patient.id)"
-              (keydown.enter)="openDetail(patient.id)"
-            >
-              <td class="data-mono">{{ patient.patientCode }}</td>
-              <td>{{ patient.firstName }} {{ patient.lastName }}</td>
-              <td>{{ patient.sex }}</td>
-              <td>{{ patient.dateOfBirth }}</td>
-              <td>{{ patient.contactNumber }}</td>
-              <td>{{ patient.email }}</td>
-              <td><app-status-badge status="Active"></app-status-badge></td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="table-desktop" *ngIf="!isLoading && filteredPatients.length > 0">
+          <table class="clinic-table">
+            <thead>
+              <tr>
+                <th>Code</th>
+                <th>Name</th>
+                <th>Sex</th>
+                <th>DOB</th>
+                <th>Contact</th>
+                <th>Email</th>
+                <th>Registered</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                *ngFor="let patient of filteredPatients"
+                tabindex="0"
+                role="button"
+                [attr.aria-label]="'Open patient profile for ' + patient.firstName + ' ' + patient.lastName"
+                (click)="openDetail(patient.id)"
+                (keydown.enter)="openDetail(patient.id)"
+              >
+                <td class="data-mono">{{ patient.patientCode }}</td>
+                <td>{{ patient.firstName }} {{ patient.lastName }}</td>
+                <td>{{ patient.sex }}</td>
+                <td>{{ patient.dateOfBirth }}</td>
+                <td>{{ patient.contactNumber }}</td>
+                <td>{{ patient.email }}</td>
+                <td><app-status-badge status="Active"></app-status-badge></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="table-mobile" *ngIf="!isLoading && filteredPatients.length > 0">
+          <div
+            class="mobile-card clinic-card"
+            *ngFor="let patient of filteredPatients"
+            (click)="openDetail(patient.id)"
+            role="button"
+            tabindex="0"
+            (keydown.enter)="openDetail(patient.id)"
+          >
+            <div class="mobile-card__header">
+              <span class="mobile-card__name">{{ patient.firstName }} {{ patient.lastName }}</span>
+              <span class="data-mono mobile-card__code">{{ patient.patientCode }}</span>
+            </div>
+            <div class="mobile-card__row">
+              <span class="mobile-card__label">DOB / Sex</span>
+              <span>{{ patient.dateOfBirth }} · {{ patient.sex }}</span>
+            </div>
+            <div class="mobile-card__row">
+              <span class="mobile-card__label">Contact</span>
+              <span>{{ patient.contactNumber }}</span>
+            </div>
+          </div>
+        </div>
 
         <app-skeleton *ngIf="isLoading" variant="row" [count]="5"></app-skeleton>
 

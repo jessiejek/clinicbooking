@@ -30,14 +30,18 @@
 }
 
 .filter-input {
-  height: 40px;
+  height: 44px;
   border: 1px solid var(--clinic-border);
   border-radius: var(--radius-md);
   padding: 0 var(--space-3);
   background: white;
 }
 
-@media (max-width: 768px) {
+.table-mobile {
+  display: none;
+}
+
+@media (max-width: 900px) {
   .filter-bar {
     grid-template-columns: 1fr 1fr;
   }
@@ -46,5 +50,16 @@
 @media (max-width: 480px) {
   .filter-bar {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .table-desktop {
+    display: none;
+  }
+
+  .table-mobile {
+    display: grid;
+    gap: var(--space-3);
   }
 }

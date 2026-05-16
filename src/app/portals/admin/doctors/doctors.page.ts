@@ -29,56 +29,104 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
       </div>
 
       <div class="clinic-card" *ngIf="!isLoading && doctors.length > 0">
-        <table class="clinic-table">
-          <thead>
-            <tr>
-              <th>Avatar</th>
-              <th>Name</th>
-              <th>Specialization</th>
-              <th>Fee</th>
-              <th>Working Days</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              *ngFor="let doctor of doctors"
-              tabindex="0"
-              role="button"
-              [attr.aria-label]="'Open doctor profile for ' + doctor.fullName"
-              (click)="editDoctor(doctor.id)"
-              (keydown.enter)="editDoctor(doctor.id)"
-            >
-              <td><app-avatar [name]="doctor.fullName"></app-avatar></td>
-              <td>{{ doctor.fullName }}</td>
-              <td>{{ doctor.specialization }}</td>
-              <td>₱{{ doctor.consultationFee }}</td>
-              <td>{{ workingDays(doctor.id) }}</td>
-              <td><app-status-badge [status]="doctor.status"></app-status-badge></td>
-              <td>
-                <div class="doctor-actions">
-                  <button
-                    type="button"
-                    class="btn-icon"
-                    [attr.aria-label]="'Edit doctor ' + doctor.fullName"
-                    (click)="editDoctor(doctor.id); $event.stopPropagation()"
-                  >
-                    <ion-icon name="create-outline"></ion-icon>
-                  </button>
-                  <button
-                    type="button"
-                    class="btn-icon"
-                    [attr.aria-label]="'Deactivate doctor ' + doctor.fullName"
-                    (click)="setStatus(doctor.id, 'Inactive'); $event.stopPropagation()"
-                  >
-                    <ion-icon name="trash-outline"></ion-icon>
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="table-desktop">
+          <table class="clinic-table">
+            <thead>
+              <tr>
+                <th>Avatar</th>
+                <th>Name</th>
+                <th>Specialization</th>
+                <th>Fee</th>
+                <th>Working Days</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                *ngFor="let doctor of doctors"
+                tabindex="0"
+                role="button"
+                [attr.aria-label]="'Open doctor profile for ' + doctor.fullName"
+                (click)="editDoctor(doctor.id)"
+                (keydown.enter)="editDoctor(doctor.id)"
+              >
+                <td><app-avatar [name]="doctor.fullName"></app-avatar></td>
+                <td>{{ doctor.fullName }}</td>
+                <td>{{ doctor.specialization }}</td>
+                <td>PHP {{ doctor.consultationFee }}</td>
+                <td>{{ workingDays(doctor.id) }}</td>
+                <td><app-status-badge [status]="doctor.status"></app-status-badge></td>
+                <td>
+                  <div class="doctor-actions">
+                    <button
+                      type="button"
+                      class="btn-icon"
+                      [attr.aria-label]="'Edit doctor ' + doctor.fullName"
+                      (click)="editDoctor(doctor.id); $event.stopPropagation()"
+                    >
+                      <ion-icon name="create-outline"></ion-icon>
+                    </button>
+                    <button
+                      type="button"
+                      class="btn-icon"
+                      [attr.aria-label]="'Deactivate doctor ' + doctor.fullName"
+                      (click)="setStatus(doctor.id, 'Inactive'); $event.stopPropagation()"
+                    >
+                      <ion-icon name="trash-outline"></ion-icon>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="table-mobile">
+          <div
+            class="mobile-card clinic-card"
+            *ngFor="let doctor of doctors"
+            (click)="editDoctor(doctor.id)"
+            role="button"
+            tabindex="0"
+            (keydown.enter)="editDoctor(doctor.id)"
+          >
+            <div class="mobile-card__header">
+              <span class="mobile-card__name">{{ doctor.fullName }}</span>
+              <app-status-badge [status]="doctor.status"></app-status-badge>
+            </div>
+            <div class="mobile-card__row">
+              <span class="mobile-card__label">Specialization</span>
+              <span>{{ doctor.specialization }}</span>
+            </div>
+            <div class="mobile-card__row">
+              <span class="mobile-card__label">Fee</span>
+              <span>PHP {{ doctor.consultationFee }}</span>
+            </div>
+            <div class="mobile-card__row">
+              <span class="mobile-card__label">Working Days</span>
+              <span>{{ workingDays(doctor.id) }}</span>
+            </div>
+            <div class="doctor-mobile-actions">
+              <button
+                type="button"
+                class="btn-icon"
+                [attr.aria-label]="'Edit doctor ' + doctor.fullName"
+                (click)="editDoctor(doctor.id); $event.stopPropagation()"
+              >
+                <ion-icon name="create-outline"></ion-icon>
+              </button>
+              <button
+                type="button"
+                class="btn-icon"
+                [attr.aria-label]="'Deactivate doctor ' + doctor.fullName"
+                (click)="setStatus(doctor.id, 'Inactive'); $event.stopPropagation()"
+              >
+                <ion-icon name="trash-outline"></ion-icon>
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <app-skeleton *ngIf="isLoading" variant="row" [count]="3"></app-skeleton>

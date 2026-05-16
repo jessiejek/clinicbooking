@@ -1,0 +1,49 @@
+.patient-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: calc(60px + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid var(--clinic-border);
+  display: flex;
+  align-items: stretch;
+  z-index: 220;
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.06);
+}
+
+.bottom-nav__item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  text-decoration: none;
+  color: var(--clinic-text-muted);
+  font-size: 10px;
+  font-weight: var(--font-medium);
+  letter-spacing: 0.02em;
+  transition: color var(--transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.bottom-nav__item ion-icon {
+  font-size: 22px;
+  transition: transform var(--transition-spring);
+}
+
+.bottom-nav__item.active {
+  color: var(--ion-color-primary);
+}
+
+.bottom-nav__item.active ion-icon {
+  transform: scale(1.15);
+}
+
+.bottom-nav__item:active ion-icon {
+  transform: scale(0.92);
+}

@@ -47,40 +47,77 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
       </div>
 
       <div class="clinic-card">
-        <div class="table-wrap" *ngIf="!isLoading">
-          <table class="clinic-table">
-            <thead>
-              <tr>
-                <th><input type="checkbox" [checked]="selectAll" (change)="toggleSelectAll($event)" /></th>
-                <th>Queue#</th>
-                <th>Patient Name</th>
-                <th>Doctor</th>
-                <th>Service</th>
-                <th>Time</th>
-                <th>Status</th>
-                <th>Payment</th>
-              </tr>
-            </thead>
-            <tbody>
-            <tr
-              *ngFor="let booking of filteredBookings"
-              tabindex="0"
-              role="button"
-              [attr.aria-label]="'Open booking ' + booking.id + ' for ' + patientName(booking.patientId)"
-              (click)="openBooking(booking.id)"
-              (keydown.enter)="openBooking(booking.id)"
-            >
-              <td><input type="checkbox" [checked]="selectedIds.has(booking.id)" (click)="$event.stopPropagation()" (change)="toggleSelect(booking.id, $event)" /></td>
-                <td class="data-mono">{{ booking.queueNumber ?? '—' }}</td>
-                <td>{{ patientName(booking.patientId) }}</td>
-                <td>{{ doctorName(booking.doctorId) }}</td>
-                <td>{{ serviceName(booking.serviceId) }}</td>
-                <td class="data-mono">{{ booking.appointmentDate }} {{ booking.slotStartTime }}</td>
-                <td><app-status-badge [status]="booking.status"></app-status-badge></td>
-                <td><app-status-badge [status]="booking.paymentStatus"></app-status-badge></td>
-              </tr>
-            </tbody>
-          </table>
+        <div class="table-desktop" *ngIf="!isLoading && filteredBookings.length > 0">
+          <div class="table-wrap">
+            <table class="clinic-table">
+              <thead>
+                <tr>
+                  <th><input type="checkbox" [checked]="selectAll" (change)="toggleSelectAll($event)" /></th>
+                  <th>Queue#</th>
+                  <th>Patient Name</th>
+                  <th>Doctor</th>
+                  <th>Service</th>
+                  <th>Time</th>
+                  <th>Status</th>
+                  <th>Payment</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  *ngFor="let booking of filteredBookings"
+                  tabindex="0"
+                  role="button"
+                  [attr.aria-label]="'Open booking ' + booking.id + ' for ' + patientName(booking.patientId)"
+                  (click)="openBooking(booking.id)"
+                  (keydown.enter)="openBooking(booking.id)"
+                >
+                  <td>
+                    <input
+                      type="checkbox"
+                      [checked]="selectedIds.has(booking.id)"
+                      (click)="$event.stopPropagation()"
+                      (change)="toggleSelect(booking.id, $event)"
+                    />
+                  </td>
+                  <td class="data-mono">{{ booking.queueNumber ?? '-' }}</td>
+                  <td>{{ patientName(booking.patientId) }}</td>
+                  <td>{{ doctorName(booking.doctorId) }}</td>
+                  <td>{{ serviceName(booking.serviceId) }}</td>
+                  <td class="data-mono">{{ booking.appointmentDate }} {{ booking.slotStartTime }}</td>
+                  <td><app-status-badge [status]="booking.status"></app-status-badge></td>
+                  <td><app-status-badge [status]="booking.paymentStatus"></app-status-badge></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="table-mobile" *ngIf="!isLoading && filteredBookings.length > 0">
+          <div
+            class="mobile-card clinic-card"
+            *ngFor="let booking of filteredBookings"
+            (click)="openBooking(booking.id)"
+            role="button"
+            tabindex="0"
+            (keydown.enter)="openBooking(booking.id)"
+          >
+            <div class="mobile-card__header">
+              <span class="mobile-card__name">{{ patientName(booking.patientId) }}</span>
+              <app-status-badge [status]="booking.status"></app-status-badge>
+            </div>
+            <div class="mobile-card__row">
+              <span class="mobile-card__label">Doctor</span>
+              <span>{{ doctorName(booking.doctorId) }}</span>
+            </div>
+            <div class="mobile-card__row">
+              <span class="mobile-card__label">Time</span>
+              <span class="data-mono">{{ booking.slotStartTime }}</span>
+            </div>
+            <div class="mobile-card__row">
+              <span class="mobile-card__label">Payment</span>
+              <app-status-badge [status]="booking.paymentStatus"></app-status-badge>
+            </div>
+          </div>
         </div>
 
         <app-skeleton *ngIf="isLoading" variant="row" [count]="5"></app-skeleton>

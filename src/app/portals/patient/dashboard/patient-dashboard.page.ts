@@ -2,6 +2,19 @@ import { AsyncPipe, DatePipe, NgFor, NgIf } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { Store } from '@ngrx/store';
+import { IonIcon } from '@ionic/angular/standalone';
+import { addIcons } from 'ionicons';
+import {
+  alertCircleOutline,
+  calendarOutline,
+  checkmarkCircleOutline,
+  checkmarkOutline,
+  documentTextOutline,
+  informationCircleOutline,
+  medicalOutline,
+  medkitOutline,
+  warningOutline
+} from 'ionicons/icons';
 import { combineLatest, map, of, switchMap } from 'rxjs';
 import { AuthUser, Booking, Consultation, Doctor, Patient, Prescription, Service } from '../../../core/models';
 import { MockDataService } from '../../../core/services/mock-data.service';
@@ -49,6 +62,7 @@ interface DashboardVm {
     NgFor,
     NgIf,
     RouterLink,
+    IonIcon,
     BannerComponent,
     EmptyStateComponent,
     UpcomingAppointmentCardComponent,
@@ -84,22 +98,22 @@ interface DashboardVm {
 
       <div class="stats-grid">
         <div class="stat-card stat-card--blue">
-          <div class="stat-card__icon">&#128197;</div>
+          <ion-icon class="stat-card__icon" name="calendar-outline"></ion-icon>
           <div class="stat-card__value">{{ vm.upcomingCount }}</div>
           <div class="stat-card__label">Upcoming Appointments</div>
         </div>
         <div class="stat-card stat-card--amber">
-          <div class="stat-card__icon">&#128221;</div>
+          <ion-icon class="stat-card__icon" name="document-text-outline"></ion-icon>
           <div class="stat-card__value">{{ vm.pendingProofCount }}</div>
           <div class="stat-card__label">Pending Payment Proof</div>
         </div>
         <div class="stat-card stat-card--green">
-          <div class="stat-card__icon">&#10003;</div>
+          <ion-icon class="stat-card__icon" name="checkmark-outline"></ion-icon>
           <div class="stat-card__value">{{ vm.completedVisitCount }}</div>
           <div class="stat-card__label">Completed Visits</div>
         </div>
         <div class="stat-card stat-card--red">
-          <div class="stat-card__icon">&#128138;</div>
+          <ion-icon class="stat-card__icon" name="medical-outline"></ion-icon>
           <div class="stat-card__value">{{ vm.activePrescriptionCount }}</div>
           <div class="stat-card__label">Active Prescriptions</div>
         </div>
@@ -293,5 +307,19 @@ export class PatientDashboardPage implements OnInit {
 
   getWelcomeName(user: AuthUser | null): string {
     return user?.fullName?.split(' ')?.[0] ?? '';
+  }
+
+  constructor() {
+    addIcons({
+      calendarOutline,
+      documentTextOutline,
+      checkmarkOutline,
+      medicalOutline,
+      medkitOutline,
+      warningOutline,
+      informationCircleOutline,
+      alertCircleOutline,
+      checkmarkCircleOutline
+    });
   }
 }

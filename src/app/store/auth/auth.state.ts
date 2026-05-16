@@ -1,4 +1,5 @@
 import { AuthUser } from '../../core/models';
+import { loadStoredAuthToken, loadStoredAuthUser } from './auth-storage';
 
 export interface AuthState {
   user: AuthUser | null;
@@ -8,8 +9,8 @@ export interface AuthState {
 }
 
 export const initialAuthState: AuthState = {
-  user: null,
-  accessToken: null,
+  user: loadStoredAuthUser(),
+  accessToken: loadStoredAuthToken(),
   isLoading: false,
   error: null
 };

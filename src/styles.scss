@@ -141,6 +141,11 @@
   --transition-spring: 400ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 /* ANIMATIONS */
 @keyframes fadeSlideUp {
   from {
@@ -215,6 +220,13 @@ a,
 ion-item,
 .clickable {
   transition: all var(--transition-base);
+}
+
+a,
+button,
+.clickable,
+[role='button'] {
+  -webkit-tap-highlight-color: rgba(93, 62, 142, 0.12);
 }
 
 .page-enter {
@@ -596,6 +608,11 @@ ion-item.clinic-input {
   box-shadow: 0 0 0 3px rgba(93,62,142,0.10);
 }
 
+.filter-input {
+  height: 44px;
+  min-height: 44px;
+}
+
 .form-error-message {
   color: var(--ion-color-danger);
   font-size: var(--text-xs);
@@ -812,6 +829,70 @@ ion-item.clinic-input {
   }
 }
 
+.mobile-card {
+  padding: var(--space-4);
+  cursor: pointer;
+  transition: box-shadow var(--transition-base), transform var(--transition-base);
+
+  &:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: translateY(0);
+    box-shadow: var(--shadow-sm);
+  }
+}
+
+.mobile-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.mobile-card__name {
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--clinic-text-primary);
+}
+
+.mobile-card__code {
+  font-size: var(--text-xs);
+  color: var(--clinic-text-muted);
+}
+
+.mobile-card__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--clinic-border);
+  font-size: var(--text-sm);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.mobile-card__label {
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  color: var(--clinic-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+.modal-shell {
+  padding: var(--space-6);
+  padding-bottom: max(var(--space-6), env(safe-area-inset-bottom));
+}
+
 /* Avatar */
 .avatar {
   border-radius: var(--radius-full);
@@ -936,4 +1017,98 @@ ion-item.clinic-input {
 
 .page-shell__header {
   margin-bottom: var(--space-8);
+}
+
+@media (max-width: 640px) {
+  :root {
+    --text-4xl: 1.875rem;
+    --text-5xl: 2.25rem;
+  }
+
+  .page-shell__header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+
+  .page-shell__header .btn-primary,
+  .page-shell__header .btn-outline {
+    align-self: flex-start;
+  }
+
+  .page-content {
+    padding: var(--space-4);
+  }
+
+  .clinic-card {
+    padding: var(--space-4);
+    border-radius: var(--radius-md);
+  }
+
+  .stat-card {
+    padding: var(--space-4);
+  }
+
+  .empty-state {
+    padding: var(--space-10) var(--space-4);
+  }
+
+  .empty-state__icon {
+    width: 64px;
+    height: 64px;
+    font-size: 28px;
+  }
+
+  ion-modal {
+    --width: 100%;
+    --height: 100%;
+    --border-radius: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .btn-icon {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .summary-bar,
+  .mobile-nav-bar {
+    padding-bottom: max(var(--space-3), env(safe-area-inset-bottom));
+  }
+}
+
+@media (hover: none) {
+  .clinic-card:hover {
+    transform: none;
+  }
+
+  .btn-primary:hover {
+    transform: none;
+  }
+
+  .doctor-card:hover {
+    transform: none;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .mobile-card:hover {
+    transform: none;
+    box-shadow: var(--shadow-sm);
+  }
+}
+
+@media (max-width: 640px) {
+  .mobile-card {
+    padding: var(--space-4);
+  }
+}
+
+.page-content,
+.patient-layout__main,
+.public-main {
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
 }

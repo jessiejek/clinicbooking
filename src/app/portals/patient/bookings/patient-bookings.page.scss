@@ -36,17 +36,20 @@
   gap: 8px;
 }
 
-.mobile-cards {
+.table-mobile {
   display: none;
+}
+
+.mobile-cards {
   gap: var(--space-4);
 }
 
 @media (max-width: 960px) {
-  .desktop-table {
+  .table-desktop {
     display: none;
   }
 
-  .mobile-cards {
+  .table-mobile {
     display: grid;
   }
 }

@@ -15,6 +15,7 @@ import {
   logOutOutline,
   medicalOutline,
   megaphoneOutline,
+  menuOutline,
   notificationsOutline,
   peopleOutline,
   personOutline,
@@ -39,12 +40,21 @@ import { TopbarComponent } from '../../portals/admin/components/topbar/topbar.co
     <div class="portal-layout">
       <app-admin-sidebar
         class="portal-layout__sidebar"
+        [class.is-open]="sidebarOpen"
         [navItems]="navItemsWithBadges"
         [portalLabel]="portalLabel"
         [clinicName]="clinicName"
         [currentUser]="currentUser$ | async"
+        [isOpen]="sidebarOpen"
         (logout)="logoutUser()"
+        (navClick)="closeSidebar()"
       ></app-admin-sidebar>
+
+      <div
+        class="sidebar-overlay"
+        [class.is-visible]="sidebarOpen"
+        (click)="closeSidebar()"
+      ></div>
 
       <div class="main-content">
         <app-admin-topbar
@@ -52,6 +62,7 @@ import { TopbarComponent } from '../../portals/admin/components/topbar/topbar.co
           [portalLabel]="portalLabel"
           [currentUser]="currentUser$ | async"
           [unreadCount]="(unreadCount$ | async) ?? 0"
+          (menuToggle)="toggleSidebar()"
           (logout)="logoutUser()"
         ></app-admin-topbar>
 
@@ -107,6 +118,7 @@ export class AdminLayoutComponent implements OnInit {
   clinicName = '';
   pageTitle = 'Dashboard';
   pendingCount = 0;
+  sidebarOpen = false;
 
   constructor() {
     addIcons({
@@ -119,6 +131,7 @@ export class AdminLayoutComponent implements OnInit {
       logOutOutline,
       medicalOutline,
       megaphoneOutline,
+      menuOutline,
       notificationsOutline,
       peopleOutline,
       personOutline,
@@ -151,6 +164,14 @@ export class AdminLayoutComponent implements OnInit {
     return this.navItems.map((item) =>
       item.route === '/admin/bookings' ? { ...item, badgeCount: this.pendingCount } : item
     );
+  }
+
+  toggleSidebar(): void {
+    this.sidebarOpen = !this.sidebarOpen;
+  }
+
+  closeSidebar(): void {
+    this.sidebarOpen = false;
   }
 
   logoutUser(): void {

@@ -12,6 +12,19 @@
   box-shadow: var(--shadow-xs);
 }
 
+.topbar__hamburger {
+  display: none;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--clinic-border);
+  background: white;
+  color: var(--clinic-text-primary);
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
 .topbar__title-group {
   min-width: 180px;
 }
@@ -97,6 +110,16 @@
 @media (max-width: 768px) {
   .topbar__search,
   .topbar__user-meta {
+    display: none;
+  }
+}
+
+@media (max-width: 1024px) {
+  .topbar__hamburger {
+    display: inline-flex;
+  }
+
+  .topbar__title-group {
     display: none;
   }
 }

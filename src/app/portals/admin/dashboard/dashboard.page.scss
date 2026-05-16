@@ -93,15 +93,23 @@
 }
 
 @media (max-width: 1200px) {
-  .stats-grid,
-  .chart-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .stats-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
-@media (max-width: 640px) {
-  .stats-grid,
+@media (max-width: 1024px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .chart-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 580px) {
+  .stats-grid {
     grid-template-columns: 1fr;
   }
 }

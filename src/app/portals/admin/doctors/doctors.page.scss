@@ -33,3 +33,24 @@ select {
   align-items: center;
   gap: var(--space-2);
 }
+
+.table-mobile {
+  display: none;
+}
+
+.doctor-mobile-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+@media (max-width: 768px) {
+  .table-desktop {
+    display: none;
+  }
+
+  .table-mobile {
+    display: grid;
+    gap: var(--space-3);
+  }
+}

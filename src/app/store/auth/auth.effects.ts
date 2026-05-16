@@ -10,7 +10,8 @@ import {
   logout,
   register,
   registerFailure,
-  registerSuccess
+  registerSuccess,
+  setUser
 } from './auth.actions';
 
 @Injectable()
@@ -59,7 +60,19 @@ export class AuthEffects {
     () =>
       this.actions$.pipe(
         ofType(loginSuccess, registerSuccess),
-        tap(({ user }) => this.authService.navigateByRole(user))
+        tap(({ user }) => {
+          this.authService.persistSession(user);
+          this.authService.navigateByRole(user);
+        })
+      ),
+    { dispatch: false }
+  );
+
+  persistUpdatedUser$ = createEffect(
+    () =>
+      this.actions$.pipe(
+        ofType(setUser),
+        tap(({ user }) => this.authService.persistSession(user))
       ),
     { dispatch: false }
   );

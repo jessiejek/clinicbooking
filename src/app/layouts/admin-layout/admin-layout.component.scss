@@ -16,6 +16,16 @@
   width: 260px;
 }
 
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 299;
+  opacity: 0;
+  transition: opacity var(--transition-base);
+}
+
 .main-content {
   flex: 1;
   display: flex;
@@ -32,4 +42,27 @@
 
 .page-content > * {
   animation: fadeSlideUp 250ms ease-out both;
+}
+
+@media (max-width: 640px) {
+  .page-content {
+    padding: var(--space-4);
+  }
+}
+
+@media (max-width: 1024px) {
+  .portal-layout__sidebar {
+    flex: 0 0 0;
+    width: 0;
+  }
+
+  .sidebar-overlay {
+    display: block;
+    pointer-events: none;
+  }
+
+  .sidebar-overlay.is-visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
 }

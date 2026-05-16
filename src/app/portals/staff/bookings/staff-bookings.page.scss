@@ -27,14 +27,36 @@
   align-items: center;
 }
 
-@media (max-width: 960px) {
+.table-mobile {
+  display: none;
+}
+
+.staff-mobile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+@media (max-width: 900px) {
   .filter-bar {
     grid-template-columns: 1fr 1fr;
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 480px) {
   .filter-bar {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .table-desktop {
+    display: none;
+  }
+
+  .table-mobile {
+    display: grid;
+    gap: var(--space-3);
   }
 }

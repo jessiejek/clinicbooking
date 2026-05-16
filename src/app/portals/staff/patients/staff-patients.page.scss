@@ -1,21 +1,27 @@
-.page-shell {
-  display: grid;
-  gap: var(--space-6);
+.table-mobile {
+  display: none;
 }
 
-.page-shell__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-4);
+@media (max-width: 768px) {
+  .table-desktop {
+    display: none;
+  }
+
+  .table-mobile {
+    display: grid;
+    gap: var(--space-3);
+  }
 }
 
-.page-title {
-  margin: var(--space-2) 0 0;
-  font-size: var(--text-2xl);
-  font-weight: var(--font-bold);
-}
-
-.page-subtitle {
-  margin-top: var(--space-2);
+@media (max-width: 640px) {
+  ion-modal::part(content) {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: auto;
+    max-height: 90vh;
+    border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
+    overflow-y: auto;
+  }
 }

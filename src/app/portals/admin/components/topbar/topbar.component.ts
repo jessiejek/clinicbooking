@@ -10,6 +10,15 @@ import { NotificationBellComponent } from '../notification-bell/notification-bel
   imports: [IonIcon, AvatarComponent, NotificationBellComponent],
   template: `
     <header class="topbar">
+      <button
+        type="button"
+        class="topbar__hamburger"
+        aria-label="Toggle navigation"
+        (click)="menuToggle.emit()"
+      >
+        <ion-icon name="menu-outline"></ion-icon>
+      </button>
+
       <div class="topbar__title-group">
         <div class="topbar__portal-label">{{ portalLabel }}</div>
         <h1 class="topbar__title">{{ title }}</h1>
@@ -42,4 +51,5 @@ export class TopbarComponent {
   @Input() unreadCount = 0;
 
   @Output() logout = new EventEmitter<void>();
+  @Output() menuToggle = new EventEmitter<void>();
 }

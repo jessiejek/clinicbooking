@@ -37,6 +37,12 @@
   animation: fadeSlideUp 250ms ease-out both;
 }
 
+@media (max-width: 640px) {
+  .page-content {
+    padding: var(--space-4);
+  }
+}
+
 @media (max-width: 1024px) {
   .main-content {
     margin-left: 0;

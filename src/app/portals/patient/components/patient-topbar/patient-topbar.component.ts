@@ -10,6 +10,7 @@ import {
   gridOutline,
   medicalOutline,
   menuOutline,
+  logOutOutline,
   personOutline
 } from 'ionicons/icons';
 import { AuthUser, NavItem } from '../../../../core/models';
@@ -42,10 +43,6 @@ import { AvatarComponent } from '../../../../shared/components/avatar/avatar.com
             <ion-icon [name]="item.icon"></ion-icon>
             <span>{{ item.label }}</span>
           </a>
-          <button type="button" class="patient-topbar__logout patient-topbar__logout--mobile" (click)="logout.emit()">
-            <ion-icon name="close-outline"></ion-icon>
-            <span>Logout</span>
-          </button>
         </nav>
 
         <div class="patient-topbar__actions">
@@ -53,12 +50,22 @@ import { AvatarComponent } from '../../../../shared/components/avatar/avatar.com
             <ion-icon [name]="menuOpen ? 'close-outline' : 'menu-outline'"></ion-icon>
           </button>
 
-          <button type="button" class="patient-topbar__user" (click)="logout.emit()">
+          <a routerLink="/patient/profile" class="patient-topbar__user" aria-label="Open profile">
             <app-avatar [name]="currentUser?.fullName || 'Patient'" size="sm"></app-avatar>
             <span class="patient-topbar__user-meta">
               <span class="patient-topbar__user-name">{{ currentUser?.fullName || 'Patient User' }}</span>
               <span class="patient-topbar__user-role">{{ currentUser?.role || 'Patient' }}</span>
             </span>
+          </a>
+
+          <button
+            type="button"
+            class="patient-topbar__logout"
+            aria-label="Log out"
+            (click)="logout.emit()"
+          >
+            <ion-icon name="log-out-outline"></ion-icon>
+            <span>Logout</span>
           </button>
         </div>
       </div>
@@ -71,7 +78,6 @@ export class PatientTopbarComponent {
   @Input() currentUser: AuthUser | null = null;
   @Input() clinicName = 'Clinic';
   @Input() portalLabel = 'Patient Portal';
-
   @Output() logout = new EventEmitter<void>();
 
   menuOpen = false;
@@ -84,7 +90,8 @@ export class PatientTopbarComponent {
       documentTextOutline,
       personOutline,
       menuOutline,
-      closeOutline
+      closeOutline,
+      logOutOutline
     });
   }
 

@@ -1,1 +1,31 @@
-/* intentionally minimal */
+.table-mobile {
+  display: none;
+}
+
+.mobile-card__row:last-child {
+  align-items: center;
+}
+
+@media (max-width: 768px) {
+  .table-desktop {
+    display: none;
+  }
+
+  .table-mobile {
+    display: grid;
+    gap: var(--space-3);
+  }
+}
+
+@media (max-width: 640px) {
+  ion-modal::part(content) {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: auto;
+    max-height: 90vh;
+    border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
+    overflow-y: auto;
+  }
+}

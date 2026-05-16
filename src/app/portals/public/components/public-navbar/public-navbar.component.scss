@@ -190,6 +190,11 @@
     display: none;
   }
 
+  .navbar__auth,
+  .navbar__cta {
+    display: none;
+  }
+
   .navbar__hamburger {
     display: flex;
   }

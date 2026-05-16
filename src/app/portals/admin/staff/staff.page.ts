@@ -29,21 +29,59 @@ interface StaffRow {
       </div>
 
       <div class="clinic-card" *ngIf="staff.length > 0">
-        <table class="clinic-table">
-          <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead>
-          <tbody>
-            <tr *ngFor="let member of staff">
-              <td>{{ member.fullName }}</td>
-              <td>{{ member.email }}</td>
-              <td>{{ member.role }}</td>
-              <td><app-status-badge [status]="member.status"></app-status-badge></td>
-              <td><button class="btn-ghost" type="button" (click)="toggle(member.id)">{{ member.status === 'Active' ? 'Deactivate' : 'Reactivate' }}</button></td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="table-desktop">
+          <table class="clinic-table">
+            <thead>
+              <tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let member of staff">
+                <td>{{ member.fullName }}</td>
+                <td>{{ member.email }}</td>
+                <td>{{ member.role }}</td>
+                <td><app-status-badge [status]="member.status"></app-status-badge></td>
+                <td>
+                  <button class="btn-ghost" type="button" (click)="toggle(member.id)">
+                    {{ member.status === 'Active' ? 'Deactivate' : 'Reactivate' }}
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="table-mobile">
+          <div class="mobile-card clinic-card" *ngFor="let member of staff">
+            <div class="mobile-card__header">
+              <span class="mobile-card__name">{{ member.fullName }}</span>
+              <app-status-badge [status]="member.status"></app-status-badge>
+            </div>
+            <div class="mobile-card__row">
+              <span class="mobile-card__label">Email</span>
+              <span>{{ member.email }}</span>
+            </div>
+            <div class="mobile-card__row">
+              <span class="mobile-card__label">Role</span>
+              <span>{{ member.role }}</span>
+            </div>
+            <div class="mobile-card__row">
+              <span class="mobile-card__label">Action</span>
+              <button class="btn-ghost" type="button" (click)="toggle(member.id)">
+                {{ member.status === 'Active' ? 'Deactivate' : 'Reactivate' }}
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <app-empty-state *ngIf="staff.length === 0" icon="person-add-outline" title="No staff accounts" description="Create the first front desk account to continue." ctaLabel="Add Staff" (ctaClick)="openModal()"></app-empty-state>
+      <app-empty-state
+        *ngIf="staff.length === 0"
+        icon="person-add-outline"
+        title="No staff accounts"
+        description="Create the first front desk account to continue."
+        ctaLabel="Add Staff"
+        (ctaClick)="openModal()"
+      ></app-empty-state>
     </section>
 
     <ion-modal [isOpen]="modalOpen" (didDismiss)="modalOpen = false">

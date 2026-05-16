@@ -4,6 +4,11 @@ import { Observable, map, throwError, timer } from 'rxjs';
 import { AuthUser, Role } from '../models';
 import { MockDataService } from './mock-data.service';
 import { TokenService } from './token.service';
+import {
+  clearAuthSession,
+  loadStoredAuthToken,
+  saveAuthSession
+} from '../../store/auth/auth-storage';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -46,8 +51,13 @@ export class AuthService {
     return timer(800).pipe(map(() => authUser));
   }
 
+  persistSession(user: AuthUser): void {
+    saveAuthSession(user, this.tokenService.getToken() ?? loadStoredAuthToken());
+  }
+
   logout(): void {
     this.tokenService.clearToken();
+    clearAuthSession();
     void this.router.navigate(['/auth/login']);
   }
 

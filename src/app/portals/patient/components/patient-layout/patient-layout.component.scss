@@ -38,3 +38,9 @@
     padding: var(--space-4) var(--space-3) var(--space-8);
   }
 }
+
+@media (max-width: 1024px) {
+  .patient-layout__main {
+    padding-bottom: calc(60px + env(safe-area-inset-bottom) + var(--space-4));
+  }
+}
