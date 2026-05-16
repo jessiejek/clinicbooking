@@ -18,6 +18,11 @@ export const selectSlot = createAction(
   props<{ slot: string | null; slotEnd: string | null }>()
 );
 
+export const selectPaymentMode = createAction(
+  '[Wizard] Select Payment Mode',
+  props<{ paymentMode: 'Online' | 'PayAtClinic' }>()
+);
+
 export const nextStep = createAction('[Wizard] Next Step');
 
 export const prevStep = createAction('[Wizard] Prev Step');
@@ -26,7 +31,7 @@ export const setStep = createAction('[Wizard] Set Step', props<{ step: number }>
 
 export const submitBooking = createAction(
   '[Wizard] Submit Booking',
-  props<{ proofType: string; proofValue: string }>()
+  props<{ proofType: string | null; proofValue: string | null }>()
 );
 
 export const submitBookingSuccess = createAction(

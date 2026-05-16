@@ -21,7 +21,7 @@ import { selectWizard } from '../../../store/bookings/bookings.selectors';
           <div class="confirmation-checkmark">&#10003;</div>
           <h1 class="confirmation-title">Booking Confirmed!</h1>
           <p class="confirmation-sub">
-            Your appointment has been submitted and is awaiting payment verification.
+            {{ vm.paymentMode === 'PayAtClinic' ? 'Your appointment has been reserved. Please pay at the clinic on your visit day.' : 'Your appointment has been submitted and is awaiting payment verification.' }}
           </p>
         </div>
 
@@ -103,7 +103,8 @@ export class BookingConfirmationPage {
         selectedSlot: wizard.selectedSlot,
         selectedSlotEnd: wizard.selectedSlotEnd,
         serviceName: service?.name ?? '-',
-        totalFee: consultationFee + serviceFee
+        totalFee: consultationFee + serviceFee,
+        paymentMode: wizard.paymentMode
       };
     })
   );

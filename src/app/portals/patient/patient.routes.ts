@@ -12,6 +12,7 @@ import { PatientLayoutComponent } from './components/patient-layout/patient-layo
 
 export const PATIENT_NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', route: '/patient/dashboard', icon: 'grid-outline' },
+  { label: 'Doctors', route: '/patient/doctors', icon: 'medical-outline' },
   { label: 'Bookings', route: '/patient/bookings', icon: 'calendar-outline' },
   { label: 'Medical Records', route: '/patient/medical-records', icon: 'medical-outline' },
   { label: 'Prescriptions', route: '/patient/prescriptions', icon: 'document-text-outline' },
@@ -46,6 +47,12 @@ export const PATIENT_ROUTES: Routes = [
         loadComponent: () =>
           import('./dashboard/patient-dashboard.page').then((m) => m.PatientDashboardPage),
         data: { title: 'Dashboard' }
+      },
+      {
+        path: 'doctors',
+        loadComponent: () =>
+          import('./doctors/patient-doctors.page').then((m) => m.PatientDoctorsPage),
+        data: { title: 'Doctors' }
       },
       {
         path: 'bookings',

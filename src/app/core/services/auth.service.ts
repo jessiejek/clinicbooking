@@ -7,6 +7,7 @@ import { TokenService } from './token.service';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
+  private readonly userStorageKey = 'clinic.auth.user';
   private readonly mockData = inject(MockDataService);
   private readonly tokenService = inject(TokenService);
   private readonly router = inject(Router);
@@ -42,12 +43,14 @@ export class AuthService {
 
     const fakeToken = `mock-token-${user.id}-${Date.now()}`;
     this.tokenService.setToken(fakeToken);
+    this.persistUser(authUser);
 
     return timer(800).pipe(map(() => authUser));
   }
 
   logout(): void {
     this.tokenService.clearToken();
+    localStorage.removeItem(this.userStorageKey);
     void this.router.navigate(['/auth/login']);
   }
 
@@ -67,7 +70,31 @@ export class AuthService {
       isFirstLogin: false
     };
 
+    this.tokenService.setToken(`mock-token-${newUser.id}-${Date.now()}`);
+    this.persistUser(newUser);
     return timer(800).pipe(map(() => newUser));
+  }
+
+  restoreSession(): AuthUser | null {
+    const token = this.tokenService.getToken();
+    if (!token) {
+      return null;
+    }
+
+    const rawUser = localStorage.getItem(this.userStorageKey);
+    if (!rawUser) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(rawUser) as AuthUser;
+    } catch {
+      return null;
+    }
+  }
+
+  persistUser(user: AuthUser): void {
+    localStorage.setItem(this.userStorageKey, JSON.stringify(user));
   }
 
   navigateByRole(user: AuthUser): void {

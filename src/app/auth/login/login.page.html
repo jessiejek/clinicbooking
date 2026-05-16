@@ -114,6 +114,9 @@
       Quick Login (Dev Only) {{ devExpanded ? '▼' : '▶' }}
     </button>
     <div *ngIf="devExpanded" class="dev-credentials__body">
+            <button type="button" class="dev-chip" (click)="fillCreds('patient@gavino.clinic', 'Patient@123456')">
+        patient
+      </button>
       <button type="button" class="dev-chip" (click)="fillCreds('admin@gavino.clinic', 'Admin@123456')">
         Admin
       </button>

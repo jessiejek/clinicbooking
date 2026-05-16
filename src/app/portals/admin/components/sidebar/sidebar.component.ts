@@ -43,14 +43,17 @@ import { AuthUser, NavItem } from '../../../../core/models';
       </nav>
 
       <div class="sidebar__footer" *ngIf="currentUser">
-        <div class="sidebar__user" (click)="logout.emit()">
-          <app-avatar [name]="currentUser.fullName" size="sm"></app-avatar>
-          <div>
+        <button type="button" class="sidebar__user" aria-label="Logout" (click)="logout.emit()">
+          <app-avatar [name]="currentUser.fullName" size="md"></app-avatar>
+          <div class="sidebar__user-meta">
             <div class="sidebar__user-name">{{ currentUser.fullName }}</div>
             <div class="sidebar__user-role">{{ currentUser.role }} Account</div>
           </div>
-          <ion-icon name="log-out-outline"></ion-icon>
-        </div>
+          <span class="sidebar__logout-action">
+            <span class="sidebar__logout-label">Logout</span>
+            <ion-icon name="log-out-outline"></ion-icon>
+          </span>
+        </button>
       </div>
     </aside>
   `,

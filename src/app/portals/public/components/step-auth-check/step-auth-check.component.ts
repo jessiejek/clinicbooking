@@ -1,33 +1,33 @@
+import { AsyncPipe, NgIf } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { Store } from '@ngrx/store';
 import { IonIcon } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { lockClosedOutline } from 'ionicons/icons';
-import { take } from 'rxjs';
+import { filter, take } from 'rxjs';
 import { nextStep, prevStep } from '../../../../store/bookings/bookings.actions';
 import { selectIsAuthenticated } from '../../../../store/auth/auth.selectors';
 
 @Component({
   selector: 'app-step-auth-check',
   standalone: true,
-  imports: [IonIcon],
+  imports: [NgIf, AsyncPipe, IonIcon],
   template: `
-    <section class="wizard-panel">
+    <section class="wizard-panel" *ngIf="!(isAuthenticated$ | async)">
       <div class="auth-check-card clinic-card">
         <div class="empty-state__icon">
           <ion-icon name="lock-closed-outline"></ion-icon>
         </div>
         <h3>Login Required</h3>
         <p>
-          Please log in or create an account to complete your booking. Your slot is still
-          reserved.
+          Please log in or create an account to complete your booking. Patients must have an
+          account before booking.
         </p>
 
         <div class="auth-check-actions">
           <button type="button" class="btn-primary" (click)="goToLogin()">Sign In</button>
           <button type="button" class="btn-outline" (click)="goToRegister()">Create Account</button>
-          <button type="button" class="btn-ghost" (click)="continueAsGuest()">Continue as Guest</button>
         </div>
       </div>
 
@@ -47,10 +47,8 @@ export class StepAuthCheckComponent {
   constructor() {
     addIcons({ lockClosedOutline });
 
-    this.isAuthenticated$.pipe(take(1)).subscribe((isAuthenticated) => {
-      if (isAuthenticated) {
-        this.store.dispatch(nextStep());
-      }
+    this.isAuthenticated$.pipe(filter(Boolean), take(1)).subscribe(() => {
+      this.store.dispatch(nextStep());
     });
   }
 
@@ -60,10 +58,6 @@ export class StepAuthCheckComponent {
 
   goToRegister(): void {
     this.router.navigate(['/auth/register'], { queryParams: { returnUrl: '/public/booking' } });
-  }
-
-  continueAsGuest(): void {
-    this.store.dispatch(nextStep());
   }
 
   goBack(): void {

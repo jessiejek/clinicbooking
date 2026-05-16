@@ -10,6 +10,7 @@ import {
   gridOutline,
   medicalOutline,
   menuOutline,
+  logOutOutline,
   personOutline
 } from 'ionicons/icons';
 import { AuthUser, NavItem } from '../../../../core/models';
@@ -60,6 +61,11 @@ import { AvatarComponent } from '../../../../shared/components/avatar/avatar.com
               <span class="patient-topbar__user-role">{{ currentUser?.role || 'Patient' }}</span>
             </span>
           </button>
+
+          <button type="button" class="patient-topbar__logout patient-topbar__logout--desktop" (click)="logout.emit()">
+            <ion-icon name="log-out-outline"></ion-icon>
+            <span>Logout</span>
+          </button>
         </div>
       </div>
     </header>
@@ -84,7 +90,8 @@ export class PatientTopbarComponent {
       documentTextOutline,
       personOutline,
       menuOutline,
-      closeOutline
+      closeOutline,
+      logOutOutline
     });
   }
 

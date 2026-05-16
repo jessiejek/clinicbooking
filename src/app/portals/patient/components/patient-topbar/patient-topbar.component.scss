@@ -131,6 +131,15 @@
   color: var(--clinic-text-secondary);
 }
 
+.patient-topbar__logout--desktop {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  font-weight: var(--font-medium);
+}
+
 .patient-topbar__logout--mobile {
   display: none;
 }
@@ -173,6 +182,10 @@
   }
 
   .patient-topbar__user {
+    display: none;
+  }
+
+  .patient-topbar__logout--desktop {
     display: none;
   }
 }

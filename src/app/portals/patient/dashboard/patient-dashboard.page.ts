@@ -121,8 +121,8 @@ interface DashboardVm {
           icon="calendar-outline"
           title="No upcoming appointment"
           description="Your next booking will appear here once it is scheduled."
-          ctaLabel="Book Now"
-          ctaRoute="/public/booking"
+          ctaLabel="Browse Doctors"
+          ctaRoute="/patient/doctors"
         ></app-empty-state>
       </ng-template>
 

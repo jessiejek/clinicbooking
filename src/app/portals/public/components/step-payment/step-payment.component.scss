@@ -40,6 +40,27 @@
   font-size: var(--text-sm);
 }
 
+.payment-mode-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.payment-mode-tabs button {
+  border: 1.5px solid var(--clinic-border);
+  background: white;
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  font-weight: var(--font-semibold);
+  color: var(--clinic-text-secondary);
+}
+
+.payment-mode-tabs button.active {
+  border-color: var(--ion-color-primary);
+  background: var(--color-primary-50);
+  color: var(--ion-color-primary);
+}
+
 .payment-tabs {
   display: flex;
   gap: var(--space-2);
@@ -64,6 +85,22 @@
 .payment-content {
   display: grid;
   gap: var(--space-4);
+}
+
+.payment-mode-panel {
+  padding: var(--space-6);
+}
+
+.payment-mode-message {
+  color: var(--clinic-text-secondary);
+}
+
+.payment-mode-list {
+  margin: 0;
+  padding-left: var(--space-5);
+  color: var(--clinic-text-secondary);
+  display: grid;
+  gap: var(--space-2);
 }
 
 .qr-box {
@@ -95,4 +132,10 @@
 
 .wizard-actions--split {
   gap: var(--space-3);
+}
+
+@media (max-width: 640px) {
+  .payment-mode-tabs {
+    grid-template-columns: 1fr;
+  }
 }

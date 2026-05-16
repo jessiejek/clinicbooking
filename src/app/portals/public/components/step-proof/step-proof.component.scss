@@ -75,6 +75,15 @@
   font-weight: var(--font-semibold);
 }
 
+.pay-at-clinic-panel {
+  padding: var(--space-6);
+}
+
+.pay-at-clinic-panel__text {
+  color: var(--clinic-text-secondary);
+  margin: 0;
+}
+
 .wizard-actions {
   display: flex;
   justify-content: space-between;

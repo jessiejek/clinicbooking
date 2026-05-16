@@ -112,31 +112,58 @@
 }
 
 .sidebar__user {
+  width: 100%;
+  border: none;
+  background: rgba(255, 255, 255, 0.02);
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-4);
   cursor: pointer;
-  padding: var(--space-3);
-  border-radius: var(--radius-md);
-  transition: background var(--transition-fast);
+  padding: var(--space-4) var(--space-4);
+  border-radius: var(--radius-lg);
+  transition:
+    background var(--transition-fast),
+    transform var(--transition-fast);
+  text-align: left;
 }
 
 .sidebar__user:hover {
   background: rgba(255, 255, 255, 0.06);
+  transform: translateY(-1px);
+}
+
+.sidebar__user-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
 }
 
 .sidebar__user-name {
   font-size: var(--text-sm);
   font-weight: var(--font-semibold);
   color: white;
+  line-height: 1.05;
 }
 
 .sidebar__user-role {
   font-size: var(--text-xs);
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.42);
+  line-height: 1.05;
+}
+
+.sidebar__logout-action {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: rgba(255, 255, 255, 0.78);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  margin-left: auto;
 }
 
 .sidebar__user ion-icon {
-  margin-left: auto;
   color: rgba(255, 255, 255, 0.45);
+  flex-shrink: 0;
 }

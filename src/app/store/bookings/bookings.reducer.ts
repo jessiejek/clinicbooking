@@ -16,6 +16,7 @@ import {
   rejectBookingSuccess,
   refundPaymentSuccess,
   rescheduleSuccess,
+  selectPaymentMode,
   selectDate,
   selectDoctor,
   selectService,
@@ -67,6 +68,13 @@ export const bookingsReducer = createReducer(
       ...state.wizard,
       selectedSlot: slot,
       selectedSlotEnd: slotEnd
+    }
+  })),
+  on(selectPaymentMode, (state, { paymentMode }) => ({
+    ...state,
+    wizard: {
+      ...state.wizard,
+      paymentMode
     }
   })),
   on(nextStep, (state) => ({
