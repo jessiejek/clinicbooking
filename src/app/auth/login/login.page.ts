@@ -1,7 +1,7 @@
 import { AsyncPipe, NgIf } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Store } from '@ngrx/store';
 import {
   IonButton,
@@ -18,6 +18,7 @@ import { environment } from '../../../environments/environment';
 import { AuthLayoutComponent } from '../components/auth-layout/auth-layout.component';
 import { BannerComponent } from '../../shared/components/banner/banner.component';
 import { clearError, login } from '../../store/auth/auth.actions';
+import { saveAuthReturnUrl } from '../../store/auth/auth-storage';
 import { selectAuthError, selectIsLoading } from '../../store/auth/auth.selectors';
 
 @Component({
@@ -40,10 +41,11 @@ import { selectAuthError, selectIsLoading } from '../../store/auth/auth.selector
   templateUrl: './login.page.html',
   styleUrl: './login.page.scss'
 })
-export class LoginPage {
+export class LoginPage implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly store = inject(Store);
   private readonly toastController = inject(ToastController);
+  private readonly route = inject(ActivatedRoute);
 
   readonly isProduction = environment.production;
   readonly isLoading$ = this.store.select(selectIsLoading);
@@ -59,6 +61,10 @@ export class LoginPage {
 
   constructor() {
     addIcons({ alertCircleOutline, eyeOutline, eyeOffOutline });
+  }
+
+  ngOnInit(): void {
+    saveAuthReturnUrl(this.route.snapshot.queryParamMap.get('returnUrl'));
   }
 
   fillCreds(email: string, password: string): void {

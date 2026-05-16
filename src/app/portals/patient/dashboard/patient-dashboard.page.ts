@@ -76,6 +76,9 @@ interface DashboardVm {
           <div class="dashboard-hero__eyebrow">Patient Portal</div>
           <h2 class="page-title">Welcome back, {{ vm.patient?.firstName || getWelcomeName(vm.user) || 'Juan' }}</h2>
           <p class="page-subtitle">Manage your appointments and health records.</p>
+          <div class="dashboard-hero__actions">
+            <a class="btn-outline" routerLink="/patient/doctors">Browse Doctors</a>
+          </div>
         </div>
       </div>
 

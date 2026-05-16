@@ -3,7 +3,13 @@ import { Component, HostListener, OnInit } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { IonIcon } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { calendarOutline, documentTextOutline, homeOutline, personOutline } from 'ionicons/icons';
+import {
+  calendarOutline,
+  documentTextOutline,
+  homeOutline,
+  peopleOutline,
+  personOutline
+} from 'ionicons/icons';
 
 @Component({
   selector: 'app-patient-bottom-nav',
@@ -14,6 +20,10 @@ import { calendarOutline, documentTextOutline, homeOutline, personOutline } from
       <a routerLink="/patient/dashboard" routerLinkActive="active" class="bottom-nav__item">
         <ion-icon name="home-outline"></ion-icon>
         <span>Home</span>
+      </a>
+      <a routerLink="/patient/doctors" routerLinkActive="active" class="bottom-nav__item">
+        <ion-icon name="people-outline"></ion-icon>
+        <span>Doctors</span>
       </a>
       <a routerLink="/patient/bookings" routerLinkActive="active" class="bottom-nav__item">
         <ion-icon name="calendar-outline"></ion-icon>
@@ -35,7 +45,7 @@ export class PatientBottomNavComponent implements OnInit {
   isMobile = false;
 
   constructor() {
-    addIcons({ homeOutline, calendarOutline, documentTextOutline, personOutline });
+    addIcons({ homeOutline, peopleOutline, calendarOutline, documentTextOutline, personOutline });
   }
 
   ngOnInit(): void {

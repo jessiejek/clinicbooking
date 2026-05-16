@@ -11,7 +11,8 @@ import {
   medicalOutline,
   menuOutline,
   logOutOutline,
-  personOutline
+  personOutline,
+  peopleOutline
 } from 'ionicons/icons';
 import { AuthUser, NavItem } from '../../../../core/models';
 import { AvatarComponent } from '../../../../shared/components/avatar/avatar.component';
@@ -87,6 +88,7 @@ export class PatientTopbarComponent {
       gridOutline,
       calendarOutline,
       medicalOutline,
+      peopleOutline,
       documentTextOutline,
       personOutline,
       menuOutline,

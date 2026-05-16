@@ -1,16 +1,18 @@
-import { Component, inject } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { AsyncPipe, NgIf, NgSwitch, NgSwitchCase } from '@angular/common';
 import { Store } from '@ngrx/store';
 import { ToastController } from '@ionic/angular';
 import { IonIcon } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { copyOutline } from 'ionicons/icons';
-import { map } from 'rxjs';
+import { combineLatest, map } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MockDataService } from '../../../../core/services/mock-data.service';
-import { nextStep, prevStep } from '../../../../store/bookings/bookings.actions';
+import { nextStep, prevStep, selectPaymentMode } from '../../../../store/bookings/bookings.actions';
 import { selectWizard } from '../../../../store/bookings/bookings.selectors';
+import { selectIsAuthenticated } from '../../../../store/auth/auth.selectors';
 
-type PaymentTab = 'gcash' | 'maya' | 'bank';
+type PaymentTab = 'gcash' | 'maya' | 'bank' | 'clinic';
 
 @Component({
   selector: 'app-step-payment',
@@ -30,18 +32,44 @@ type PaymentTab = 'gcash' | 'maya' | 'bank';
         <div class="amount-due clinic-card clinic-card--accent-green">
           <p class="amount-label">Amount Due</p>
           <p class="amount-value">&#8369;{{ vm.totalDue }}</p>
-          <p class="amount-note">Complete payment then submit proof in the next step</p>
+          <p class="amount-note">
+            {{
+              vm.paymentMode === 'PayAtClinic'
+                ? 'You will settle this at the clinic on the day of your visit.'
+                : 'Complete payment then submit proof in the next step.'
+            }}
+          </p>
         </div>
 
         <div class="payment-tabs">
-          <button type="button" [class.active]="activeTab === 'gcash'" (click)="activeTab = 'gcash'">
+          <button
+            type="button"
+            [class.active]="activeTab === 'gcash'"
+            (click)="selectTab('gcash')"
+          >
             GCash
           </button>
-          <button type="button" [class.active]="activeTab === 'maya'" (click)="activeTab = 'maya'">
+          <button
+            type="button"
+            [class.active]="activeTab === 'maya'"
+            (click)="selectTab('maya')"
+          >
             Maya
           </button>
-          <button type="button" [class.active]="activeTab === 'bank'" (click)="activeTab = 'bank'">
+          <button
+            type="button"
+            [class.active]="activeTab === 'bank'"
+            (click)="selectTab('bank')"
+          >
             Bank Transfer
+          </button>
+          <button
+            *ngIf="vm.isAuthenticated"
+            type="button"
+            [class.active]="activeTab === 'clinic'"
+            (click)="selectTab('clinic')"
+          >
+            Pay at Clinic
           </button>
         </div>
 
@@ -92,6 +120,24 @@ type PaymentTab = 'gcash' | 'maya' | 'bank';
             </div>
           </div>
 
+          <div *ngSwitchCase="'clinic'" class="payment-content clinic-card">
+            <div class="clinic-pay-hero">
+              <div class="clinic-pay-hero__icon">₱</div>
+              <div>
+                <h3>Pay at Clinic</h3>
+                <p>
+                  Your appointment is reserved now. Please pay the clinic on the day of your visit
+                  before consultation.
+                </p>
+              </div>
+            </div>
+            <ul class="clinic-pay-list">
+              <li>Available to signed-in patients only</li>
+              <li>Bring your appointment details to the front desk</li>
+              <li>No online proof upload is needed</li>
+            </ul>
+          </div>
+
           <div *ngSwitchCase="'bank'" class="payment-content clinic-card">
             <p><strong>Bank:</strong> {{ vm.paymentSettings.bankName }}</p>
             <p><strong>Account Name:</strong> {{ vm.paymentSettings.bankAccountName }}</p>
@@ -110,23 +156,30 @@ type PaymentTab = 'gcash' | 'maya' | 'bank';
         </div>
       </ng-container>
 
+      <div class="payment-hint" *ngIf="!(vm$ | async)?.isAuthenticated">
+        Pay at clinic is available only after you sign in.
+      </div>
+
       <div class="wizard-actions wizard-actions--split">
         <button type="button" class="btn-outline" (click)="goBack()">Back</button>
-        <button type="button" class="btn-primary" (click)="goNext()">I have paid - Submit Proof</button>
+        <button type="button" class="btn-primary" (click)="goNext()">
+          {{ (vm$ | async)?.paymentMode === 'PayAtClinic' ? 'Continue to Confirmation' : 'Continue to Proof' }}
+        </button>
       </div>
     </section>
   `,
   styleUrl: './step-payment.component.scss'
 })
-export class StepPaymentComponent {
+export class StepPaymentComponent implements OnInit {
   private readonly store = inject(Store);
   private readonly toastCtrl = inject(ToastController);
   private readonly mockData = inject(MockDataService);
+  private readonly destroyRef = inject(DestroyRef);
 
   activeTab: PaymentTab = 'gcash';
 
-  vm$ = this.store.select(selectWizard).pipe(
-    map((wizard) => {
+  vm$ = combineLatest([this.store.select(selectWizard), this.store.select(selectIsAuthenticated)]).pipe(
+    map(([wizard, isAuthenticated]) => {
       const doctor = wizard.selectedDoctorId
         ? this.mockData.getDoctors().find((item) => item.id === wizard.selectedDoctorId)
         : null;
@@ -135,6 +188,8 @@ export class StepPaymentComponent {
         : null;
 
       return {
+        paymentMode: wizard.paymentMode,
+        isAuthenticated,
         totalDue: (doctor?.consultationFee ?? 0) + (service?.price ?? 0),
         paymentSettings: this.mockData.getPaymentSettings()
       };
@@ -143,6 +198,29 @@ export class StepPaymentComponent {
 
   constructor() {
     addIcons({ copyOutline });
+  }
+
+  ngOnInit(): void {
+    this.store
+      .select(selectWizard)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((wizard) => {
+        if (wizard.paymentMode === 'PayAtClinic') {
+          this.activeTab = 'clinic';
+        } else if (this.activeTab === 'clinic') {
+          this.activeTab = 'gcash';
+        }
+      });
+  }
+
+  selectTab(tab: PaymentTab): void {
+    if (tab === 'clinic') {
+      this.store.dispatch(selectPaymentMode({ paymentMode: 'PayAtClinic' }));
+    } else {
+      this.store.dispatch(selectPaymentMode({ paymentMode: 'Online' }));
+    }
+
+    this.activeTab = tab;
   }
 
   async copyToClipboard(value: string): Promise<void> {

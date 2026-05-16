@@ -18,6 +18,7 @@ import {
   rescheduleSuccess,
   selectDate,
   selectDoctor,
+  selectPaymentMode,
   selectService,
   selectSlot,
   setStep,
@@ -69,6 +70,13 @@ export const bookingsReducer = createReducer(
       selectedSlotEnd: slotEnd
     }
   })),
+  on(selectPaymentMode, (state, { paymentMode }) => ({
+    ...state,
+    wizard: {
+      ...state.wizard,
+      paymentMode
+    }
+  })),
   on(nextStep, (state) => ({
     ...state,
     wizard: {
@@ -90,12 +98,13 @@ export const bookingsReducer = createReducer(
       currentStep: Math.min(Math.max(step, 1), 7)
     }
   })),
-  on(submitBooking, (state, { proofType, proofValue }) => ({
+  on(submitBooking, (state, { paymentMode, proofType, proofValue }) => ({
     ...state,
     wizard: {
       ...state.wizard,
-      proofType: proofType as WizardState['proofType'],
-      proofValue,
+      paymentMode,
+      proofType: (proofType ?? null) as WizardState['proofType'],
+      proofValue: proofValue ?? null,
       isLoading: true,
       error: null
     }

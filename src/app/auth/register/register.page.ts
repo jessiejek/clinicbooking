@@ -2,7 +2,7 @@ import { AbstractControl, ValidationErrors } from '@angular/forms';
 import { AsyncPipe, NgFor, NgIf } from '@angular/common';
 import { Component, inject, OnInit } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Store } from '@ngrx/store';
 import {
   IonCheckbox,
@@ -15,6 +15,7 @@ import { AuthLayoutComponent } from '../components/auth-layout/auth-layout.compo
 import { BannerComponent } from '../../shared/components/banner/banner.component';
 import { getPasswordStrength, passwordStrengthValidator } from '../../shared/validators/password-strength.validator';
 import { clearError, register as registerAction } from '../../store/auth/auth.actions';
+import { saveAuthReturnUrl } from '../../store/auth/auth-storage';
 import { selectAuthError, selectIsLoading } from '../../store/auth/auth.selectors';
 
 function passwordMatchValidator(group: AbstractControl): ValidationErrors | null {
@@ -46,6 +47,7 @@ function passwordMatchValidator(group: AbstractControl): ValidationErrors | null
 export class RegisterPage implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly store = inject(Store);
+  private readonly route = inject(ActivatedRoute);
 
   readonly isLoading$ = this.store.select(selectIsLoading);
   readonly error$ = this.store.select(selectAuthError);
@@ -66,6 +68,7 @@ export class RegisterPage implements OnInit {
   );
 
   ngOnInit(): void {
+    saveAuthReturnUrl(this.route.snapshot.queryParamMap.get('returnUrl'));
     this.registerForm.get('password')?.valueChanges.subscribe((v) => {
       this.passwordStrength = getPasswordStrength(String(v ?? ''));
     });

@@ -21,7 +21,11 @@ import { selectWizard } from '../../../store/bookings/bookings.selectors';
           <div class="confirmation-checkmark">&#10003;</div>
           <h1 class="confirmation-title">Booking Confirmed!</h1>
           <p class="confirmation-sub">
-            Your appointment has been submitted and is awaiting payment verification.
+            {{
+              vm.paymentMode === 'PayAtClinic'
+                ? 'Your appointment is reserved. Please pay at the clinic before your consultation.'
+                : 'Your appointment has been submitted and is awaiting payment verification.'
+            }}
           </p>
         </div>
 
@@ -63,8 +67,16 @@ import { selectWizard } from '../../../store/bookings/bookings.selectors';
         </div>
 
         <div style="text-align: center; margin: var(--space-4) 0">
-          <app-status-badge status="Pending"></app-status-badge>
-          <span class="confirmation-status-text">Awaiting payment verification</span>
+          <app-status-badge
+            [status]="vm.paymentMode === 'PayAtClinic' ? 'Confirmed' : 'Pending'"
+          ></app-status-badge>
+          <span class="confirmation-status-text">
+            {{
+              vm.paymentMode === 'PayAtClinic'
+                ? 'Pay at clinic selected'
+                : 'Awaiting payment verification'
+            }}
+          </span>
         </div>
 
         <div class="confirmation-actions">
@@ -98,6 +110,7 @@ export class BookingConfirmationPage {
       return {
         bookingId,
         queueNumber: wizard.queueNumber,
+        paymentMode: wizard.paymentMode,
         doctorName: doctor?.fullName ?? '-',
         selectedDate: wizard.selectedDate,
         selectedSlot: wizard.selectedSlot,

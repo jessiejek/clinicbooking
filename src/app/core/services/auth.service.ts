@@ -6,6 +6,8 @@ import { MockDataService } from './mock-data.service';
 import { TokenService } from './token.service';
 import {
   clearAuthSession,
+  clearAuthReturnUrl,
+  loadAuthReturnUrl,
   loadStoredAuthToken,
   saveAuthSession
 } from '../../store/auth/auth-storage';
@@ -58,6 +60,7 @@ export class AuthService {
   logout(): void {
     this.tokenService.clearToken();
     clearAuthSession();
+    clearAuthReturnUrl();
     void this.router.navigate(['/auth/login']);
   }
 
@@ -85,6 +88,14 @@ export class AuthService {
       void this.router.navigate(['/auth/set-password']);
       return;
     }
+
+    const returnUrl = loadAuthReturnUrl();
+    if (returnUrl?.startsWith('/') && !returnUrl.startsWith('//')) {
+      clearAuthReturnUrl();
+      void this.router.navigateByUrl(returnUrl);
+      return;
+    }
+
     switch (user.role) {
       case 'Admin':
         void this.router.navigate(['/admin']);

@@ -1,10 +1,14 @@
-import { Component, inject } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { AsyncPipe, NgFor, NgIf, NgSwitch, NgSwitchCase } from '@angular/common';
 import { Store } from '@ngrx/store';
 import { IonIcon } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { checkmark } from 'ionicons/icons';
+import { combineLatest } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { selectCurrentStep, selectWizard } from '../../../../store/bookings/bookings.selectors';
+import { setStep } from '../../../../store/bookings/bookings.actions';
+import { selectIsAuthenticated } from '../../../../store/auth/auth.selectors';
 import { BookingSummaryBarComponent } from '../booking-summary-bar/booking-summary-bar.component';
 import { StepAuthCheckComponent } from '../step-auth-check/step-auth-check.component';
 import { StepDatePickerComponent } from '../step-date-picker/step-date-picker.component';
@@ -68,7 +72,7 @@ import { StepSlotSelectComponent } from '../step-slot-select/step-slot-select.co
   `,
   styleUrl: './booking-wizard.component.scss'
 })
-export class BookingWizardComponent {
+export class BookingWizardComponent implements OnInit {
   readonly STEPS = [
     { step: 1, label: 'Doctor & Service' },
     { step: 2, label: 'Select Date' },
@@ -80,11 +84,23 @@ export class BookingWizardComponent {
   ];
 
   private readonly store = inject(Store);
+  private readonly destroyRef = inject(DestroyRef);
 
   wizard$ = this.store.select(selectWizard);
   currentStep$ = this.store.select(selectCurrentStep);
+  isAuthenticated$ = this.store.select(selectIsAuthenticated);
 
   constructor() {
     addIcons({ checkmark });
+  }
+
+  ngOnInit(): void {
+    combineLatest([this.currentStep$, this.isAuthenticated$])
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(([step, isAuthenticated]) => {
+        if (isAuthenticated && step === 5) {
+          this.store.dispatch(setStep({ step: 6 }));
+        }
+      });
   }
 }

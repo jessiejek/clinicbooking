@@ -54,11 +54,11 @@ export class StepAuthCheckComponent {
   }
 
   goToLogin(): void {
-    this.router.navigate(['/auth/login'], { queryParams: { returnUrl: '/public/booking' } });
+    this.router.navigate(['/auth/login'], { queryParams: { returnUrl: this.router.url } });
   }
 
   goToRegister(): void {
-    this.router.navigate(['/auth/register'], { queryParams: { returnUrl: '/public/booking' } });
+    this.router.navigate(['/auth/register'], { queryParams: { returnUrl: this.router.url } });
   }
 
   goBack(): void {

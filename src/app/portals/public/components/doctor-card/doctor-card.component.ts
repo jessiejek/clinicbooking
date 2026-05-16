@@ -33,7 +33,7 @@ import { PesoPipe } from '../../../../shared/pipes/peso.pipe';
         <span class="star" aria-hidden="true">★</span>
         <span>{{ doctor.averageRating ?? '—' }}</span>
         <span>({{ doctor.reviewCount ?? 0 }} reviews)</span>
-      </div>
+  </div>
       <div class="doctor-card__actions">
         <a
           class="btn-book"
@@ -44,7 +44,7 @@ import { PesoPipe } from '../../../../shared/pipes/peso.pipe';
         </a>
         <a
           class="btn-profile"
-          [routerLink]="['/public/doctors', doctor.id]"
+          [routerLink]="[profileRouteBase, doctor.id]"
           aria-label="View profile"
         >
           <ion-icon name="person-outline"></ion-icon>
@@ -56,6 +56,7 @@ import { PesoPipe } from '../../../../shared/pipes/peso.pipe';
 })
 export class DoctorCardComponent {
   @Input({ required: true }) doctor!: Doctor;
+  @Input() profileRouteBase = '/public/doctors';
 
   constructor() {
     addIcons({ personOutline });
