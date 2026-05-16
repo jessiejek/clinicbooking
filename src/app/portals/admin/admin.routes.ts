@@ -10,21 +10,36 @@ import { loadBookings } from '../../store/bookings/bookings.actions';
 import { loadDoctors, loadSchedules } from '../../store/doctors/doctors.actions';
 import { loadNotifications } from '../../store/notifications/notifications.actions';
 import { loadPatients } from '../../store/patients/patients.actions';
-import { PortalLayoutComponent } from '../../shared/components/portal-layout/portal-layout.component';
+import { AdminLayoutComponent } from '../../layouts/admin-layout/admin-layout.component';
 
 export const ADMIN_NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', route: '/admin/dashboard', icon: 'grid-outline', section: 'CORE' },
-  { label: 'Bookings', route: '/admin/bookings', icon: 'calendar-outline' },
-  { label: 'Patients', route: '/admin/patients', icon: 'people-outline' },
-  { label: 'Doctors', route: '/admin/doctors', icon: 'medical-outline' },
-  { label: 'Calendar', route: '/admin/calendar', icon: 'calendar-number-outline' },
-  { label: 'Services', route: '/admin/services', icon: 'list-outline', section: 'MANAGEMENT' },
-  { label: 'Staff', route: '/admin/staff', icon: 'person-add-outline' },
-  { label: 'Walk-In', route: '/admin/walk-in', icon: 'walk-outline' },
-  { label: 'Reports', route: '/admin/reports', icon: 'stats-chart-outline', section: 'ANALYTICS' },
-  { label: 'Audit Log', route: '/admin/audit-logs', icon: 'shield-checkmark-outline' },
-  { label: 'Announcements', route: '/admin/announcements', icon: 'megaphone-outline', section: 'SYSTEM' },
-  { label: 'Settings', route: '/admin/settings', icon: 'settings-outline' }
+  { label: 'Bookings', route: '/admin/bookings', icon: 'calendar-outline', section: 'CORE' },
+  { label: 'Patients', route: '/admin/patients', icon: 'people-outline', section: 'CORE' },
+  { label: 'Doctors', route: '/admin/doctors', icon: 'medical-outline', section: 'CORE' },
+  {
+    label: 'Calendar',
+    route: '/admin/calendar',
+    icon: 'calendar-number-outline',
+    section: 'CORE'
+  },
+  { label: 'Services', route: '/admin/services', icon: 'briefcase-outline', section: 'MANAGEMENT' },
+  { label: 'Staff', route: '/admin/staff', icon: 'person-outline', section: 'MANAGEMENT' },
+  { label: 'Walk-In', route: '/admin/walk-in', icon: 'walk-outline', section: 'MANAGEMENT' },
+  { label: 'Reports', route: '/admin/reports', icon: 'bar-chart-outline', section: 'ANALYTICS' },
+  {
+    label: 'Audit Log',
+    route: '/admin/audit-logs',
+    icon: 'document-text-outline',
+    section: 'ANALYTICS'
+  },
+  {
+    label: 'Announcements',
+    route: '/admin/announcements',
+    icon: 'megaphone-outline',
+    section: 'SYSTEM'
+  },
+  { label: 'Settings', route: '/admin/settings', icon: 'settings-outline', section: 'SYSTEM' }
 ];
 
 const preloadAdminData: ResolveFn<boolean> = () => {
@@ -40,8 +55,8 @@ const preloadAdminData: ResolveFn<boolean> = () => {
 export const ADMIN_ROUTES: Routes = [
   {
     path: '',
-    component: PortalLayoutComponent,
-    data: { navItems: ADMIN_NAV_ITEMS, portalLabel: 'Admin Portal', title: 'Dashboard' },
+    component: AdminLayoutComponent,
+    data: { title: 'Dashboard' },
     canActivate: [authGuard, roleGuard, firstLoginGuard],
     resolve: { preload: preloadAdminData },
     children: [

@@ -12,7 +12,7 @@ import { AuthUser, NavItem } from '../../../../core/models';
   template: `
     <aside class="sidebar">
       <div class="sidebar__brand">
-        <div class="sidebar__logo">G</div>
+        <div class="sidebar__logo" aria-hidden="true">G</div>
         <div>
           <div class="sidebar__clinic-name">{{ clinicName }}</div>
           <div class="sidebar__portal-label">{{ portalLabel }}</div>

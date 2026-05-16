@@ -36,7 +36,14 @@ import { BookingActionsMenuComponent, BookingActionItem } from '../booking-actio
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let booking of bookings" (click)="rowClicked.emit(booking)">
+          <tr
+            *ngFor="let booking of bookings"
+            tabindex="0"
+            role="button"
+            [attr.aria-label]="'Open appointment for ' + patientName(booking.patientId)"
+            (click)="rowClicked.emit(booking)"
+            (keydown.enter)="rowClicked.emit(booking)"
+          >
             <td class="data-mono">{{ booking.queueNumber ?? '—' }}</td>
             <td>{{ patientName(booking.patientId) }}</td>
             <td>{{ doctorName(booking.doctorId) }}</td>

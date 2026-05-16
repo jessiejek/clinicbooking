@@ -1,8 +1,10 @@
 import { AsyncPipe, NgFor, NgIf } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
-import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Store } from '@ngrx/store';
+import { IonIcon } from '@ionic/angular/standalone';
+import { addIcons } from 'ionicons';
+import { createOutline, trashOutline } from 'ionicons/icons';
 import { Doctor } from '../../../core/models';
 import { MockDataService } from '../../../core/services/mock-data.service';
 import { loadDoctors, loadSchedules, setDoctorStatus } from '../../../store/doctors/doctors.actions';
@@ -15,7 +17,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
 @Component({
   selector: 'app-admin-doctors-page',
   standalone: true,
-  imports: [AsyncPipe, FormsModule, NgFor, NgIf, AvatarComponent, EmptyStateComponent, SkeletonComponent, StatusBadgeComponent],
+  imports: [AsyncPipe, NgFor, NgIf, IonIcon, AvatarComponent, EmptyStateComponent, SkeletonComponent, StatusBadgeComponent],
   template: `
     <section class="page-shell">
       <div class="page-shell__header">
@@ -40,20 +42,40 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let doctor of doctors" (click)="editDoctor(doctor.id)">
+            <tr
+              *ngFor="let doctor of doctors"
+              tabindex="0"
+              role="button"
+              [attr.aria-label]="'Open doctor profile for ' + doctor.fullName"
+              (click)="editDoctor(doctor.id)"
+              (keydown.enter)="editDoctor(doctor.id)"
+            >
               <td><app-avatar [name]="doctor.fullName"></app-avatar></td>
               <td>{{ doctor.fullName }}</td>
               <td>{{ doctor.specialization }}</td>
               <td>₱{{ doctor.consultationFee }}</td>
               <td>{{ workingDays(doctor.id) }}</td>
-              <td>
-                <select [ngModel]="doctor.status" (ngModelChange)="setStatus(doctor.id, $event)" (click)="$event.stopPropagation()">
-                  <option value="Active">Active</option>
-                  <option value="Inactive">Inactive</option>
-                  <option value="OnLeave">On Leave</option>
-                </select>
-              </td>
               <td><app-status-badge [status]="doctor.status"></app-status-badge></td>
+              <td>
+                <div class="doctor-actions">
+                  <button
+                    type="button"
+                    class="btn-icon"
+                    [attr.aria-label]="'Edit doctor ' + doctor.fullName"
+                    (click)="editDoctor(doctor.id); $event.stopPropagation()"
+                  >
+                    <ion-icon name="create-outline"></ion-icon>
+                  </button>
+                  <button
+                    type="button"
+                    class="btn-icon"
+                    [attr.aria-label]="'Deactivate doctor ' + doctor.fullName"
+                    (click)="setStatus(doctor.id, 'Inactive'); $event.stopPropagation()"
+                  >
+                    <ion-icon name="trash-outline"></ion-icon>
+                  </button>
+                </div>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -80,6 +102,10 @@ export class DoctorsPage implements OnInit {
 
   doctors: Doctor[] = [];
   isLoading = false;
+
+  constructor() {
+    addIcons({ createOutline, trashOutline });
+  }
 
   ngOnInit(): void {
     this.store.dispatch(loadDoctors());

@@ -10,7 +10,7 @@ import { loadDoctors, loadSchedules } from '../../store/doctors/doctors.actions'
 import { loadMedicalRecords } from '../../store/medical-records/medical-records.actions';
 import { loadNotifications } from '../../store/notifications/notifications.actions';
 import { loadPatients } from '../../store/patients/patients.actions';
-import { PortalLayoutComponent } from '../../shared/components/portal-layout/portal-layout.component';
+import { DoctorLayoutComponent } from '../../layouts/doctor-layout/doctor-layout.component';
 
 export const DOCTOR_NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', route: '/doctor/dashboard', icon: 'grid-outline', section: 'Main' },
@@ -34,14 +34,9 @@ const preloadDoctorData: ResolveFn<boolean> = () => {
 export const DOCTOR_ROUTES: Routes = [
   {
     path: '',
-    component: PortalLayoutComponent,
+    component: DoctorLayoutComponent,
     canActivate: [authGuard, roleGuard],
-    data: {
-      roles: ['Doctor'],
-      navItems: DOCTOR_NAV_ITEMS,
-      portalLabel: 'Doctor Portal',
-      title: 'Dashboard'
-    },
+    data: { roles: ['Doctor'], title: 'Dashboard' },
     resolve: { preload: preloadDoctorData },
     children: [
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },

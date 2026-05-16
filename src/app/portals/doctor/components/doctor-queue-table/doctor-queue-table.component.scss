@@ -3,7 +3,12 @@
 }
 
 .doctor-queue-table {
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
+.doctor-queue-table .clinic-table {
+  min-width: 960px;
 }
 
 .cell-stack {

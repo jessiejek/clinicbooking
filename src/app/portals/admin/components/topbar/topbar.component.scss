@@ -48,7 +48,7 @@
 .topbar__search:focus-within {
   border-color: var(--ion-color-primary);
   background: white;
-  box-shadow: 0 0 0 3px rgba(93, 62, 142, 0.1);
+  box-shadow: 0 0 0 3px rgba(93,62,142,0.10);
 }
 
 .topbar__search input {
@@ -94,7 +94,7 @@
   color: var(--clinic-text-muted);
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 768px) {
   .topbar__search,
   .topbar__user-meta {
     display: none;

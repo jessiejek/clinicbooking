@@ -30,7 +30,14 @@ import { StatusBadgeComponent } from '../../../../shared/components/status-badge
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let booking of sortedBookings" (click)="rowClicked.emit(booking.id)">
+            <tr
+              *ngFor="let booking of sortedBookings"
+              tabindex="0"
+              role="button"
+              [attr.aria-label]="'Open queue booking for ' + patientName(booking.patientId)"
+              (click)="rowClicked.emit(booking.id)"
+              (keydown.enter)="rowClicked.emit(booking.id)"
+            >
               <td class="data-mono">{{ booking.queueNumber ?? '-' }}</td>
               <td>{{ patientName(booking.patientId) }}</td>
               <td>{{ doctorName(booking.doctorId) }}</td>

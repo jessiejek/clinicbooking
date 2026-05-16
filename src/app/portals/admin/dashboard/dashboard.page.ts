@@ -86,7 +86,7 @@ import { StatCardComponent } from '../components/stat-card/stat-card.component';
               ></path>
             </svg>
             <div class="area-chart__legend">
-              <span *ngFor="let point of revenueLegend; let i = index">{{ i + 1 }}</span>
+              <span *ngFor="let point of revenueLegend">{{ point }}</span>
             </div>
           </div>
         </div>
@@ -129,13 +129,14 @@ export class DashboardPage implements OnInit {
   noShowCount = 0;
   followUpsCount = 0;
   topDoctorStats: Array<{ label: string; value: number; max: number }> = [];
-  revenueLegend = Array.from({ length: 6 }, (_, index) => index + 1);
+  revenueLegend: string[] = [];
   areaLinePath = '';
   areaFillPath = '';
   chartColor = '#5d3e8e';
 
   ngOnInit(): void {
     this.chartColor = this.resolveBrandColor();
+    this.revenueLegend = this.buildRevenueLegend();
     this.store.dispatch(loadBookings());
     this.store.dispatch(loadDoctors());
     this.store.dispatch(loadPatients());
@@ -211,6 +212,15 @@ export class DashboardPage implements OnInit {
     this.areaFillPath = `${this.areaLinePath} L 580,200 L 20,200 Z`;
   }
 
+  private buildRevenueLegend(): string[] {
+    const now = new Date();
+    return Array.from({ length: 6 }, (_, index) =>
+      new Date(now.getFullYear(), now.getMonth() - (5 - index), 1).toLocaleString(undefined, {
+        month: 'short'
+      })
+    );
+  }
+
   private localIsoDate(): string {
     const now = new Date();
     const offset = now.getTimezoneOffset() * 60000;
@@ -222,10 +232,10 @@ export class DashboardPage implements OnInit {
       return this.chartColor;
     }
 
-    const brandColor = getComputedStyle(document.documentElement)
+    const c = getComputedStyle(document.documentElement)
       .getPropertyValue('--ion-color-primary')
       .trim();
 
-    return brandColor || this.chartColor;
+    return c || this.chartColor;
   }
 }

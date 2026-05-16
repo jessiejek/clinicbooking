@@ -2,7 +2,7 @@ import { Routes } from '@angular/router';
 import { authGuard } from '../../core/guards/auth.guard';
 import { roleGuard } from '../../core/guards/role.guard';
 import { NavItem } from '../../core/models';
-import { PortalLayoutComponent } from '../../shared/components/portal-layout/portal-layout.component';
+import { StaffLayoutComponent } from '../../layouts/staff-layout/staff-layout.component';
 
 export const STAFF_NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', route: '/staff/dashboard', icon: 'grid-outline', section: 'Main' },
@@ -16,9 +16,9 @@ export const STAFF_NAV_ITEMS: NavItem[] = [
 export const STAFF_ROUTES: Routes = [
   {
     path: '',
-    component: PortalLayoutComponent,
+    component: StaffLayoutComponent,
     canActivate: [authGuard, roleGuard],
-    data: { roles: ['Staff'], navItems: STAFF_NAV_ITEMS, portalLabel: 'Staff Portal', title: 'Dashboard' },
+    data: { roles: ['Staff'], title: 'Dashboard' },
     children: [
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
       {
