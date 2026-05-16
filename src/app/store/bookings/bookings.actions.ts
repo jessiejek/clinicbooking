@@ -54,3 +54,90 @@ export const updateBookingStatus = createAction(
 );
 
 export const addBooking = createAction('[Bookings] Add', props<{ booking: Booking }>());
+
+export const confirmBooking = createAction(
+  '[Bookings] Confirm Booking',
+  props<{ bookingId: string }>()
+);
+
+export const confirmBookingSuccess = createAction(
+  '[Bookings] Confirm Booking Success',
+  props<{ bookingId: string }>()
+);
+
+export const rejectBooking = createAction(
+  '[Bookings] Reject Booking',
+  props<{ bookingId: string; reason: string }>()
+);
+
+export const rejectBookingSuccess = createAction(
+  '[Bookings] Reject Booking Success',
+  props<{ bookingId: string; reason: string }>()
+);
+
+export const cancelBooking = createAction(
+  '[Bookings] Cancel Booking',
+  props<{ bookingId: string; reason: string }>()
+);
+
+export const cancelBookingSuccess = createAction(
+  '[Bookings] Cancel Booking Success',
+  props<{ bookingId: string; reason: string }>()
+);
+
+export const markComplete = createAction(
+  '[Bookings] Mark Complete',
+  props<{ bookingId: string }>()
+);
+
+export const markCompleteSuccess = createAction(
+  '[Bookings] Mark Complete Success',
+  props<{ bookingId: string }>()
+);
+
+export const markNoShow = createAction('[Bookings] Mark No Show', props<{ bookingId: string }>());
+
+export const markNoShowSuccess = createAction(
+  '[Bookings] Mark No Show Success',
+  props<{ bookingId: string }>()
+);
+
+export const rescheduleBooking = createAction(
+  '[Bookings] Reschedule Booking',
+  props<{ bookingId: string; newDate: string; newSlot: string; newSlotEnd?: string }>()
+);
+
+export const rescheduleSuccess = createAction(
+  '[Bookings] Reschedule Success',
+  props<{ bookingId: string; newDate: string; newSlot: string; newSlotEnd?: string }>()
+);
+
+export const confirmPayment = createAction(
+  '[Bookings] Confirm Payment',
+  props<{ bookingId: string }>()
+);
+
+export const confirmPaymentSuccess = createAction(
+  '[Bookings] Confirm Payment Success',
+  props<{ bookingId: string }>()
+);
+
+export const waivedPayment = createAction(
+  '[Bookings] Waived Payment',
+  props<{ bookingId: string; reason: string }>()
+);
+
+export const waivedPaymentSuccess = createAction(
+  '[Bookings] Waived Payment Success',
+  props<{ bookingId: string; reason: string }>()
+);
+
+export const refundPayment = createAction(
+  '[Bookings] Refund Payment',
+  props<{ bookingId: string; reason: string }>()
+);
+
+export const refundPaymentSuccess = createAction(
+  '[Bookings] Refund Payment Success',
+  props<{ bookingId: string; reason: string }>()
+);

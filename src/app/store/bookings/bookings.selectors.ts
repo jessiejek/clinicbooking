@@ -1,5 +1,5 @@
 import { createFeatureSelector, createSelector } from '@ngrx/store';
-import { Booking } from '../../core/models';
+import { Booking, BookingStatus } from '../../core/models';
 import { BookingsState } from './bookings.state';
 
 export const selectBookingsState = createFeatureSelector<BookingsState>('bookings');
@@ -26,5 +26,39 @@ export const selectWizardLoading = createSelector(selectWizard, (wizard) => wiza
 
 export const selectBookings = createSelector(selectBookingsState, (state) => state.bookings);
 
+export const selectBookingsLoading = createSelector(selectBookingsState, (state) => state.isLoading);
+
 export const selectBookingById = (id: string) =>
-  createSelector(selectBookings, (bookings: Booking[]) => bookings.find((booking) => booking.id === id));
+  createSelector(selectBookings, (bookings: Booking[]) =>
+    bookings.find((booking) => booking.id === id)
+  );
+
+const toLocalIsoDate = (): string => {
+  const date = new Date();
+  const offset = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - offset).toISOString().slice(0, 10);
+};
+
+export const selectBookingsByStatus = (status: BookingStatus) =>
+  createSelector(selectBookings, (bookings: Booking[]) =>
+    bookings.filter((booking) => booking.status === status)
+  );
+
+export const selectBookingsByDoctor = (doctorId: string) =>
+  createSelector(selectBookings, (bookings: Booking[]) =>
+    bookings.filter((booking) => booking.doctorId === doctorId)
+  );
+
+export const selectBookingsByPatient = (patientId: string) =>
+  createSelector(selectBookings, (bookings: Booking[]) =>
+    bookings.filter((booking) => booking.patientId === patientId)
+  );
+
+export const selectTodaysBookings = createSelector(selectBookings, (bookings: Booking[]) => {
+  const today = toLocalIsoDate();
+  return bookings.filter((booking) => booking.appointmentDate === today);
+});
+
+export const selectPendingVerifications = createSelector(selectBookings, (bookings: Booking[]) =>
+  bookings.filter((booking) => booking.status === 'ProofSubmitted')
+);

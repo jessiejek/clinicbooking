@@ -1,22 +1,35 @@
 import { createReducer, on } from '@ngrx/store';
+import { Booking } from '../../core/models';
 import { initialBookingsState, initialWizardState, WizardState } from './bookings.state';
 import {
   addBooking,
+  cancelBookingSuccess,
+  confirmBookingSuccess,
+  confirmPaymentSuccess,
   loadBookings,
   loadBookingsSuccess,
   nextStep,
+  markCompleteSuccess,
+  markNoShowSuccess,
   prevStep,
   resetWizard,
+  rejectBookingSuccess,
+  refundPaymentSuccess,
+  rescheduleSuccess,
   selectDate,
   selectDoctor,
   selectService,
   selectSlot,
   setStep,
+  waivedPaymentSuccess,
   submitBooking,
   submitBookingFailure,
   submitBookingSuccess,
   updateBookingStatus
 } from './bookings.actions';
+
+const updateBooking = (stateBookings: Booking[], bookingId: string, updater: (booking: Booking) => Booking): Booking[] =>
+  stateBookings.map((booking) => (booking.id === bookingId ? updater(booking) : booking));
 
 export const bookingsReducer = createReducer(
   initialBookingsState,
@@ -125,5 +138,66 @@ export const bookingsReducer = createReducer(
   on(addBooking, (state, { booking }) => ({
     ...state,
     bookings: [...state.bookings, booking]
+  })),
+  on(confirmBookingSuccess, (state, { bookingId }) => ({
+    ...state,
+    bookings: updateBooking(state.bookings, bookingId, (booking) => ({
+      ...booking,
+      status: 'Confirmed'
+    }))
+  })),
+  on(rejectBookingSuccess, cancelBookingSuccess, (state, { bookingId, reason }) => ({
+    ...state,
+    bookings: updateBooking(state.bookings, bookingId, (booking) => ({
+      ...booking,
+      status: 'Cancelled',
+      cancellationReason: reason
+    }))
+  })),
+  on(markCompleteSuccess, (state, { bookingId }) => ({
+    ...state,
+    bookings: updateBooking(state.bookings, bookingId, (booking) => ({
+      ...booking,
+      status: 'Completed'
+    }))
+  })),
+  on(markNoShowSuccess, (state, { bookingId }) => ({
+    ...state,
+    bookings: updateBooking(state.bookings, bookingId, (booking) => ({
+      ...booking,
+      status: 'NoShow'
+    }))
+  })),
+  on(rescheduleSuccess, (state, { bookingId, newDate, newSlot, newSlotEnd }) => ({
+    ...state,
+    bookings: updateBooking(state.bookings, bookingId, (booking) => ({
+      ...booking,
+      status: 'Rescheduled',
+      appointmentDate: newDate,
+      slotStartTime: newSlot,
+      slotEndTime: newSlotEnd ?? booking.slotEndTime
+    }))
+  })),
+  on(confirmPaymentSuccess, (state, { bookingId }) => ({
+    ...state,
+    bookings: updateBooking(state.bookings, bookingId, (booking) => ({
+      ...booking,
+      paymentStatus: 'Paid',
+      status: 'Confirmed'
+    }))
+  })),
+  on(waivedPaymentSuccess, (state, { bookingId }) => ({
+    ...state,
+    bookings: updateBooking(state.bookings, bookingId, (booking) => ({
+      ...booking,
+      paymentStatus: 'Waived'
+    }))
+  })),
+  on(refundPaymentSuccess, (state, { bookingId }) => ({
+    ...state,
+    bookings: updateBooking(state.bookings, bookingId, (booking) => ({
+      ...booking,
+      paymentStatus: 'Refunded'
+    }))
   }))
 );

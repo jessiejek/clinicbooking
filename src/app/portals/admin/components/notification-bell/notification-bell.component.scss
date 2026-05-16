@@ -1,0 +1,50 @@
+.notification-bell {
+  position: relative;
+  cursor: pointer;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--clinic-border);
+  background: white;
+  color: var(--clinic-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.notification-bell ion-icon {
+  font-size: 20px;
+}
+
+.notification-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  border-radius: var(--radius-full);
+  background: var(--ion-color-danger);
+  color: white;
+  font-size: 10px;
+  font-weight: var(--font-bold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: badgePop 300ms var(--transition-spring);
+}
+
+.notification-popover {
+  padding: var(--space-4);
+  max-width: 220px;
+}
+
+.notification-popover strong {
+  display: block;
+  margin-bottom: var(--space-2);
+}
+
+.notification-popover p {
+  margin: 0;
+  color: var(--clinic-text-secondary);
+  font-size: var(--text-sm);
+}

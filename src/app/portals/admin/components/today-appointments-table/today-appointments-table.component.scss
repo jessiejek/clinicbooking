@@ -1,0 +1,15 @@
+.table-wrap {
+  background: var(--clinic-bg-elevated);
+  border: 1px solid var(--clinic-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.table-skeleton {
+  padding: var(--space-4);
+}
+
+.clinic-table tbody tr {
+  cursor: pointer;
+}

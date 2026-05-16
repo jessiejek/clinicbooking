@@ -12,6 +12,12 @@ import { authReducer } from './store/auth/auth.reducer';
 import { clinicSettingsReducer } from './store/clinic-settings/clinic-settings.reducer';
 import { BookingsEffects } from './store/bookings/bookings.effects';
 import { bookingsReducer } from './store/bookings/bookings.reducer';
+import { DoctorsEffects } from './store/doctors/doctors.effects';
+import { doctorsReducer } from './store/doctors/doctors.reducer';
+import { NotificationsEffects } from './store/notifications/notifications.effects';
+import { notificationsReducer } from './store/notifications/notifications.reducer';
+import { PatientsEffects } from './store/patients/patients.effects';
+import { patientsReducer } from './store/patients/patients.reducer';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -23,7 +29,10 @@ export const appConfig: ApplicationConfig = {
       clinicSettings: clinicSettingsReducer
     }),
     provideState({ name: 'bookings', reducer: bookingsReducer }),
-    provideEffects([AuthEffects, BookingsEffects]),
+    provideState({ name: 'doctors', reducer: doctorsReducer }),
+    provideState({ name: 'patients', reducer: patientsReducer }),
+    provideState({ name: 'notifications', reducer: notificationsReducer }),
+    provideEffects([AuthEffects, BookingsEffects, DoctorsEffects, PatientsEffects, NotificationsEffects]),
     provideStoreDevtools({
       maxAge: 25,
       logOnly: false
