@@ -10,7 +10,7 @@ import {
 } from '@ionic/angular/standalone';
 
 @Component({
-  selector: 'app-public-layout',
+  selector: 'app-legacy-public-layout',
   template: `
     <ion-header class="ion-no-border">
       <ion-toolbar style="--background: var(--gradient-hero); --color: white; height: 72px;">
@@ -58,4 +58,4 @@ import {
     IonButton
   ]
 })
-export class PublicLayoutComponent {}
+export class LegacyPublicLayoutComponent {}

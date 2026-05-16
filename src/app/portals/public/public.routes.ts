@@ -1,16 +1,23 @@
-import { Component } from '@angular/core';
 import { Routes } from '@angular/router';
-import { IonContent } from '@ionic/angular/standalone';
+import { PublicLayoutComponent } from './components/public-layout/public-layout.component';
+import { HomePage } from './home/home.page';
+import { DoctorsPage } from './doctors/doctors.page';
+import { DoctorProfilePage } from './doctor-profile/doctor-profile.page';
+import { ServicesPage } from './services/services.page';
+import { AnnouncementsPage } from './announcements/announcements.page';
+import { BookingStubPage } from './booking/booking.page';
 
-@Component({
-  standalone: true,
-  imports: [IonContent],
-  template: `
-    <ion-content>
-      <p style="padding: 2rem">Public portal — Phase 1 coming soon</p>
-    </ion-content>
-  `
-})
-class PlaceholderPage {}
-
-export const PUBLIC_ROUTES: Routes = [{ path: '', component: PlaceholderPage }];
+export const PUBLIC_ROUTES: Routes = [
+  {
+    path: '',
+    component: PublicLayoutComponent,
+    children: [
+      { path: '', component: HomePage },
+      { path: 'doctors', component: DoctorsPage },
+      { path: 'doctors/:id', component: DoctorProfilePage },
+      { path: 'services', component: ServicesPage },
+      { path: 'announcements', component: AnnouncementsPage },
+      { path: 'booking', component: BookingStubPage }
+    ]
+  }
+];
