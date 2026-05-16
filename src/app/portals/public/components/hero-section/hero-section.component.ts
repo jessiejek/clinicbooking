@@ -8,11 +8,10 @@ import { RouterLink } from '@angular/router';
   template: `
     <section class="hero">
       <div class="content-container hero__content">
-        <div class="hero__tag">✚ Trusted Healthcare</div>
+        <div class="hero__tag">✚ Family Medicine / Adult & Pedia</div>
         <h1>Your Health, Our Priority</h1>
         <p class="hero__sub">
-          Professional medical care tailored to you and your family. Book appointments online, get
-          seen faster.
+          Comprehensive medical care for all ages. Dr. Grace E. Gavino provides professional services tailored to your family's needs.
         </p>
         <div class="hero__actions">
           <a routerLink="/public/booking" class="hero-btn-primary hero-link">Book an Appointment</a>

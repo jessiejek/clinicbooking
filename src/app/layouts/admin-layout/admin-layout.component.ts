@@ -39,8 +39,8 @@ import {
         <ion-header class="ion-no-border">
           <ion-toolbar style="--background: var(--clinic-bg-elevated); height: 80px;">
             <div class="logo-area ion-padding">
-              <div class="logo-icon">A</div>
-              <div class="logo-text">ADMIN<span class="muted">PORTAL</span></div>
+              <div class="logo-icon">G</div>
+              <div class="logo-text">GAVINO<span class="muted">CLINIC</span></div>
             </div>
           </ion-toolbar>
         </ion-header>

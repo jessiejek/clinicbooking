@@ -14,8 +14,8 @@ import {
   template: `
     <ion-header class="ion-no-border">
       <ion-toolbar style="--background: var(--gradient-hero); --color: white; height: 72px;">
-        <ion-title slot="start" style="font-weight: 800; letter-spacing: -0.5px; font-size: 24px;">
-          CLINIC<span style="opacity: 0.7;">CMS</span>
+        <ion-title slot="start" style="font-weight: 800; letter-spacing: -0.5px; font-size: 20px;">
+          DR. GAVINO<span style="opacity: 0.7;"> MEDICAL CLINIC</span>
         </ion-title>
         <div slot="end" class="ion-padding-horizontal hide-sm">
           <ion-button fill="clear" color="light" style="font-weight: 600;">Home</ion-button>

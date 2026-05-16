@@ -15,16 +15,16 @@
 @import '@ionic/angular/css/display.css';
 
 :root {
-  /* PRIMARY — Deep Clinic Green */
-  --ion-color-primary: #1a6b4a;
-  --ion-color-primary-shade: #155c3e;
-  --ion-color-primary-tint: #2d8060;
-  --color-primary-50: #e8f4ef;
-  --color-primary-100: #c5e2d5;
-  --color-primary-200: #8fc6ac;
-  --color-primary-600: #1a6b4a;
-  --color-primary-700: #155c3e;
-  --color-primary-900: #0d3d2a;
+  /* PRIMARY — Brand Purple (Extracted from Signage) */
+  --ion-color-primary: #5d3e8e;
+  --ion-color-primary-shade: #4b327a;
+  --ion-color-primary-tint: #8162b3;
+  --color-primary-50: #f5f2fa;
+  --color-primary-100: #ece6f5;
+  --color-primary-200: #d0c2e8;
+  --color-primary-600: #5d3e8e;
+  --color-primary-700: #4b327a;
+  --color-primary-900: #321d5c;
 
   /* SECONDARY — Medical Blue */
   --ion-color-secondary: #2563eb;
@@ -69,8 +69,8 @@
   --clinic-text-inverse: #ffffff;
 
   /* GRADIENTS */
-  --gradient-hero: linear-gradient(135deg, #0d3d2a 0%, #1a6b4a 50%, #2d8060 100%);
-  --gradient-card-green: linear-gradient(135deg, #1a6b4a 0%, #2d8060 100%);
+  --gradient-hero: linear-gradient(135deg, #4b327a 0%, #5d3e8e 50%, #8162b3 100%);
+  --gradient-card-green: linear-gradient(135deg, #5d3e8e 0%, #8162b3 100%);
   --gradient-card-blue: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
   --gradient-card-amber: linear-gradient(135deg, #b45309 0%, #d97706 100%);
   --gradient-card-rose: linear-gradient(135deg, #be123c 0%, #dc2626 100%);
@@ -121,7 +121,7 @@
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.08);
   --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.08);
   --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.18);
-  --shadow-green: 0 8px 24px rgba(26, 107, 74, 0.2);
+  --shadow-green: 0 8px 24px rgba(93, 62, 142, 0.2);
   --shadow-blue: 0 8px 24px rgba(37, 99, 235, 0.2);
   --shadow-amber: 0 8px 24px rgba(217, 119, 6, 0.2);
   --shadow-red: 0 8px 24px rgba(220, 38, 38, 0.2);

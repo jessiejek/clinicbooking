@@ -34,15 +34,15 @@ export class MockDataService {
 
   private readonly _clinicSettings: ClinicSettings = {
     id: 'settings-1',
-    clinicName: 'Maliksi Family Clinic',
+    clinicName: 'Dr. Grace E. Gavino Medical Clinic',
     logoUrl: undefined,
-    primaryColor: '#1A6B4A',
+    primaryColor: '#5D3E8E',
     secondaryColor: '#2563EB',
-    address: '123 Rizal Avenue, Cebu City, 6000',
-    phone: '+63 32 123 4567',
-    email: 'info@maliksifamily.clinic',
-    facebookUrl: 'https://facebook.com/maliksi',
-    instagramUrl: 'https://instagram.com/maliksi',
+    address: 'Zone 1, 3 M.L. Quezon National Highway, Buaya, Lapu-Lapu, 6015 Cebu',
+    phone: '0928 561 2976',
+    email: 'info@gavino.clinic',
+    facebookUrl: 'https://facebook.com/gavinoclinic',
+    instagramUrl: 'https://instagram.com/gavinoclinic',
     operatingHours: {
       monday: { isOpen: true, openTime: '08:00', closeTime: '18:00' },
       tuesday: { isOpen: true, openTime: '08:00', closeTime: '18:00' },
@@ -64,20 +64,20 @@ export class MockDataService {
   };
 
   private readonly _paymentSettings: PaymentSettings = {
-    gcashAccountName: 'Maliksi Family Clinic',
-    gcashNumber: '09171234567',
-    mayaAccountName: 'Maliksi Family Clinic',
-    mayaNumber: '09171234567',
+    gcashAccountName: 'Dr. Grace E. Gavino',
+    gcashNumber: '09285612976',
+    mayaAccountName: 'Dr. Grace E. Gavino',
+    mayaNumber: '09285612976',
     bankName: 'BDO Unibank',
-    bankAccountName: 'Maliksi Family Clinic',
+    bankAccountName: 'Grace E. Gavino',
     bankAccountNumber: '00123456789'
   };
 
   private readonly _seedUsers: SeedUser[] = [
     {
       id: 'user-admin-1',
-      fullName: 'Dr. Roberto Maliksi',
-      email: 'admin@clinic.ph',
+      fullName: 'Dr. Grace E. Gavino',
+      email: 'admin@gavino.clinic',
       password: 'Admin@123456',
       role: 'Admin',
       isFirstLogin: false
@@ -100,8 +100,8 @@ export class MockDataService {
     },
     {
       id: 'user-doctor-1',
-      fullName: 'Dr. Maria Santos',
-      email: 'dr.santos@clinic.ph',
+      fullName: 'Dr. Grace E. Gavino',
+      email: 'dr.gavino@gavino.clinic',
       password: 'Doctor@123456',
       role: 'Doctor',
       isFirstLogin: false
@@ -136,19 +136,19 @@ export class MockDataService {
     {
       id: 'doc-1',
       userId: 'user-doctor-1',
-      fullName: 'Dr. Maria Santos',
-      specialization: 'General Practitioner',
-      bio: 'Dr. Santos has over 15 years of experience in family and general medicine...',
+      fullName: 'Dr. Grace E. Gavino',
+      specialization: 'Family Medicine / Adult & Pedia',
+      bio: 'Dr. Gavino is a dedicated specialist in Family Medicine, providing comprehensive healthcare for both adults and children with over 15 years of clinical experience.',
       consultationFee: 500,
       slotDurationMinutes: 30,
       slotCapacity: 1,
-      dailyPatientLimit: 10,
+      dailyPatientLimit: 15,
       status: 'Active',
       licenseNumber: 'PRC-12345',
       ptrNumber: 'PTR-54321',
       s2Number: 'S2-11111',
-      averageRating: 4.8,
-      reviewCount: 23
+      averageRating: 4.9,
+      reviewCount: 42
     },
     {
       id: 'doc-2',

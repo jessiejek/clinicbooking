@@ -39,8 +39,8 @@ import {
         <ion-header class="ion-no-border">
           <ion-toolbar style="--background: var(--clinic-bg-elevated); height: 80px;">
             <div class="logo-area ion-padding">
-              <div class="logo-icon blue">D</div>
-              <div class="logo-text">DOCTOR<span class="muted">PORTAL</span></div>
+              <div class="logo-icon blue">G</div>
+              <div class="logo-text">DR GAVINO<span class="muted">WORKSPACE</span></div>
             </div>
           </ion-toolbar>
         </ion-header>
@@ -98,7 +98,7 @@ import {
               <ion-menu-button color="secondary"></ion-menu-button>
             </ion-buttons>
             <ion-title style="font-weight: 700; color: var(--clinic-text-primary);">
-              Doctor Workspace
+              Medical Practice
             </ion-title>
             <ion-buttons slot="end">
               <ion-button color="medium" class="btn-icon">
