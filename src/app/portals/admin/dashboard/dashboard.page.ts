@@ -71,12 +71,19 @@ import { StatCardComponent } from '../components/stat-card/stat-card.component';
             <svg viewBox="0 0 600 220" class="area-chart" aria-label="Revenue chart">
               <defs>
                 <linearGradient id="revenueGradient" x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0%" stop-color="#1A6B4A" stop-opacity="0.42"></stop>
-                  <stop offset="100%" stop-color="#1A6B4A" stop-opacity="0.06"></stop>
+                  <stop offset="0%" [attr.stop-color]="chartColor" stop-opacity="0.42"></stop>
+                  <stop offset="100%" [attr.stop-color]="chartColor" stop-opacity="0.06"></stop>
                 </linearGradient>
               </defs>
               <path [attr.d]="areaFillPath" fill="url(#revenueGradient)"></path>
-              <path [attr.d]="areaLinePath" fill="none" stroke="#1A6B4A" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"></path>
+              <path
+                [attr.d]="areaLinePath"
+                fill="none"
+                [attr.stroke]="chartColor"
+                stroke-width="4"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              ></path>
             </svg>
             <div class="area-chart__legend">
               <span *ngFor="let point of revenueLegend; let i = index">{{ i + 1 }}</span>
@@ -125,8 +132,10 @@ export class DashboardPage implements OnInit {
   revenueLegend = Array.from({ length: 6 }, (_, index) => index + 1);
   areaLinePath = '';
   areaFillPath = '';
+  chartColor = '#5d3e8e';
 
   ngOnInit(): void {
+    this.chartColor = this.resolveBrandColor();
     this.store.dispatch(loadBookings());
     this.store.dispatch(loadDoctors());
     this.store.dispatch(loadPatients());
@@ -206,5 +215,17 @@ export class DashboardPage implements OnInit {
     const now = new Date();
     const offset = now.getTimezoneOffset() * 60000;
     return new Date(now.getTime() - offset).toISOString().slice(0, 10);
+  }
+
+  private resolveBrandColor(): string {
+    if (typeof document === 'undefined') {
+      return this.chartColor;
+    }
+
+    const brandColor = getComputedStyle(document.documentElement)
+      .getPropertyValue('--ion-color-primary')
+      .trim();
+
+    return brandColor || this.chartColor;
   }
 }

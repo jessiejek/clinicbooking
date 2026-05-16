@@ -472,7 +472,7 @@ ion-item,
   }
   &.badge--completed {
     background: var(--color-primary-100);
-    color: #0d3d2a;
+    color: var(--color-primary-900);
   }
   &.badge--cancelled {
     background: var(--color-neutral-100);
@@ -557,7 +557,7 @@ ion-item.clinic-input {
 
   &.item-has-focus {
     border-color: var(--ion-color-primary);
-    box-shadow: 0 0 0 3px rgba(26, 107, 74, 0.12);
+    box-shadow: 0 0 0 3px rgba(93, 62, 142, 0.12);
   }
 
   &.ion-invalid.ion-touched {
@@ -670,7 +670,7 @@ ion-item.clinic-input {
       border-color: var(--ion-color-primary);
       background: var(--color-primary-50);
       color: var(--ion-color-primary);
-      box-shadow: 0 0 0 3px rgba(26, 107, 74, 0.1);
+      box-shadow: 0 0 0 3px rgba(93, 62, 142, 0.1);
       transform: scale(1.04);
     }
   }

@@ -54,7 +54,7 @@
 }
 
 .notification-panel__item.is-unread {
-  background: #ecfdf5;
+  background: var(--color-primary-50);
 }
 
 .notification-panel__icon {
@@ -64,7 +64,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(26, 107, 74, 0.1);
+  background: var(--color-primary-100);
   color: var(--ion-color-primary);
 }
 

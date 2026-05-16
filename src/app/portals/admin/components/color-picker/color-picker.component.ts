@@ -15,7 +15,7 @@ import { FormsModule } from '@angular/forms';
           type="text"
           [ngModel]="draftValue"
           (ngModelChange)="onTextChange($event)"
-          placeholder="#1A6B4A"
+          placeholder="#5D3E8E"
         />
         <input type="color" [ngModel]="resolvedValue" (ngModelChange)="onColorChange($event)" />
       </div>
@@ -29,7 +29,7 @@ import { FormsModule } from '@angular/forms';
 })
 export class ColorPickerComponent implements OnChanges {
   @Input() label = '';
-  @Input() value = '#1A6B4A';
+  @Input() value = '#5D3E8E';
   @Output() valueChange = new EventEmitter<string>();
 
   draftValue = this.value;
