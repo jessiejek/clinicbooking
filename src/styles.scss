@@ -385,6 +385,14 @@ ion-item,
   }
 }
 
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: var(--shadow-sm) !important;
+  filter: none !important;
+}
+
 .btn-outline {
   background: transparent;
   border: 1.5px solid var(--ion-color-primary);
@@ -576,6 +584,12 @@ ion-item.clinic-input {
     font-size: var(--text-base);
     color: var(--clinic-text-primary);
   }
+}
+
+.filter-input:focus {
+  outline: none;
+  border-color: var(--ion-color-primary);
+  box-shadow: 0 0 0 3px rgba(93, 62, 142, 0.1);
 }
 
 .form-error-message {
