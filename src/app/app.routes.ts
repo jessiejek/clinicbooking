@@ -41,5 +41,8 @@ export const routes: Routes = [
     path: 'dev',
     loadChildren: () => import('./dev/dev.routes').then((m) => m.DEV_ROUTES)
   },
-  { path: '**', redirectTo: 'public' }
+  {
+    path: '**',
+    loadComponent: () => import('./shared/pages/not-found/not-found.page').then((m) => m.NotFoundPage)
+  }
 ];

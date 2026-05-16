@@ -62,6 +62,10 @@ export const STAFF_ROUTES: Routes = [
         path: 'profile',
         loadComponent: () => import('./profile/staff-profile.page').then((m) => m.StaffProfilePage),
         data: { title: 'My Profile' }
+      },
+      {
+        path: '**',
+        loadComponent: () => import('../../shared/pages/not-found/not-found.page').then((m) => m.NotFoundPage)
       }
     ]
   }

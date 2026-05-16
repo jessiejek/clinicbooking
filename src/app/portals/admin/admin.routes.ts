@@ -125,6 +125,10 @@ export const ADMIN_ROUTES: Routes = [
         path: 'reports',
         loadComponent: () => import('./reports/reports.page').then((m) => m.ReportsPage),
         data: { title: 'Reports' }
+      },
+      {
+        path: '**',
+        loadComponent: () => import('../../shared/pages/not-found/not-found.page').then((m) => m.NotFoundPage)
       }
     ]
   }

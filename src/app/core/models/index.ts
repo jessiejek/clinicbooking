@@ -386,6 +386,7 @@ export interface ClinicSettings {
   payAtClinicNoShowWindowMinutes: number;
   privacyPolicyText?: string;
   consentVersion: string;
+  paymentSettings: PaymentSettings;
 }
 
 export interface OperatingHours {
@@ -432,16 +433,12 @@ export interface NavItem {
 
 export interface AuditLog {
   id: string;
-  entityType: string;
+  entityType: 'Booking' | 'Patient' | 'Doctor' | 'Payment' | 'Settings' | 'Consultation';
   entityId: string;
   action: string;
-  oldValues?: string;
-  newValues?: string;
-  performedByUserId?: string;
-  performedByName: string;
-  performedByRole: string;
+  performedBy: string;
   performedAt: string;
-  ipAddress?: string;
+  details?: string;
 }
 
 export interface AdminDashboardStats {

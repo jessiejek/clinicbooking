@@ -13,4 +13,7 @@ export const markNotificationRead = createAction(
   props<{ id: string }>()
 );
 
-export const markAllNotificationsRead = createAction('[Notifications] Mark All Notifications Read');
+export const markAllNotificationsRead = createAction(
+  '[Notifications] Mark All Notifications Read',
+  props<{ userId?: string }>()
+);

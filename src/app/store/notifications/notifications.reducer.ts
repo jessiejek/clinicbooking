@@ -21,8 +21,12 @@ export const notificationsReducer = createReducer(
       notification.id === id ? { ...notification, isRead: true } : notification
     )
   })),
-  on(markAllNotificationsRead, (state) => ({
+  on(markAllNotificationsRead, (state, { userId }) => ({
     ...state,
-    notifications: state.notifications.map((notification) => ({ ...notification, isRead: true }))
+    notifications: state.notifications.map((notification) =>
+      !userId || notification.userId === userId
+        ? { ...notification, isRead: true }
+        : notification
+    )
   }))
 );

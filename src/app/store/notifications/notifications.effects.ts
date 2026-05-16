@@ -1,12 +1,8 @@
 import { inject, Injectable } from '@angular/core';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
-import { map, switchMap } from 'rxjs';
-import { timer } from 'rxjs';
+import { map, switchMap, timer } from 'rxjs';
 import { MockDataService } from '../../core/services/mock-data.service';
-import {
-  loadNotifications,
-  loadNotificationsSuccess
-} from './notifications.actions';
+import { loadNotifications, loadNotificationsSuccess } from './notifications.actions';
 
 @Injectable()
 export class NotificationsEffects {

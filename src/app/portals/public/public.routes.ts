@@ -19,7 +19,11 @@ export const PUBLIC_ROUTES: Routes = [
       { path: 'services', component: ServicesPage },
       { path: 'announcements', component: AnnouncementsPage },
       { path: 'booking', component: BookingPage },
-      { path: 'booking-confirmation/:bookingId', component: BookingConfirmationPage }
+      { path: 'booking-confirmation/:bookingId', component: BookingConfirmationPage },
+      {
+        path: '**',
+        loadComponent: () => import('../../shared/pages/not-found/not-found.page').then((m) => m.NotFoundPage)
+      }
     ]
   }
 ];

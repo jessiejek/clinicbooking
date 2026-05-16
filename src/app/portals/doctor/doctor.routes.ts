@@ -93,6 +93,10 @@ export const DOCTOR_ROUTES: Routes = [
         path: 'profile',
         loadComponent: () => import('./profile/doctor-profile.page').then((m) => m.DoctorProfilePage),
         data: { title: 'My Profile' }
+      },
+      {
+        path: '**',
+        loadComponent: () => import('../../shared/pages/not-found/not-found.page').then((m) => m.NotFoundPage)
       }
     ]
   }

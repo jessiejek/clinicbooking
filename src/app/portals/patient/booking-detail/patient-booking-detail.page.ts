@@ -96,6 +96,12 @@ import { AvatarComponent } from '../../../shared/components/avatar/avatar.compon
             <app-banner variant="info" message="Your proof has been submitted and is waiting for review."></app-banner>
           </div>
 
+          <div class="clinic-card" *ngIf="canLeaveReview">
+            <div class="section-heading">Review Your Visit</div>
+            <p>Share feedback about your completed appointment.</p>
+            <button type="button" class="btn-outline" (click)="leaveReview()">Leave Review</button>
+          </div>
+
           <div class="clinic-card cancellation-panel" *ngIf="canCancelOnline; else cannotCancelTpl">
             <div class="section-heading">Cancellation</div>
             <p>This booking can still be cancelled online.</p>
@@ -196,6 +202,10 @@ export class PatientBookingDetailPage implements OnInit {
     return appointmentDateTime.getTime() - Date.now() > cancellationWindow;
   }
 
+  get canLeaveReview(): boolean {
+    return !!this.booking && this.booking.status === 'Completed' && !this.mockData.getReviews().some((review) => review.bookingId === this.booking?.id);
+  }
+
   ngOnInit(): void {
     this.store.dispatch(loadBookings());
     this.store.dispatch(loadDoctors());
@@ -271,6 +281,13 @@ export class PatientBookingDetailPage implements OnInit {
 
   back(): void {
     void this.router.navigate(['/patient/bookings']);
+  }
+
+  leaveReview(): void {
+    if (!this.booking) {
+      return;
+    }
+    void this.router.navigate(['/patient/reviews', this.booking.id]);
   }
 
   private async presentToast(message: string): Promise<void> {

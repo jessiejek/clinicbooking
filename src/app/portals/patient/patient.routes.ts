@@ -83,12 +83,22 @@ export const PATIENT_ROUTES: Routes = [
         data: { title: 'Profile' }
       },
       {
+        path: 'reviews/:bookingId',
+        loadComponent: () =>
+          import('./reviews/patient-reviews.page').then((m) => m.PatientReviewsPage),
+        data: { title: 'Leave Review' }
+      },
+      {
         path: 'privacy-consent',
         loadComponent: () =>
           import('./privacy-consent/patient-privacy-consent.page').then(
             (m) => m.PatientPrivacyConsentPage
           ),
         data: { title: 'Privacy Consent' }
+      },
+      {
+        path: '**',
+        loadComponent: () => import('../../shared/pages/not-found/not-found.page').then((m) => m.NotFoundPage)
       }
     ]
   }

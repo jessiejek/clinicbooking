@@ -10,6 +10,7 @@ import { routes } from './app.routes';
 import { AuthEffects } from './store/auth/auth.effects';
 import { authReducer } from './store/auth/auth.reducer';
 import { clinicSettingsReducer } from './store/clinic-settings/clinic-settings.reducer';
+import { ClinicSettingsEffects } from './store/clinic-settings/clinic-settings.effects';
 import { BookingsEffects } from './store/bookings/bookings.effects';
 import { bookingsReducer } from './store/bookings/bookings.reducer';
 import { DoctorsEffects } from './store/doctors/doctors.effects';
@@ -37,6 +38,7 @@ export const appConfig: ApplicationConfig = {
     provideState({ name: 'medicalRecords', reducer: medicalRecordsReducer }),
     provideEffects([
       AuthEffects,
+      ClinicSettingsEffects,
       BookingsEffects,
       DoctorsEffects,
       PatientsEffects,

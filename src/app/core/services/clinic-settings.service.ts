@@ -8,6 +8,6 @@ export class ClinicSettingsService {
 
   /** Loads clinic configuration from seed data (Phase 1 — no HTTP). */
   load(): ClinicSettings {
-    return this.mockData.clinicSettings;
+    return this.mockData.getClinicSettings();
   }
 }
