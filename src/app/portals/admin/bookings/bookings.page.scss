@@ -8,6 +8,7 @@
   align-items: flex-end;
   justify-content: space-between;
   gap: var(--space-4);
+  margin-bottom: var(--space-8);
 }
 
 .page-title {
@@ -36,8 +37,14 @@
   background: white;
 }
 
-@media (max-width: 1000px) {
+@media (max-width: 768px) {
   .filter-bar {
     grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .filter-bar {
+    grid-template-columns: 1fr;
   }
 }

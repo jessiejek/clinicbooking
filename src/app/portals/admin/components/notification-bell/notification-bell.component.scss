@@ -30,6 +30,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  border: 2px solid white;
+  padding: 0 4px;
   animation: badgePop 300ms var(--transition-spring);
 }
 

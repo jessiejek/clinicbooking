@@ -42,7 +42,14 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let patient of filteredPatients" (click)="openDetail(patient.id)">
+            <tr
+              *ngFor="let patient of filteredPatients"
+              tabindex="0"
+              role="button"
+              [attr.aria-label]="'Open patient record for ' + patient.firstName + ' ' + patient.lastName"
+              (click)="openDetail(patient.id)"
+              (keydown.enter)="openDetail(patient.id)"
+            >
               <td class="data-mono">{{ patient.patientCode }}</td>
               <td>{{ patient.firstName }} {{ patient.lastName }}</td>
               <td>{{ patient.sex }}</td>

@@ -54,7 +54,11 @@
 }
 
 .notification-panel__item.is-unread {
-  background: #ecfdf5;
+  background: var(--color-primary-50);
+}
+
+.notification-panel__item.is-unread strong {
+  font-weight: var(--font-semibold);
 }
 
 .notification-panel__icon {

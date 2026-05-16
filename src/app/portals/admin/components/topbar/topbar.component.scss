@@ -5,7 +5,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-5);
-  padding: 0 var(--space-6);
+  padding: 0 var(--space-8);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -43,6 +43,12 @@
   gap: var(--space-2);
   padding: 0 var(--space-4);
   color: var(--clinic-text-muted);
+}
+
+.topbar__search:focus-within {
+  border-color: var(--ion-color-primary);
+  background: white;
+  box-shadow: 0 0 0 3px rgba(93, 62, 142, 0.1);
 }
 
 .topbar__search input {
@@ -88,7 +94,7 @@
   color: var(--clinic-text-muted);
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 768px) {
   .topbar__search,
   .topbar__user-meta {
     display: none;

@@ -1,253 +1,129 @@
-import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
-import { 
-  IonSplitPane, 
-  IonMenu, 
-  IonHeader, 
-  IonToolbar, 
-  IonTitle, 
-  IonContent, 
-  IonList, 
-  IonItem, 
-  IonIcon, 
-  IonLabel, 
-  IonRouterOutlet,
-  IonMenuToggle,
-  IonButtons,
-  IonMenuButton,
-  IonButton,
-  IonFooter
-} from '@ionic/angular/standalone';
-import { addIcons } from 'ionicons';
-import { 
-  gridOutline, 
-  peopleOutline, 
-  businessOutline, 
-  barChartOutline, 
-  settingsOutline, 
-  logOutOutline,
-  notificationsOutline,
-  searchOutline
-} from 'ionicons/icons';
+import { Component, DestroyRef, OnInit, inject } from '@angular/core';
+import { ActivatedRoute, NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import { Store } from '@ngrx/store';
+import { filter } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { NavItem } from '../../core/models';
+import { ClinicSettingsService } from '../../core/services/clinic-settings.service';
+import { logout as logoutAction } from '../../store/auth/auth.actions';
+import { selectCurrentUser } from '../../store/auth/auth.selectors';
+import { selectBookingsByStatus } from '../../store/bookings/bookings.selectors';
+import { selectUnreadCount } from '../../store/notifications/notifications.selectors';
+import { SidebarComponent } from '../../portals/admin/components/sidebar/sidebar.component';
+import { TopbarComponent } from '../../portals/admin/components/topbar/topbar.component';
 
 @Component({
   selector: 'app-admin-layout',
   template: `
-    <ion-split-pane contentId="main-content" when="lg">
-      <ion-menu contentId="main-content" type="push" class="premium-sidebar">
-        <ion-header class="ion-no-border">
-          <ion-toolbar style="--background: var(--clinic-bg-elevated); height: 80px;">
-            <div class="logo-area ion-padding">
-              <div class="logo-icon">G</div>
-              <div class="logo-text">GAVINO<span class="muted">CLINIC</span></div>
-            </div>
-          </ion-toolbar>
-        </ion-header>
+    <div class="portal-layout">
+      <app-admin-sidebar
+        class="portal-layout__sidebar"
+        [navItems]="navItems"
+        [portalLabel]="portalLabel"
+        [clinicName]="clinicName"
+        [currentUser]="currentUser()"
+        (logout)="logout()"
+      ></app-admin-sidebar>
 
-        <ion-content class="ion-no-padding">
-          <div class="sidebar-section">MAIN NAVIGATION</div>
-          <ion-list lines="none" class="sidebar-list">
-            <ion-menu-toggle auto-hide="false">
-              <ion-item routerLink="/admin/dashboard" routerDirection="root" detail="false" class="sidebar-item" routerLinkActive="active-item">
-                <ion-icon slot="start" name="grid-outline"></ion-icon>
-                <ion-label>Dashboard</ion-label>
-              </ion-item>
-              <ion-item routerLink="/admin/doctors" routerDirection="root" detail="false" class="sidebar-item" routerLinkActive="active-item">
-                <ion-icon slot="start" name="people-outline"></ion-icon>
-                <ion-label>Manage Doctors</ion-label>
-              </ion-item>
-              <ion-item routerLink="/admin/clinics" routerDirection="root" detail="false" class="sidebar-item" routerLinkActive="active-item">
-                <ion-icon slot="start" name="business-outline"></ion-icon>
-                <ion-label>Clinics</ion-label>
-              </ion-item>
-              <ion-item routerLink="/admin/reports" routerDirection="root" detail="false" class="sidebar-item" routerLinkActive="active-item">
-                <ion-icon slot="start" name="bar-chart-outline"></ion-icon>
-                <ion-label>Reports</ion-label>
-              </ion-item>
-            </ion-menu-toggle>
-          </ion-list>
+      <div class="main-content">
+        <app-admin-topbar
+          [title]="pageTitle"
+          [portalLabel]="portalLabel"
+          [currentUser]="currentUser()"
+          [unreadCount]="unreadCount()"
+          (logout)="logout()"
+        ></app-admin-topbar>
 
-          <div class="sidebar-section">SYSTEM</div>
-          <ion-list lines="none" class="sidebar-list">
-            <ion-menu-toggle auto-hide="false">
-              <ion-item routerLink="/admin/settings" routerDirection="root" detail="false" class="sidebar-item" routerLinkActive="active-item">
-                <ion-icon slot="start" name="settings-outline"></ion-icon>
-                <ion-label>Settings</ion-label>
-              </ion-item>
-            </ion-menu-toggle>
-          </ion-list>
-        </ion-content>
-
-        <ion-footer class="ion-no-border ion-padding">
-          <div class="user-pill">
-            <div class="avatar-sm">AD</div>
-            <div class="user-info">
-              <div class="user-name">System Admin</div>
-              <div class="user-role">Administrator</div>
-            </div>
-            <ion-icon name="log-out-outline" class="logout-btn"></ion-icon>
-          </div>
-        </ion-footer>
-      </ion-menu>
-
-      <div class="ion-page" id="main-content">
-        <ion-header class="ion-no-border">
-          <ion-toolbar style="--background: white; --padding-start: 24px; --padding-end: 24px; height: 72px; box-shadow: var(--shadow-sm);">
-            <ion-buttons slot="start">
-              <ion-menu-button color="primary"></ion-menu-button>
-            </ion-buttons>
-            <ion-title style="font-weight: 700; color: var(--clinic-text-primary);">
-              Management System
-            </ion-title>
-            <ion-buttons slot="end">
-              <ion-button color="medium" class="btn-icon">
-                <ion-icon name="notifications-outline"></ion-icon>
-              </ion-button>
-              <ion-button color="medium" class="btn-icon">
-                <ion-icon name="search-outline"></ion-icon>
-              </ion-button>
-            </ion-buttons>
-          </ion-toolbar>
-        </ion-header>
-
-        <ion-content class="ion-padding" style="--background: var(--clinic-bg);">
-          <ion-router-outlet></ion-router-outlet>
-        </ion-content>
+        <main class="page-content">
+          <router-outlet></router-outlet>
+        </main>
       </div>
-    </ion-split-pane>
-
-    <style>
-      .premium-sidebar {
-        --background: var(--clinic-bg-elevated);
-        border-right: none;
-        box-shadow: 4px 0 24px rgba(0,0,0,0.03);
-      }
-      .logo-area {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-      }
-      .logo-icon {
-        width: 40px;
-        height: 40px;
-        background: var(--gradient-card-green);
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-weight: 800;
-        font-size: 20px;
-        box-shadow: var(--shadow-green);
-      }
-      .logo-text {
-        font-weight: 800;
-        letter-spacing: -0.5px;
-        font-size: 18px;
-        color: var(--clinic-text-primary);
-      }
-      .logo-text .muted {
-        opacity: 0.5;
-        font-weight: 400;
-      }
-      .sidebar-section {
-        padding: 24px 24px 8px;
-        font-size: 11px;
-        font-weight: 700;
-        color: var(--clinic-text-muted);
-        letter-spacing: 1px;
-      }
-      .sidebar-item {
-        --padding-start: 24px;
-        --padding-end: 24px;
-        --border-radius: 12px;
-        margin: 4px 12px;
-        font-weight: 500;
-        --color: var(--clinic-text-secondary);
-        --background-hover: var(--color-primary-50);
-        transition: all 0.2s ease;
-      }
-      .active-item {
-        --color: var(--ion-color-primary);
-        --background: var(--color-primary-50);
-        font-weight: 700;
-      }
-      .user-pill {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 12px;
-        background: var(--color-neutral-50);
-        border-radius: 16px;
-      }
-      .avatar-sm {
-        width: 36px;
-        height: 36px;
-        background: var(--color-primary-100);
-        color: var(--ion-color-primary);
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 700;
-        font-size: 14px;
-      }
-      .user-info {
-        flex: 1;
-      }
-      .user-name {
-        font-size: 14px;
-        font-weight: 700;
-        color: var(--clinic-text-primary);
-      }
-      .user-role {
-        font-size: 12px;
-        color: var(--clinic-text-muted);
-      }
-      .logout-btn {
-        font-size: 20px;
-        color: var(--clinic-text-muted);
-        cursor: pointer;
-      }
-      .logout-btn:hover {
-        color: var(--ion-color-danger);
-      }
-    </style>
+    </div>
   `,
+  styleUrl: './admin-layout.component.scss',
   standalone: true,
-  imports: [
-    CommonModule,
-    RouterModule,
-    IonSplitPane,
-    IonMenu,
-    IonHeader,
-    IonToolbar,
-    IonTitle,
-    IonContent,
-    IonList,
-    IonItem,
-    IonIcon,
-    IonLabel,
-    IonRouterOutlet,
-    IonMenuToggle,
-    IonButtons,
-    IonMenuButton,
-    IonButton,
-    IonFooter
-  ]
+  imports: [RouterOutlet, SidebarComponent, TopbarComponent]
 })
-export class AdminLayoutComponent {
-  constructor() {
-    addIcons({ 
-      gridOutline, 
-      peopleOutline, 
-      businessOutline, 
-      barChartOutline, 
-      settingsOutline, 
-      logOutOutline,
-      notificationsOutline,
-      searchOutline
-    });
+export class AdminLayoutComponent implements OnInit {
+  private readonly store = inject(Store);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  private readonly clinicSettingsService = inject(ClinicSettingsService);
+  private readonly destroyRef = inject(DestroyRef);
+
+  readonly currentUser = this.store.selectSignal(selectCurrentUser);
+  readonly unreadCount = this.store.selectSignal(selectUnreadCount);
+  readonly pendingBookings = this.store.selectSignal(selectBookingsByStatus('Pending'));
+
+  clinicName = '';
+  portalLabel = 'Admin Portal';
+  portalTitle = 'Dashboard';
+  pageTitle = 'Dashboard';
+
+  get pendingCount(): number {
+    return this.pendingBookings().length;
+  }
+
+  get navItems(): NavItem[] {
+    return [
+      { section: 'CORE', label: 'Dashboard', route: '/admin/dashboard', icon: 'grid-outline' },
+      {
+        section: 'CORE',
+        label: 'Bookings',
+        route: '/admin/bookings',
+        icon: 'calendar-outline',
+        badgeCount: this.pendingCount
+      },
+      { section: 'CORE', label: 'Patients', route: '/admin/patients', icon: 'people-outline' },
+      { section: 'CORE', label: 'Doctors', route: '/admin/doctors', icon: 'medical-outline' },
+      { section: 'CORE', label: 'Calendar', route: '/admin/calendar', icon: 'calendar-number-outline' },
+      { section: 'MANAGEMENT', label: 'Services', route: '/admin/services', icon: 'briefcase-outline' },
+      { section: 'MANAGEMENT', label: 'Staff', route: '/admin/staff', icon: 'person-outline' },
+      { section: 'MANAGEMENT', label: 'Walk-In', route: '/admin/walk-in', icon: 'walk-outline' },
+      { section: 'ANALYTICS', label: 'Reports', route: '/admin/reports', icon: 'bar-chart-outline' },
+      {
+        section: 'ANALYTICS',
+        label: 'Audit Log',
+        route: '/admin/audit-logs',
+        icon: 'document-text-outline'
+      },
+      {
+        section: 'SYSTEM',
+        label: 'Announcements',
+        route: '/admin/announcements',
+        icon: 'megaphone-outline'
+      },
+      { section: 'SYSTEM', label: 'Settings', route: '/admin/settings', icon: 'settings-outline' }
+    ];
+  }
+
+  ngOnInit(): void {
+    this.clinicName = this.clinicSettingsService.load().clinicName;
+    this.updatePageTitle();
+
+    this.router.events
+      .pipe(
+        filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe(() => this.updatePageTitle());
+  }
+
+  logout(): void {
+    this.store.dispatch(logoutAction());
+    void this.router.navigate(['/auth/login']);
+  }
+
+  private updatePageTitle(): void {
+    const route = this.getDeepestChild(this.route);
+    this.pageTitle = (route.snapshot.data['title'] as string | undefined) ?? this.portalTitle;
+  }
+
+  private getDeepestChild(route: ActivatedRoute): ActivatedRoute {
+    let current = route;
+    while (current.firstChild) {
+      current = current.firstChild;
+    }
+    return current;
   }
 }

@@ -13,7 +13,7 @@ import { TimeSlotPipe } from '../../pipes/time-slot.pipe';
   template: `
     <ng-container *ngIf="isLoading">
       <div class="slot-grid">
-        <div class="skeleton skeleton-slot" *ngFor="let i of [1, 2, 3, 4, 5, 6, 7, 8]"></div>
+        <div class="skeleton skeleton-row" *ngFor="let i of [1, 2, 3, 4, 5, 6, 7, 8]"></div>
       </div>
     </ng-container>
 

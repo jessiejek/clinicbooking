@@ -1,11 +1,13 @@
 import { AsyncPipe, NgFor, NgIf } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
-import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Store } from '@ngrx/store';
+import { IonIcon } from '@ionic/angular/standalone';
+import { addIcons } from 'ionicons';
+import { createOutline, trashOutline } from 'ionicons/icons';
 import { Doctor } from '../../../core/models';
 import { MockDataService } from '../../../core/services/mock-data.service';
-import { loadDoctors, loadSchedules, setDoctorStatus } from '../../../store/doctors/doctors.actions';
+import { loadDoctors, loadSchedules } from '../../../store/doctors/doctors.actions';
 import { selectAllDoctors, selectDoctorsLoading } from '../../../store/doctors/doctors.selectors';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
@@ -15,7 +17,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
 @Component({
   selector: 'app-admin-doctors-page',
   standalone: true,
-  imports: [AsyncPipe, FormsModule, NgFor, NgIf, AvatarComponent, EmptyStateComponent, SkeletonComponent, StatusBadgeComponent],
+  imports: [AsyncPipe, NgFor, NgIf, IonIcon, AvatarComponent, EmptyStateComponent, SkeletonComponent, StatusBadgeComponent],
   template: `
     <section class="page-shell">
       <div class="page-shell__header">
@@ -40,20 +42,42 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let doctor of doctors" (click)="editDoctor(doctor.id)">
+            <tr
+              *ngFor="let doctor of doctors"
+              tabindex="0"
+              role="button"
+              [attr.aria-label]="'Edit doctor ' + doctor.fullName"
+              (click)="editDoctor(doctor.id)"
+              (keydown.enter)="editDoctor(doctor.id)"
+            >
               <td><app-avatar [name]="doctor.fullName"></app-avatar></td>
               <td>{{ doctor.fullName }}</td>
               <td>{{ doctor.specialization }}</td>
-              <td>₱{{ doctor.consultationFee }}</td>
+              <td>PHP {{ doctor.consultationFee }}</td>
               <td>{{ workingDays(doctor.id) }}</td>
               <td>
-                <select [ngModel]="doctor.status" (ngModelChange)="setStatus(doctor.id, $event)" (click)="$event.stopPropagation()">
-                  <option value="Active">Active</option>
-                  <option value="Inactive">Inactive</option>
-                  <option value="OnLeave">On Leave</option>
-                </select>
+                <app-status-badge [status]="doctor.status"></app-status-badge>
               </td>
-              <td><app-status-badge [status]="doctor.status"></app-status-badge></td>
+              <td>
+                <div class="table-actions">
+                  <button
+                    type="button"
+                    class="btn-icon"
+                    [attr.aria-label]="'Edit doctor ' + doctor.fullName"
+                    (click)="editDoctor(doctor.id); $event.stopPropagation()"
+                  >
+                    <ion-icon name="edit-outline"></ion-icon>
+                  </button>
+                  <button
+                    type="button"
+                    class="btn-icon"
+                    [attr.aria-label]="'Delete doctor ' + doctor.fullName"
+                    (click)="removeDoctor(doctor.id, $event)"
+                  >
+                    <ion-icon name="trash-outline"></ion-icon>
+                  </button>
+                </div>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -81,6 +105,10 @@ export class DoctorsPage implements OnInit {
   doctors: Doctor[] = [];
   isLoading = false;
 
+  constructor() {
+    addIcons({ 'edit-outline': createOutline, trashOutline });
+  }
+
   ngOnInit(): void {
     this.store.dispatch(loadDoctors());
     this.store.dispatch(loadSchedules());
@@ -96,8 +124,9 @@ export class DoctorsPage implements OnInit {
     void this.router.navigate(['/admin/doctors', id, 'edit']);
   }
 
-  setStatus(id: string, status: Doctor['status']): void {
-    this.store.dispatch(setDoctorStatus({ doctorId: id, status }));
+  removeDoctor(id: string, event: Event): void {
+    event.stopPropagation();
+    this.doctors = this.doctors.filter((doctor) => doctor.id !== id);
   }
 
   workingDays(doctorId: string): string {

@@ -71,15 +71,15 @@ import { StatCardComponent } from '../components/stat-card/stat-card.component';
             <svg viewBox="0 0 600 220" class="area-chart" aria-label="Revenue chart">
               <defs>
                 <linearGradient id="revenueGradient" x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0%" stop-color="#1A6B4A" stop-opacity="0.42"></stop>
-                  <stop offset="100%" stop-color="#1A6B4A" stop-opacity="0.06"></stop>
+                  <stop offset="0%" [attr.stop-color]="primaryColor" stop-opacity="0.42"></stop>
+                  <stop offset="100%" [attr.stop-color]="primaryColor" stop-opacity="0.06"></stop>
                 </linearGradient>
               </defs>
               <path [attr.d]="areaFillPath" fill="url(#revenueGradient)"></path>
-              <path [attr.d]="areaLinePath" fill="none" stroke="#1A6B4A" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"></path>
+              <path [attr.d]="areaLinePath" fill="none" [attr.stroke]="primaryColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"></path>
             </svg>
             <div class="area-chart__legend">
-              <span *ngFor="let point of revenueLegend; let i = index">{{ i + 1 }}</span>
+              <span *ngFor="let point of revenueLegend">{{ point }}</span>
             </div>
           </div>
         </div>
@@ -122,7 +122,8 @@ export class DashboardPage implements OnInit {
   noShowCount = 0;
   followUpsCount = 0;
   topDoctorStats: Array<{ label: string; value: number; max: number }> = [];
-  revenueLegend = Array.from({ length: 6 }, (_, index) => index + 1);
+  revenueLegend: string[] = this.buildRevenueLegend();
+  primaryColor = this.resolvePrimaryColor();
   areaLinePath = '';
   areaFillPath = '';
 
@@ -191,6 +192,7 @@ export class DashboardPage implements OnInit {
     }));
     const maxCount = Math.max(...doctorStats.map((item) => item.value), 1);
     this.topDoctorStats = doctorStats.map((item) => ({ ...item, max: maxCount }));
+    this.revenueLegend = this.buildRevenueLegend();
 
     const revenueData = Array.from({ length: 30 }, () => Math.floor(Math.random() * 3000) + 500);
     const points = revenueData.map((value, index) => {
@@ -206,5 +208,22 @@ export class DashboardPage implements OnInit {
     const now = new Date();
     const offset = now.getTimezoneOffset() * 60000;
     return new Date(now.getTime() - offset).toISOString().slice(0, 10);
+  }
+
+  private resolvePrimaryColor(): string {
+    if (typeof document === 'undefined') {
+      return '#5D3E8E';
+    }
+
+    const color = getComputedStyle(document.documentElement).getPropertyValue('--ion-color-primary').trim();
+    return color || '#5D3E8E';
+  }
+
+  private buildRevenueLegend(): string[] {
+    return Array.from({ length: 6 }, (_, index) => {
+      const date = new Date();
+      date.setMonth(date.getMonth() - (5 - index));
+      return date.toLocaleString(undefined, { month: 'short' });
+    });
   }
 }

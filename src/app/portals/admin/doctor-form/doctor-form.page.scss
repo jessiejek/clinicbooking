@@ -3,6 +3,10 @@
   gap: var(--space-6);
 }
 
+.page-shell__header {
+  margin-bottom: var(--space-8);
+}
+
 .page-shell__header .page-title {
   margin: var(--space-2) 0 0;
   font-size: var(--text-2xl);

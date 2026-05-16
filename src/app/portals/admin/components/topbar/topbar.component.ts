@@ -22,7 +22,7 @@ import { NotificationBellComponent } from '../notification-bell/notification-bel
 
       <div class="topbar__actions">
         <app-notification-bell [unreadCount]="unreadCount"></app-notification-bell>
-        <button type="button" class="topbar__user" (click)="logout.emit()">
+        <button type="button" class="topbar__user" aria-label="Account options" (click)="logout.emit()">
           <app-avatar [name]="currentUser?.fullName || 'Admin'" size="sm"></app-avatar>
           <span class="topbar__user-meta">
             <span class="topbar__user-name">{{ currentUser?.fullName || 'Admin User' }}</span>

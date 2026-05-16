@@ -62,9 +62,23 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let booking of filteredBookings" (click)="openBooking(booking.id)">
-                <td><input type="checkbox" [checked]="selectedIds.has(booking.id)" (click)="$event.stopPropagation()" (change)="toggleSelect(booking.id, $event)" /></td>
-                <td class="data-mono">{{ booking.queueNumber ?? '—' }}</td>
+              <tr
+                *ngFor="let booking of filteredBookings"
+                tabindex="0"
+                role="button"
+                [attr.aria-label]="'Open booking ' + booking.id + ' for ' + patientName(booking.patientId)"
+                (click)="openBooking(booking.id)"
+                (keydown.enter)="openBooking(booking.id)"
+              >
+                <td>
+                  <input
+                    type="checkbox"
+                    [checked]="selectedIds.has(booking.id)"
+                    (click)="$event.stopPropagation()"
+                    (change)="toggleSelect(booking.id, $event)"
+                  />
+                </td>
+                <td class="data-mono">{{ booking.queueNumber ?? '-' }}</td>
                 <td>{{ patientName(booking.patientId) }}</td>
                 <td>{{ doctorName(booking.doctorId) }}</td>
                 <td>{{ serviceName(booking.serviceId) }}</td>

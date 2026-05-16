@@ -3,6 +3,7 @@ import { Component, OnInit, inject } from '@angular/core';
 import { FormBuilder, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Store } from '@ngrx/store';
+import { IonModal } from '@ionic/angular/standalone';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
 import { Patient } from '../../../core/models';
 import { loadPatients, addPatient } from '../../../store/patients/patients.actions';
@@ -10,7 +11,6 @@ import { selectAllPatients, selectPatientsLoading } from '../../../store/patient
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { SkeletonComponent } from '../../../shared/components/skeleton/skeleton.component';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
-import { IonModal } from '@ionic/angular/standalone';
 
 @Component({
   selector: 'app-admin-patients-page',
@@ -42,7 +42,14 @@ import { IonModal } from '@ionic/angular/standalone';
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let patient of filteredPatients" (click)="openDetail(patient.id)">
+            <tr
+              *ngFor="let patient of filteredPatients"
+              tabindex="0"
+              role="button"
+              [attr.aria-label]="'Open patient record for ' + patient.firstName + ' ' + patient.lastName"
+              (click)="openDetail(patient.id)"
+              (keydown.enter)="openDetail(patient.id)"
+            >
               <td class="data-mono">{{ patient.patientCode }}</td>
               <td>{{ patient.firstName }} {{ patient.lastName }}</td>
               <td>{{ patient.sex }}</td>

@@ -101,7 +101,7 @@ export class MockDataService {
     {
       id: 'user-admin-2',
       fullName: 'Maria Fernandez',
-      email: 'admin2@clinic.ph',
+      email: 'admin2@gavino.clinic',
       password: 'Admin@123456',
       role: 'Admin',
       isFirstLogin: false
@@ -109,7 +109,7 @@ export class MockDataService {
     {
       id: 'user-staff-1',
       fullName: 'Ana Gomez',
-      email: 'staff@clinic.ph',
+      email: 'staff@gavino.clinic',
       password: 'Staff@123456',
       role: 'Staff',
       isFirstLogin: false
@@ -117,7 +117,7 @@ export class MockDataService {
     {
       id: 'user-doctor-1',
       fullName: 'Dr. Santos',
-      email: 'dr.santos@clinic.ph',
+      email: 'dr.santos@gavino.clinic',
       password: 'Doctor@123456',
       role: 'Doctor',
       isFirstLogin: false
@@ -125,7 +125,7 @@ export class MockDataService {
     {
       id: 'user-doctor-2',
       fullName: 'Dr. Jose Reyes',
-      email: 'dr.reyes@clinic.ph',
+      email: 'dr.reyes@gavino.clinic',
       password: 'Doctor@123456',
       role: 'Doctor',
       isFirstLogin: true
@@ -133,7 +133,7 @@ export class MockDataService {
     {
       id: 'user-doctor-3',
       fullName: 'Dr. Ana Cruz',
-      email: 'dr.cruz@clinic.ph',
+      email: 'dr.cruz@gavino.clinic',
       password: 'Doctor@123456',
       role: 'Doctor',
       isFirstLogin: false
@@ -141,7 +141,7 @@ export class MockDataService {
     {
       id: 'user-patient-1',
       fullName: 'Juan dela Cruz',
-      email: 'patient@clinic.ph',
+      email: 'patient@gavino.clinic',
       password: 'Patient@123456',
       role: 'Patient',
       isFirstLogin: false
@@ -319,7 +319,7 @@ export class MockDataService {
       city: 'Lapu-Lapu City',
       zipCode: '6015',
       contactNumber: '09171234567',
-      email: 'patient@clinic.ph',
+      email: 'patient@gavino.clinic',
       emergencyContactName: 'Maria dela Cruz',
       emergencyContactNumber: '09171230000',
       emergencyContactRelationship: 'Spouse',

@@ -5,7 +5,10 @@ import { Booking, Doctor, Patient, Service } from '../../../../core/models';
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
 import { SkeletonComponent } from '../../../../shared/components/skeleton/skeleton.component';
 import { StatusBadgeComponent } from '../../../../shared/components/status-badge/status-badge.component';
-import { BookingActionsMenuComponent, BookingActionItem } from '../booking-actions-menu/booking-actions-menu.component';
+import {
+  BookingActionsMenuComponent,
+  BookingActionItem
+} from '../booking-actions-menu/booking-actions-menu.component';
 
 @Component({
   selector: 'app-today-appointments-table',
@@ -36,8 +39,15 @@ import { BookingActionsMenuComponent, BookingActionItem } from '../booking-actio
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let booking of bookings" (click)="rowClicked.emit(booking)">
-            <td class="data-mono">{{ booking.queueNumber ?? '—' }}</td>
+          <tr
+            *ngFor="let booking of bookings"
+            tabindex="0"
+            role="button"
+            [attr.aria-label]="'Open appointment for ' + patientName(booking.patientId)"
+            (click)="rowClicked.emit(booking)"
+            (keydown.enter)="rowClicked.emit(booking)"
+          >
+            <td class="data-mono">{{ booking.queueNumber ?? 'â€”' }}</td>
             <td>{{ patientName(booking.patientId) }}</td>
             <td>{{ doctorName(booking.doctorId) }}</td>
             <td>{{ serviceName(booking.serviceId) }}</td>
@@ -45,7 +55,10 @@ import { BookingActionsMenuComponent, BookingActionItem } from '../booking-actio
             <td><app-status-badge [status]="booking.status"></app-status-badge></td>
             <td><app-status-badge [status]="booking.paymentStatus"></app-status-badge></td>
             <td>
-              <app-booking-actions-menu [actions]="actions" (actionSelected)="action.emit($event)"></app-booking-actions-menu>
+              <app-booking-actions-menu
+                [actions]="actions"
+                (actionSelected)="action.emit($event)"
+              ></app-booking-actions-menu>
             </td>
           </tr>
         </tbody>
