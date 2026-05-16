@@ -1,4 +1,4 @@
-# DR. GRACE E. GAVINO MEDICAL CLINIC — FRONTEND.md
+# CLINIC SYSTEM — FRONTEND.md
 > Angular 17 + Ionic 7 + Capacitor. Single source of truth for all frontend structure, pages, components, state, and API integration.
 
 ---
@@ -50,16 +50,16 @@ The clinic system must feel **trustworthy, calm, and modern** — like a premium
 
 ```scss
 :root {
-  // ─── Primary: Brand Purple (Dr. Gavino) ───────────────────────────
-  --ion-color-primary:           #5D3E8E;
-  --ion-color-primary-shade:     #4B327A;
-  --ion-color-primary-tint:      #8162B3;
-  --color-primary-50:            #F5F2FA;   // lightest purple tint (backgrounds)
-  --color-primary-100:           #ECE6F5;
-  --color-primary-200:           #D0C2E8;
-  --color-primary-600:           #5D3E8E;
-  --color-primary-700:           #4B327A;
-  --color-primary-900:           #321D5C;   // darkest (hover on dark bg)
+  // ─── Primary: Deep Clinic Green ───────────────────────────
+  --ion-color-primary:           #1A6B4A;
+  --ion-color-primary-shade:     #155C3E;
+  --ion-color-primary-tint:      #2D8060;
+  --color-primary-50:            #E8F4EF;   // lightest green tint (backgrounds)
+  --color-primary-100:           #C5E2D5;
+  --color-primary-200:           #8FC6AC;
+  --color-primary-600:           #1A6B4A;
+  --color-primary-700:           #155C3E;
+  --color-primary-900:           #0D3D2A;   // darkest (hover on dark bg)
 
   // ─── Secondary: Medical Blue ──────────────────────────────
   --ion-color-secondary:         #2563EB;
@@ -107,8 +107,8 @@ The clinic system must feel **trustworthy, calm, and modern** — like a premium
   --clinic-text-inverse:         #FFFFFF;      // text on dark backgrounds
 
   // ─── Gradient Tokens ──────────────────────────────────────
-  --gradient-hero:               linear-gradient(135deg, #4B327A 0%, #5D3E8E 50%, #8162B3 100%);
-  --gradient-card-green:         linear-gradient(135deg, #5D3E8E 0%, #8162B3 100%);
+  --gradient-hero:               linear-gradient(135deg, #0D3D2A 0%, #1A6B4A 50%, #2D8060 100%);
+  --gradient-card-green:         linear-gradient(135deg, #1A6B4A 0%, #2D8060 100%);
   --gradient-card-blue:          linear-gradient(135deg, #1D4ED8 0%, #2563EB 100%);
   --gradient-card-amber:         linear-gradient(135deg, #B45309 0%, #D97706 100%);
   --gradient-card-rose:          linear-gradient(135deg, #BE123C 0%, #DC2626 100%);
@@ -188,7 +188,7 @@ code, kbd, pre, .monospace { font-family: var(--font-mono); }
   --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.18);
 
   // Colored shadows (used on stat cards)
-  --shadow-green:  0 8px 24px rgba(93, 62, 142, 0.20);
+  --shadow-green:  0 8px 24px rgba(26, 107, 74, 0.20);
   --shadow-blue:   0 8px 24px rgba(37, 99, 235, 0.20);
   --shadow-amber:  0 8px 24px rgba(217, 119, 6, 0.20);
   --shadow-red:    0 8px 24px rgba(220, 38, 38, 0.20);
