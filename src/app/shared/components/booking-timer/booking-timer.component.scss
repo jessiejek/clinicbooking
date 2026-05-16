@@ -1,0 +1,13 @@
+:host {
+  display: block;
+}
+
+.booking-timer {
+  align-items: center;
+}
+
+.timer-countdown {
+  font-family: var(--font-mono);
+  font-size: var(--text-base);
+  color: #92400e;
+}

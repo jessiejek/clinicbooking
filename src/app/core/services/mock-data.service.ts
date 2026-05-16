@@ -6,6 +6,7 @@ import {
   BookingStatus,
   ClinicSettings,
   DayOfWeek,
+  DoctorBlockedDate,
   Doctor,
   DoctorSchedule,
   DoctorStatus,
@@ -204,6 +205,8 @@ export class MockDataService {
     startTime,
     endTime
   }));
+
+  private _doctorBlockedDates: DoctorBlockedDate[] = [];
 
   private readonly _services: Service[] = [
     {
@@ -510,6 +513,8 @@ export class MockDataService {
     const threeDaysAgoStr = ymd(add(this.today, -3));
     const nextWeekStr = ymd(add(this.today, 7));
 
+    this._doctorBlockedDates = this.buildDoctorBlockedDates();
+
     this._bookings = [
       this.makeBooking(
         'bk-001',
@@ -710,28 +715,56 @@ export class MockDataService {
     return this._clinicSettings;
   }
 
+  getClinicSettings(): ClinicSettings {
+    return { ...this._clinicSettings };
+  }
+
   get paymentSettings(): PaymentSettings {
     return this._paymentSettings;
+  }
+
+  getPaymentSettings(): PaymentSettings {
+    return { ...this._paymentSettings };
   }
 
   get seedUsers(): SeedUser[] {
     return [...this._seedUsers];
   }
 
+  getDoctors(): Doctor[] {
+    return [...this._doctors];
+  }
+
   get doctors(): Doctor[] {
     return [...this._doctors];
+  }
+
+  getDoctorSchedules(): DoctorSchedule[] {
+    return [...this._doctorSchedules];
   }
 
   get doctorSchedules(): DoctorSchedule[] {
     return [...this._doctorSchedules];
   }
 
+  getDoctorBlockedDates(doctorId: string): DoctorBlockedDate[] {
+    return this._doctorBlockedDates.filter((blockedDate) => blockedDate.doctorId === doctorId);
+  }
+
   get services(): Service[] {
+    return [...this._services];
+  }
+
+  getServices(): Service[] {
     return [...this._services];
   }
 
   get patients(): Patient[] {
     return [...this._patients];
+  }
+
+  getBookings(): Booking[] {
+    return [...this._bookings];
   }
 
   get bookings(): Booking[] {
@@ -760,11 +793,8 @@ export class MockDataService {
   }
 
   generateMockSlots(doctorId: string, date: Date): TimeSlot[] {
-    const startOfToday = this.stripTime(new Date());
-    const target = this.stripTime(date);
-    const isPast = target.getTime() < startOfToday.getTime();
-
-    const dayOrder: DayOfWeek[] = [
+    const schedules = this.getDoctorSchedules().filter((s) => s.doctorId === doctorId);
+    const dayNames: DayOfWeek[] = [
       'Sunday',
       'Monday',
       'Tuesday',
@@ -773,44 +803,53 @@ export class MockDataService {
       'Friday',
       'Saturday'
     ];
-    const dow = dayOrder[date.getDay()];
-    const daySchedule = this._doctorSchedules.filter(
-      (s) => s.doctorId === doctorId && s.dayOfWeek === dow
-    );
-    if (!daySchedule.length) {
+    const dayName = dayNames[date.getDay()] as DayOfWeek;
+    const schedule = schedules.find((s) => s.dayOfWeek === dayName);
+
+    if (!schedule) {
       return [];
     }
 
-    const doctor = this._doctors.find((d) => d.id === doctorId);
-    const step = doctor?.slotDurationMinutes ?? 30;
-    const { startTime, endTime } = daySchedule[0];
-    const slots: TimeSlot[] = [];
-    let cursor = this.minutesFromMidnight(startTime);
-    const endMin = this.minutesFromMidnight(endTime);
-
-    while (cursor + step <= endMin) {
-      const next = cursor + step;
-      slots.push({
-        time: this.minutesToHHmm(cursor),
-        endTime: this.minutesToHHmm(next),
-        status: 'available'
-      });
-      cursor = next;
-    }
-
+    const isPast = date < new Date(new Date().setHours(0, 0, 0, 0));
     if (isPast) {
-      return slots.map((s) => ({ ...s, status: 'disabled' }));
+      return [];
     }
 
-    return slots.map((s, index) => {
+    const slots: TimeSlot[] = [];
+    const [startHour, startMin] = schedule.startTime.split(':').map(Number);
+    const [endHour, endMin] = schedule.endTime.split(':').map(Number);
+    const doctor = this.getDoctors().find((d) => d.id === doctorId);
+    const duration = doctor?.slotDurationMinutes ?? 30;
+
+    let currentMinutes = startHour * 60 + startMin;
+    const endMinutes = endHour * 60 + endMin;
+    let index = 0;
+
+    while (currentMinutes + duration <= endMinutes) {
+      const h = Math.floor(currentMinutes / 60);
+      const m = currentMinutes % 60;
+      const timeStr = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+      const endH = Math.floor((currentMinutes + duration) / 60);
+      const endM = (currentMinutes + duration) % 60;
+      const endTimeStr = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+
+      let status: TimeSlot['status'] = 'available';
       if (index === 1) {
-        return { ...s, status: 'full' };
+        status = 'full';
       }
       if (index === 2) {
-        return { ...s, status: 'pending' };
+        status = 'full';
       }
-      return s;
-    });
+      if (index === 4) {
+        status = 'pending';
+      }
+
+      slots.push({ time: timeStr, endTime: endTimeStr, status });
+      currentMinutes += duration;
+      index++;
+    }
+
+    return slots;
   }
 
   private makeBooking(
@@ -870,5 +909,70 @@ export class MockDataService {
 
   private addMinutesToTime(start: string, minutes: number): string {
     return this.minutesToHHmm(this.minutesFromMidnight(start) + minutes);
+  }
+
+  private buildDoctorBlockedDates(): DoctorBlockedDate[] {
+    const blockedDates: DoctorBlockedDate[] = [];
+    const dayNames: DayOfWeek[] = [
+      'Sunday',
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday'
+    ];
+
+    this._doctors.forEach((doctor) => {
+      const scheduleDays = this._doctorSchedules
+        .filter((schedule) => schedule.doctorId === doctor.id)
+        .map((schedule) => schedule.dayOfWeek);
+      const upcomingDates = this.getUpcomingWorkingDates(scheduleDays, 3);
+
+      upcomingDates.forEach((blockedDate, index) => {
+        const dayLabel = dayNames[new Date(`${blockedDate}T00:00:00`).getDay()];
+        blockedDates.push({
+          id: `blocked-${doctor.id}-${index + 1}`,
+          doctorId: doctor.id,
+          blockedDate,
+          reason: `Unavailable on ${dayLabel}`
+        });
+      });
+    });
+
+    return blockedDates;
+  }
+
+  private getUpcomingWorkingDates(days: DayOfWeek[], count: number): string[] {
+    const results: string[] = [];
+    const start = this.stripTime(new Date());
+    for (let offset = 1; results.length < count && offset <= 90; offset++) {
+      const date = new Date(start);
+      date.setDate(date.getDate() + offset);
+      const dayName = this.dayNames()[date.getDay()];
+      if (days.includes(dayName)) {
+        results.push(this.toIsoDate(date));
+      }
+    }
+    return results;
+  }
+
+  private dayNames(): DayOfWeek[] {
+    return [
+      'Sunday',
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday'
+    ];
+  }
+
+  private toIsoDate(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 }

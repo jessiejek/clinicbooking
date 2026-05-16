@@ -5,7 +5,8 @@ import { DoctorsPage } from './doctors/doctors.page';
 import { DoctorProfilePage } from './doctor-profile/doctor-profile.page';
 import { ServicesPage } from './services/services.page';
 import { AnnouncementsPage } from './announcements/announcements.page';
-import { BookingStubPage } from './booking/booking.page';
+import { BookingPage } from './booking/booking.page';
+import { BookingConfirmationPage } from './booking-confirmation/booking-confirmation.page';
 
 export const PUBLIC_ROUTES: Routes = [
   {
@@ -17,7 +18,8 @@ export const PUBLIC_ROUTES: Routes = [
       { path: 'doctors/:id', component: DoctorProfilePage },
       { path: 'services', component: ServicesPage },
       { path: 'announcements', component: AnnouncementsPage },
-      { path: 'booking', component: BookingStubPage }
+      { path: 'booking', component: BookingPage },
+      { path: 'booking-confirmation/:bookingId', component: BookingConfirmationPage }
     ]
   }
 ];

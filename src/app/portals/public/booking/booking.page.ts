@@ -1,40 +1,44 @@
-import { Component, inject } from '@angular/core';
-import { Router } from '@angular/router';
-import { addIcons } from 'ionicons';
-import { calendarOutline } from 'ionicons/icons';
-import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { Component, OnInit, inject } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
+import { IonContent } from '@ionic/angular/standalone';
+import { MockDataService } from '../../../core/services/mock-data.service';
+import { BookingWizardComponent } from '../components/booking-wizard/booking-wizard.component';
+import { resetWizard, selectDoctor, selectService } from '../../../store/bookings/bookings.actions';
+import { Store } from '@ngrx/store';
 
 @Component({
-  selector: 'app-booking-stub-page',
+  selector: 'app-booking-page',
   standalone: true,
-  imports: [EmptyStateComponent],
+  imports: [IonContent, BookingWizardComponent],
   template: `
-    <div class="stub-wrap content-container">
-      <app-empty-state
-        icon="calendar-outline"
-        title="Booking Wizard"
-        description="The booking wizard is being built in Phase 4."
-        ctaLabel="Back to Home"
-        (ctaClick)="goHome()"
-      />
-    </div>
+    <ion-content>
+      <div class="booking-page-container page-enter">
+        <app-booking-wizard></app-booking-wizard>
+      </div>
+    </ion-content>
   `,
-  styles: [
-    `
-      .stub-wrap {
-        padding: var(--space-24) var(--space-4);
-      }
-    `
-  ]
+  styleUrl: './booking.page.scss'
 })
-export class BookingStubPage {
-  private readonly router = inject(Router);
+export class BookingPage implements OnInit {
+  private readonly store = inject(Store);
+  private readonly route = inject(ActivatedRoute);
+  private readonly mockData = inject(MockDataService);
 
-  constructor() {
-    addIcons({ calendarOutline });
-  }
+  ngOnInit(): void {
+    this.store.dispatch(resetWizard());
 
-  goHome(): void {
-    this.router.navigate(['/public']);
+    const params = this.route.snapshot.queryParamMap;
+    const serviceId = params.get('serviceId');
+    const doctorIdParam = params.get('doctorId');
+    const service = serviceId ? this.mockData.getServices().find((item) => item.id === serviceId) : null;
+    const doctorId = doctorIdParam ?? service?.doctorIds[0] ?? null;
+
+    if (doctorId) {
+      this.store.dispatch(selectDoctor({ doctorId }));
+    }
+
+    if (serviceId) {
+      this.store.dispatch(selectService({ serviceId }));
+    }
   }
 }

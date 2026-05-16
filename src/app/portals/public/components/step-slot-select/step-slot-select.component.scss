@@ -1,0 +1,35 @@
+:host {
+  display: block;
+}
+
+.wizard-panel {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.wizard-title {
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  color: var(--clinic-text-primary);
+  margin-bottom: var(--space-2);
+}
+
+.wizard-subtitle,
+.slot-heading {
+  color: var(--clinic-text-secondary);
+}
+
+.slot-heading {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--clinic-text-primary);
+}
+
+.wizard-actions {
+  display: flex;
+  justify-content: space-between;
+}
+
+.wizard-actions--split {
+  gap: var(--space-3);
+}
