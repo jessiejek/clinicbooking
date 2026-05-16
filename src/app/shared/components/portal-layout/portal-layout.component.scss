@@ -1,6 +1,11 @@
+:host {
+  display: block;
+  height: 100vh;
+}
+
 .portal-layout {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
   background: var(--clinic-bg);
   overflow: hidden;
 }
@@ -9,15 +14,16 @@
   display: block;
 }
 
-.portal-layout__main {
+.main-content {
   display: flex;
   flex-direction: column;
   flex: 1 1 0;
-  min-height: 0;
   margin-left: 260px;
+  min-width: 0;
+  min-height: 0;
 }
 
-.main-content {
+.page-content {
   flex: 1 1 0;
   min-height: 0;
   padding: var(--space-8);
@@ -27,54 +33,16 @@
   -webkit-overflow-scrolling: touch;
 }
 
-.bottom-tab-bar {
-  display: none;
-}
-
 @media (max-width: 1024px) {
-  .portal-layout__main {
+  .main-content {
     margin-left: 0;
-    padding-bottom: 72px;
   }
 
-  .main-content {
+  .page-content {
     padding: var(--space-5);
   }
 
   .portal-layout__sidebar {
     display: none;
   }
-
-  .bottom-tab-bar {
-    display: flex;
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    height: 60px;
-    background: white;
-    border-top: 1px solid var(--clinic-border);
-    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.06);
-    z-index: 210;
-  }
-}
-
-.tab-item {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  color: var(--clinic-text-muted);
-  font-size: 10px;
-  text-decoration: none;
-}
-
-.tab-item.active {
-  color: var(--ion-color-primary);
-}
-
-.tab-item ion-icon {
-  font-size: 22px;
 }

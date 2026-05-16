@@ -13,17 +13,17 @@ import { loadPatients } from '../../store/patients/patients.actions';
 import { PortalLayoutComponent } from '../../shared/components/portal-layout/portal-layout.component';
 
 export const ADMIN_NAV_ITEMS: NavItem[] = [
-  { label: 'Dashboard', route: '/admin/dashboard', icon: 'grid-outline', section: 'Main' },
-  { label: 'Bookings', route: '/admin/bookings', icon: 'calendar-outline', badgeCount: 0 },
-  { label: 'Walk-In', route: '/admin/walk-in', icon: 'walk-outline' },
-  { label: 'Calendar', route: '/admin/calendar', icon: 'calendar-number-outline' },
-  { label: 'Patients', route: '/admin/patients', icon: 'people-outline', section: 'Records' },
+  { label: 'Dashboard', route: '/admin/dashboard', icon: 'grid-outline', section: 'CORE' },
+  { label: 'Bookings', route: '/admin/bookings', icon: 'calendar-outline' },
+  { label: 'Patients', route: '/admin/patients', icon: 'people-outline' },
   { label: 'Doctors', route: '/admin/doctors', icon: 'medical-outline' },
-  { label: 'Services', route: '/admin/services', icon: 'list-outline' },
-  { label: 'Staff Accounts', route: '/admin/staff', icon: 'person-add-outline', section: 'Management' },
-  { label: 'Announcements', route: '/admin/announcements', icon: 'megaphone-outline' },
-  { label: 'Reports', route: '/admin/reports', icon: 'stats-chart-outline', section: 'System' },
-  { label: 'Audit Logs', route: '/admin/audit-logs', icon: 'shield-checkmark-outline' },
+  { label: 'Calendar', route: '/admin/calendar', icon: 'calendar-number-outline' },
+  { label: 'Services', route: '/admin/services', icon: 'list-outline', section: 'MANAGEMENT' },
+  { label: 'Staff', route: '/admin/staff', icon: 'person-add-outline' },
+  { label: 'Walk-In', route: '/admin/walk-in', icon: 'walk-outline' },
+  { label: 'Reports', route: '/admin/reports', icon: 'stats-chart-outline', section: 'ANALYTICS' },
+  { label: 'Audit Log', route: '/admin/audit-logs', icon: 'shield-checkmark-outline' },
+  { label: 'Announcements', route: '/admin/announcements', icon: 'megaphone-outline', section: 'SYSTEM' },
   { label: 'Settings', route: '/admin/settings', icon: 'settings-outline' }
 ];
 
@@ -104,7 +104,7 @@ export const ADMIN_ROUTES: Routes = [
       {
         path: 'staff',
         loadComponent: () => import('./staff/staff.page').then((m) => m.StaffPage),
-        data: { title: 'Staff Accounts' }
+        data: { title: 'Staff' }
       },
       {
         path: 'announcements',
@@ -119,7 +119,7 @@ export const ADMIN_ROUTES: Routes = [
       {
         path: 'audit-logs',
         loadComponent: () => import('./audit-logs/audit-logs.page').then((m) => m.AuditLogsPage),
-        data: { title: 'Audit Logs' }
+        data: { title: 'Audit Log' }
       },
       {
         path: 'reports',

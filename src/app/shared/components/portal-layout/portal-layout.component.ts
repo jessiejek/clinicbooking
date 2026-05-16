@@ -1,17 +1,9 @@
-import { AsyncPipe, NgFor, NgIf } from '@angular/common';
-import {
-  Component,
-  DestroyRef,
-  HostBinding,
-  Input,
-  OnInit,
-  inject
-} from '@angular/core';
-import { ActivatedRoute, NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { AsyncPipe } from '@angular/common';
+import { Component, DestroyRef, Input, OnInit, inject } from '@angular/core';
+import { ActivatedRoute, NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { Store } from '@ngrx/store';
 import { filter } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { IonIcon } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import {
   alertCircleOutline,
@@ -62,17 +54,12 @@ import { TopbarComponent } from '../../../portals/admin/components/topbar/topbar
   standalone: true,
   imports: [
     AsyncPipe,
-    NgFor,
-    NgIf,
-    RouterLink,
-    RouterLinkActive,
     RouterOutlet,
-    IonIcon,
     SidebarComponent,
     TopbarComponent
   ],
   template: `
-    <div class="portal-layout" [style.--portal-accent]="portalColor">
+    <div class="portal-layout">
       <app-admin-sidebar
         class="portal-layout__sidebar"
         [navItems]="resolvedNavItems"
@@ -82,7 +69,7 @@ import { TopbarComponent } from '../../../portals/admin/components/topbar/topbar
         (logout)="logout()"
       ></app-admin-sidebar>
 
-      <div class="portal-layout__main">
+      <div class="main-content">
         <app-admin-topbar
           [title]="pageTitle"
           [portalLabel]="portalLabel"
@@ -91,23 +78,10 @@ import { TopbarComponent } from '../../../portals/admin/components/topbar/topbar
           (logout)="logout()"
         ></app-admin-topbar>
 
-        <main class="main-content">
+        <div class="page-content">
           <router-outlet></router-outlet>
-        </main>
+        </div>
       </div>
-
-      <nav class="bottom-tab-bar" *ngIf="mobileNavItems.length > 0">
-        <a
-          *ngFor="let item of mobileNavItems"
-          [routerLink]="item.route"
-          routerLinkActive="active"
-          [routerLinkActiveOptions]="{ exact: item.route.endsWith('/dashboard') }"
-          class="tab-item"
-        >
-          <ion-icon [name]="item.icon"></ion-icon>
-          <span>{{ item.label }}</span>
-        </a>
-      </nav>
     </div>
   `,
   styleUrl: './portal-layout.component.scss'
@@ -116,9 +90,6 @@ export class PortalLayoutComponent implements OnInit {
   @Input() navItems: NavItem[] = [];
   @Input() portalTitle = 'Dashboard';
   @Input() portalLabel = 'Admin Portal';
-  @Input() portalColor = 'var(--ion-color-primary)';
-
-  @HostBinding('style.display') readonly display = 'block';
 
   readonly currentUser$ = inject(Store).select(selectCurrentUser);
   readonly unreadCount$ = inject(Store).select(selectUnreadCount);
@@ -132,7 +103,6 @@ export class PortalLayoutComponent implements OnInit {
   clinicName = '';
   pageTitle = 'Dashboard';
   resolvedNavItems: NavItem[] = [];
-  mobileNavItems: NavItem[] = [];
 
   constructor() {
     addIcons({
@@ -177,7 +147,6 @@ export class PortalLayoutComponent implements OnInit {
     this.clinicName = this.clinicSettingsService.load().clinicName;
     this.resolvedNavItems = (this.route.snapshot.data['navItems'] as NavItem[]) ?? this.navItems;
     this.portalLabel = (this.route.snapshot.data['portalLabel'] as string | undefined) ?? this.portalLabel;
-    this.mobileNavItems = this.resolvedNavItems.slice(0, 5);
     this.updatePageTitle();
 
     this.router.events
