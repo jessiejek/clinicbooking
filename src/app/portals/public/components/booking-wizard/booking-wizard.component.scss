@@ -4,6 +4,7 @@
 
 .booking-wizard {
   display: block;
+  padding-bottom: 2rem;
 }
 
 .booking-wizard__body {
@@ -83,6 +84,11 @@
 }
 
 @media (max-width: 640px) {
+  .booking-wizard {
+    padding-top: var(--space-2);
+    padding-bottom: calc(8rem + env(safe-area-inset-bottom));
+  }
+
   .wizard-steps {
     gap: 0;
     padding: var(--space-3) 0;

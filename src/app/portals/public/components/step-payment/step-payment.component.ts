@@ -122,7 +122,7 @@ type PaymentTab = 'gcash' | 'maya' | 'bank' | 'clinic';
 
           <div *ngSwitchCase="'clinic'" class="payment-content clinic-card">
             <div class="clinic-pay-hero">
-              <div class="clinic-pay-hero__icon">₱</div>
+              <div class="clinic-pay-hero__icon">&#8369;</div>
               <div>
                 <h3>Pay at Clinic</h3>
                 <p>

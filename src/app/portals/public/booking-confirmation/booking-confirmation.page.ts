@@ -1,7 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { AsyncPipe, DatePipe, NgIf } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { IonContent } from '@ionic/angular/standalone';
 import { Store } from '@ngrx/store';
 import { combineLatest, map } from 'rxjs';
 import { MockDataService } from '../../../core/services/mock-data.service';
@@ -13,80 +12,78 @@ import { selectWizard } from '../../../store/bookings/bookings.selectors';
 @Component({
   selector: 'app-booking-confirmation-page',
   standalone: true,
-  imports: [NgIf, AsyncPipe, DatePipe, RouterLink, IonContent, PesoPipe, TimeSlotPipe, StatusBadgeComponent],
+  imports: [NgIf, AsyncPipe, DatePipe, RouterLink, PesoPipe, TimeSlotPipe, StatusBadgeComponent],
   template: `
-    <ion-content>
-      <div class="confirmation-container" *ngIf="vm$ | async as vm">
-        <div class="confirmation-hero">
-          <div class="confirmation-checkmark">&#10003;</div>
-          <h1 class="confirmation-title">Booking Confirmed!</h1>
-          <p class="confirmation-sub">
-            {{
-              vm.paymentMode === 'PayAtClinic'
-                ? 'Your appointment is reserved. Please pay at the clinic before your consultation.'
-                : 'Your appointment has been submitted and is awaiting payment verification.'
-            }}
-          </p>
-        </div>
-
-        <div class="stat-card stat-card--green queue-card">
-          <p class="queue-label">You are</p>
-          <p class="queue-number">#{{ vm.queueNumber ?? '-' }}</p>
-          <p class="queue-label">in the queue</p>
-        </div>
-
-        <p class="booking-id">
-          Booking ID: <span class="data-mono">{{ vm.bookingId }}</span>
+    <div class="confirmation-container" *ngIf="vm$ | async as vm">
+      <div class="confirmation-hero">
+        <div class="confirmation-checkmark">&#10003;</div>
+        <h1 class="confirmation-title">Booking Confirmed!</h1>
+        <p class="confirmation-sub">
+          {{
+            vm.paymentMode === 'PayAtClinic'
+              ? 'Your appointment is reserved. Please pay at the clinic before your consultation.'
+              : 'Your appointment has been submitted and is awaiting payment verification.'
+          }}
         </p>
+      </div>
 
-        <div class="clinic-card summary-card">
-          <p class="section-heading">Appointment Details</p>
-          <div class="summary-row">
-            <span>Doctor</span>
-            <strong>{{ vm.doctorName }}</strong>
-          </div>
-          <div class="summary-row">
-            <span>Date</span>
-            <strong>{{ vm.selectedDate | date : 'EEEE, MMMM d, yyyy' }}</strong>
-          </div>
-          <div class="summary-row">
-            <span>Time</span>
-            <strong class="data-mono"
-              >{{ vm.selectedSlot | timeSlot }} - {{ vm.selectedSlotEnd | timeSlot }}</strong
-            >
-          </div>
-          <div class="summary-row">
-            <span>Service</span>
-            <strong>{{ vm.serviceName }}</strong>
-          </div>
-          <div class="divider"></div>
-          <div class="summary-row summary-row--total">
-            <span>Total Fee</span>
-            <strong class="fee-total">{{ vm.totalFee | peso }}</strong>
-          </div>
+      <div class="stat-card stat-card--green queue-card">
+        <p class="queue-label">You are</p>
+        <p class="queue-number">#{{ vm.queueNumber ?? '-' }}</p>
+        <p class="queue-label">in the queue</p>
+      </div>
+
+      <p class="booking-id">
+        Booking ID: <span class="data-mono">{{ vm.bookingId }}</span>
+      </p>
+
+      <div class="clinic-card summary-card">
+        <p class="section-heading">Appointment Details</p>
+        <div class="summary-row">
+          <span>Doctor</span>
+          <strong>{{ vm.doctorName }}</strong>
         </div>
-
-        <div style="text-align: center; margin: var(--space-4) 0">
-          <app-status-badge
-            [status]="vm.paymentMode === 'PayAtClinic' ? 'Confirmed' : 'Pending'"
-          ></app-status-badge>
-          <span class="confirmation-status-text">
-            {{
-              vm.paymentMode === 'PayAtClinic'
-                ? 'Pay at clinic selected'
-                : 'Awaiting payment verification'
-            }}
-          </span>
+        <div class="summary-row">
+          <span>Date</span>
+          <strong>{{ vm.selectedDate | date : 'EEEE, MMMM d, yyyy' }}</strong>
         </div>
-
-        <div class="confirmation-actions">
-          <button class="btn-primary" routerLink="/patient/bookings" type="button">
-            View My Appointments
-          </button>
-          <button class="btn-outline" routerLink="/public" type="button">Back to Home</button>
+        <div class="summary-row">
+          <span>Time</span>
+          <strong class="data-mono"
+            >{{ vm.selectedSlot | timeSlot }} - {{ vm.selectedSlotEnd | timeSlot }}</strong
+          >
+        </div>
+        <div class="summary-row">
+          <span>Service</span>
+          <strong>{{ vm.serviceName }}</strong>
+        </div>
+        <div class="divider"></div>
+        <div class="summary-row summary-row--total">
+          <span>Total Fee</span>
+          <strong class="fee-total">{{ vm.totalFee | peso }}</strong>
         </div>
       </div>
-    </ion-content>
+
+      <div style="text-align: center; margin: var(--space-4) 0">
+        <app-status-badge
+          [status]="vm.paymentMode === 'PayAtClinic' ? 'Confirmed' : 'Pending'"
+        ></app-status-badge>
+        <span class="confirmation-status-text">
+          {{
+            vm.paymentMode === 'PayAtClinic'
+              ? 'Pay at clinic selected'
+              : 'Awaiting payment verification'
+          }}
+        </span>
+      </div>
+
+      <div class="confirmation-actions">
+        <button class="btn-primary" routerLink="/patient/bookings" type="button">
+          View My Appointments
+        </button>
+        <button class="btn-outline" routerLink="/public" type="button">Back to Home</button>
+      </div>
+    </div>
   `,
   styleUrl: './booking-confirmation.page.scss'
 })

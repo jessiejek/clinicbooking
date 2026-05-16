@@ -32,3 +32,9 @@
   padding-right: env(safe-area-inset-right);
   background: var(--clinic-bg);
 }
+
+@media (max-width: 768px) {
+  .public-main {
+    padding-top: 88px;
+  }
+}

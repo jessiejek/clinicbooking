@@ -68,6 +68,7 @@
     padding-bottom: max(var(--space-3), env(safe-area-inset-bottom));
     gap: var(--space-2);
     min-height: auto;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.08);
   }
 
   .summary-bar__items {
@@ -87,5 +88,9 @@
     width: 100%;
     padding-top: var(--space-2);
     border-top: 1px solid var(--clinic-border);
+  }
+
+  .summary-bar__value {
+    white-space: normal;
   }
 }

@@ -1,6 +1,5 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import { IonContent } from '@ionic/angular/standalone';
 import { MockDataService } from '../../../core/services/mock-data.service';
 import { BookingWizardComponent } from '../components/booking-wizard/booking-wizard.component';
 import { resetWizard, selectDoctor, selectService } from '../../../store/bookings/bookings.actions';
@@ -9,13 +8,11 @@ import { Store } from '@ngrx/store';
 @Component({
   selector: 'app-booking-page',
   standalone: true,
-  imports: [IonContent, BookingWizardComponent],
+  imports: [BookingWizardComponent],
   template: `
-    <ion-content>
-      <div class="booking-page-container page-enter">
-        <app-booking-wizard></app-booking-wizard>
-      </div>
-    </ion-content>
+    <div class="booking-page-container page-enter">
+      <app-booking-wizard></app-booking-wizard>
+    </div>
   `,
   styleUrl: './booking.page.scss'
 })
