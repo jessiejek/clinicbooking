@@ -6,6 +6,11 @@
   overflow: hidden;
 }
 
+.table-scroll-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .table-skeleton {
   padding: var(--space-4);
 }

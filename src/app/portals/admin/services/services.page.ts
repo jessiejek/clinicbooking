@@ -27,6 +27,7 @@ interface AdminServiceRecord extends Service {
 
       <div class="clinic-card" *ngFor="let group of groupedServices">
         <div class="section-heading">{{ group.category }}</div>
+        <div class="table-scroll-wrap">
         <table class="clinic-table">
           <thead>
             <tr><th>Name</th><th>Duration</th><th>Price</th><th>Assigned Doctors</th><th>Status</th><th>Actions</th></tr>
@@ -46,6 +47,7 @@ interface AdminServiceRecord extends Service {
             </tr>
           </tbody>
         </table>
+        </div>
       </div>
     </section>
 

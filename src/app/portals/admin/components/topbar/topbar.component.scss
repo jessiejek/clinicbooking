@@ -108,6 +108,29 @@
 }
 
 @media (max-width: 768px) {
+  .topbar {
+    gap: var(--space-2);
+    padding: 0 var(--space-4);
+  }
+
+  .topbar__title-group {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .topbar__portal-label,
+  .topbar__title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .topbar__actions {
+    flex-shrink: 0;
+    gap: var(--space-2);
+    margin-left: 0;
+  }
+
   .topbar__menu-btn {
     display: inline-flex;
   }

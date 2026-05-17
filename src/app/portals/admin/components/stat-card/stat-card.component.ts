@@ -5,6 +5,7 @@ import { IonIcon } from '@ionic/angular/standalone';
 @Component({
   selector: 'app-stat-card',
   standalone: true,
+  host: { style: 'display: block; min-width: 0;' },
   imports: [NgIf, NgClass, IonIcon],
   template: `
     <div class="stat-card" [ngClass]="'stat-card--' + color">

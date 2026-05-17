@@ -73,3 +73,38 @@
     grid-template-columns: 180px repeat(7, minmax(0, 1fr));
   }
 }
+
+@media (max-width: 768px) {
+  .calendar__head,
+  .calendar__row {
+    grid-template-columns: 110px repeat(7, minmax(64px, 1fr));
+  }
+
+  .calendar {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: var(--space-2);
+  }
+
+  .calendar__head div,
+  .calendar__doctor,
+  .calendar__cell {
+    font-size: var(--text-xs);
+    padding: var(--space-2);
+  }
+
+  .calendar__cell {
+    min-height: 72px;
+  }
+
+  .page-shell__header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+
+  .week-nav {
+    width: 100%;
+    justify-content: space-between;
+  }
+}

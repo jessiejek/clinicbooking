@@ -38,20 +38,50 @@ import { DoctorScheduleFormComponent, DoctorScheduleDraft } from '../components/
         </div>
 
         <div class="form-grid">
-          <input class="filter-input" formControlName="fullName" placeholder="Full Name" />
-          <input class="filter-input" formControlName="specialization" placeholder="Specialization" />
-          <input class="filter-input" formControlName="licenseNumber" placeholder="License Number" />
-          <input class="filter-input" formControlName="ptrNumber" placeholder="PTR Number" />
-          <input class="filter-input" formControlName="s2Number" placeholder="S2 Number" />
-          <input class="filter-input" type="number" formControlName="consultationFee" placeholder="Consultation Fee" />
-          <select class="filter-input" formControlName="status">
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
-            <option value="OnLeave">On Leave</option>
-          </select>
-          <input class="filter-input" type="number" formControlName="slotDurationMinutes" placeholder="Slot Duration" />
-          <input class="filter-input" type="number" formControlName="slotCapacity" placeholder="Slot Capacity" />
-          <input class="filter-input" type="number" formControlName="dailyPatientLimit" placeholder="Daily Patient Limit" />
+          <label class="form-field">
+            <span class="form-field__label">Full Name</span>
+            <input class="filter-input" formControlName="fullName" placeholder="Full Name" />
+          </label>
+          <label class="form-field">
+            <span class="form-field__label">Specialty</span>
+            <input class="filter-input" formControlName="specialization" placeholder="Specialization" />
+          </label>
+          <label class="form-field">
+            <span class="form-field__label">PRC Number</span>
+            <input class="filter-input" formControlName="licenseNumber" placeholder="License Number" />
+          </label>
+          <label class="form-field">
+            <span class="form-field__label">PTR Number</span>
+            <input class="filter-input" formControlName="ptrNumber" placeholder="PTR Number" />
+          </label>
+          <label class="form-field">
+            <span class="form-field__label">S2 Number</span>
+            <input class="filter-input" formControlName="s2Number" placeholder="S2 Number" />
+          </label>
+          <label class="form-field">
+            <span class="form-field__label">Consultation Fee</span>
+            <input class="filter-input" type="number" formControlName="consultationFee" placeholder="Consultation Fee" />
+          </label>
+          <label class="form-field">
+            <span class="form-field__label">Status</span>
+            <select class="filter-input" formControlName="status">
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
+              <option value="OnLeave">On Leave</option>
+            </select>
+          </label>
+          <label class="form-field">
+            <span class="form-field__label">Slot Duration</span>
+            <input class="filter-input" type="number" formControlName="slotDurationMinutes" placeholder="Slot Duration" />
+          </label>
+          <label class="form-field">
+            <span class="form-field__label">Slot Capacity</span>
+            <input class="filter-input" type="number" formControlName="slotCapacity" placeholder="Slot Capacity" />
+          </label>
+          <label class="form-field">
+            <span class="form-field__label">Daily Patient Limit</span>
+            <input class="filter-input" type="number" formControlName="dailyPatientLimit" placeholder="Daily Patient Limit" />
+          </label>
         </div>
 
         <textarea class="textarea" formControlName="bio" placeholder="Doctor bio"></textarea>

@@ -1,3 +1,8 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
 .stat-card {
   border-radius: var(--radius-xl);
   padding: var(--space-6);
@@ -5,6 +10,8 @@
   position: relative;
   overflow: hidden;
   min-height: 140px;
+  width: 100%;
+  min-width: 0;
 }
 
 .stat-card__icon {
@@ -23,6 +30,7 @@
   font-size: var(--text-3xl);
   font-weight: var(--font-bold);
   line-height: var(--leading-tight);
+  overflow-wrap: anywhere;
 }
 
 .stat-card__label {
@@ -30,6 +38,7 @@
   font-weight: var(--font-medium);
   opacity: 0.85;
   margin-top: var(--space-1);
+  overflow-wrap: anywhere;
 }
 
 .stat-card__badge {
@@ -72,4 +81,26 @@
 .stat-card--gray {
   background: linear-gradient(135deg, #334155 0%, #475569 100%);
   box-shadow: var(--shadow-sm);
+}
+
+@media (max-width: 640px) {
+  .stat-card {
+    min-height: 110px;
+    padding: var(--space-4);
+  }
+
+  .stat-card__icon {
+    width: 36px;
+    height: 36px;
+    font-size: 16px;
+    margin-bottom: var(--space-2);
+  }
+
+  .stat-card__value {
+    font-size: var(--text-xl);
+  }
+
+  .stat-card__label {
+    font-size: var(--text-xs);
+  }
 }

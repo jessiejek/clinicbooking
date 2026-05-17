@@ -23,6 +23,7 @@ import { IonModal } from '@ionic/angular/standalone';
       </div>
 
       <div class="clinic-card" *ngIf="announcements.length > 0">
+        <div class="table-scroll-wrap">
         <table class="clinic-table">
           <thead><tr><th>Title</th><th>Status</th><th>Created Date</th><th>Actions</th></tr></thead>
           <tbody>
@@ -38,6 +39,7 @@ import { IonModal } from '@ionic/angular/standalone';
             </tr>
           </tbody>
         </table>
+        </div>
       </div>
 
       <app-empty-state *ngIf="announcements.length === 0" icon="megaphone-outline" title="No announcements" description="Create your first announcement."></app-empty-state>

@@ -21,6 +21,7 @@
   flex-direction: column;
   overflow: hidden;
   min-width: 0;
+  width: 100%;
 }
 
 .main-content {
@@ -29,6 +30,8 @@
   overflow-x: hidden;
   padding: var(--space-8);
   min-height: 0;
+  width: 100%;
+  max-width: 100%;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
 }
@@ -50,8 +53,18 @@
 
 @media (max-width: 1024px) {
   .portal-layout__sidebar {
+    position: fixed;
+    left: -260px;
+    top: 0;
+    width: 260px;
+    height: 100vh;
+    z-index: 200;
+    transition: left 200ms ease;
     flex: none;
-    width: 0;
+  }
+
+  .portal-layout__sidebar.is-open {
+    left: 0;
   }
 
   .main-content {
@@ -62,10 +75,17 @@
   .sidebar-overlay {
     display: block;
     pointer-events: none;
+    z-index: 199;
   }
 
   .sidebar-overlay.is-visible {
     opacity: 1;
     pointer-events: auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .main-content {
+    padding: var(--space-4);
   }
 }

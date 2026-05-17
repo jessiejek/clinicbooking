@@ -2,6 +2,7 @@ import { AsyncPipe, CurrencyPipe, DatePipe, NgFor, NgIf } from '@angular/common'
 import { Component, OnInit, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { Store } from '@ngrx/store';
+import { distinctUntilChanged } from 'rxjs';
 import { Booking } from '../../../core/models';
 import { MockDataService } from '../../../core/services/mock-data.service';
 import { loadBookings } from '../../../store/bookings/bookings.actions';
@@ -126,6 +127,7 @@ export class DashboardPage implements OnInit {
   primaryColor = this.resolvePrimaryColor();
   areaLinePath = '';
   areaFillPath = '';
+  private readonly revenueData = this.buildRevenueSeries(this.getRevenueSeed());
 
   ngOnInit(): void {
     this.store.dispatch(loadBookings());
@@ -133,30 +135,48 @@ export class DashboardPage implements OnInit {
     this.store.dispatch(loadPatients());
     this.store.dispatch(loadNotifications());
 
-    this.store.select(selectBookingsLoading).subscribe((isLoading) => (this.isLoading = isLoading));
-    this.store.select(selectBookings).subscribe((bookings) => {
-      this.bookings = bookings;
-      this.refreshStats();
-    });
-    this.store.select(selectTodaysBookings).subscribe((bookings) => {
-      this.todaysBookings = bookings;
-      this.refreshCharts();
-    });
-    this.store.select(selectPendingVerifications).subscribe((bookings) => {
-      this.pendingVerificationCount = bookings.length;
-    });
-    this.store.select(selectAllDoctors).subscribe((doctors) => {
-      this.doctors = doctors.length ? doctors : this.mockData.getDoctors();
-      this.refreshCharts();
-    });
-    this.store.select(selectAllPatients).subscribe((patients) => {
-      this.patients = patients.length ? patients : this.mockData.getPatients();
-    });
+    this.store
+      .select(selectBookingsLoading)
+      .pipe(distinctUntilChanged())
+      .subscribe((isLoading) => (this.isLoading = isLoading));
+    this.store
+      .select(selectBookings)
+      .pipe(distinctUntilChanged())
+      .subscribe((bookings) => {
+        this.bookings = bookings;
+        this.refreshStats();
+      });
+    this.store
+      .select(selectTodaysBookings)
+      .pipe(distinctUntilChanged())
+      .subscribe((bookings) => {
+        this.todaysBookings = bookings;
+        this.refreshCharts();
+      });
+    this.store
+      .select(selectPendingVerifications)
+      .pipe(distinctUntilChanged())
+      .subscribe((bookings) => {
+        this.pendingVerificationCount = bookings.length;
+      });
+    this.store
+      .select(selectAllDoctors)
+      .pipe(distinctUntilChanged())
+      .subscribe((doctors) => {
+        this.doctors = doctors.length ? doctors : this.mockData.getDoctors();
+        this.refreshCharts();
+      });
+    this.store
+      .select(selectAllPatients)
+      .pipe(distinctUntilChanged())
+      .subscribe((patients) => {
+        this.patients = patients.length ? patients : this.mockData.getPatients();
+      });
   }
 
-  handleTableAction(action: string): void {
-    if (action === 'view') {
-      void this.openBooking(this.todaysBookings[0]?.id ?? '');
+  handleTableAction(event: { action: string; id: string }): void {
+    if (event.action === 'view') {
+      void this.openBooking(event.id);
     }
   }
 
@@ -194,14 +214,26 @@ export class DashboardPage implements OnInit {
     this.topDoctorStats = doctorStats.map((item) => ({ ...item, max: maxCount }));
     this.revenueLegend = this.buildRevenueLegend();
 
-    const revenueData = Array.from({ length: 30 }, () => Math.floor(Math.random() * 3000) + 500);
-    const points = revenueData.map((value, index) => {
-      const x = (index / (revenueData.length - 1)) * 560 + 20;
+    const points = this.revenueData.map((value, index) => {
+      const x = (index / (this.revenueData.length - 1)) * 560 + 20;
       const y = 190 - ((value - 500) / 3000) * 150;
       return `${x.toFixed(1)},${y.toFixed(1)}`;
     });
     this.areaLinePath = `M ${points.join(' L ')}`;
     this.areaFillPath = `${this.areaLinePath} L 580,200 L 20,200 Z`;
+  }
+
+  private buildRevenueSeries(seed: number): number[] {
+    let value = seed >>> 0;
+    return Array.from({ length: 30 }, () => {
+      value = (value * 1664525 + 1013904223) >>> 0;
+      return 500 + (value % 3001);
+    });
+  }
+
+  private getRevenueSeed(): number {
+    const now = new Date();
+    return now.getFullYear() * 12 + now.getMonth() + 1;
   }
 
   private localIsoDate(): string {

@@ -25,7 +25,8 @@ import {
   ],
   template: `
     <div class="table-wrap">
-      <table class="clinic-table" *ngIf="!isLoading && bookings.length > 0">
+      <div class="table-scroll-wrap" *ngIf="!isLoading && bookings.length > 0">
+        <table class="clinic-table">
         <thead>
           <tr>
             <th>Queue#</th>
@@ -54,15 +55,16 @@ import {
             <td class="data-mono">{{ booking.slotStartTime }} - {{ booking.slotEndTime }}</td>
             <td><app-status-badge [status]="booking.status"></app-status-badge></td>
             <td><app-status-badge [status]="booking.paymentStatus"></app-status-badge></td>
-            <td>
+          <td>
               <app-booking-actions-menu
                 [actions]="actions"
-                (actionSelected)="action.emit($event)"
+                (actionSelected)="action.emit({ action: $event, id: booking.id })"
               ></app-booking-actions-menu>
             </td>
           </tr>
         </tbody>
-      </table>
+        </table>
+      </div>
 
       <div *ngIf="isLoading" class="table-skeleton">
         <app-skeleton variant="row" [count]="5"></app-skeleton>
@@ -91,7 +93,7 @@ export class TodayAppointmentsTableComponent {
   ];
 
   @Output() rowClicked = new EventEmitter<Booking>();
-  @Output() action = new EventEmitter<string>();
+  @Output() action = new EventEmitter<{ action: string; id: string }>();
 
   patientName(patientId: string): string {
     const patient = this.patients.find((item) => item.id === patientId);

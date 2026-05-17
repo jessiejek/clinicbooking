@@ -22,6 +22,8 @@ import { TopbarComponent } from '../../portals/admin/components/topbar/topbar.co
         [portalLabel]="portalLabel"
         [clinicName]="clinicName"
         [currentUser]="currentUser()"
+        [isOpen]="isSidebarOpen"
+        (navClick)="closeSidebar()"
         (logout)="logout()"
       ></app-admin-sidebar>
 
@@ -31,6 +33,7 @@ import { TopbarComponent } from '../../portals/admin/components/topbar/topbar.co
           [portalLabel]="portalLabel"
           [currentUser]="currentUser()"
           [unreadCount]="unreadCount()"
+          (menuToggle)="isSidebarOpen = !isSidebarOpen"
           (logout)="logout()"
         ></app-admin-topbar>
 
@@ -38,6 +41,13 @@ import { TopbarComponent } from '../../portals/admin/components/topbar/topbar.co
           <router-outlet></router-outlet>
         </main>
       </div>
+
+      <div
+        class="sidebar-overlay"
+        [class.is-visible]="isSidebarOpen"
+        (click)="closeSidebar()"
+        aria-hidden="true"
+      ></div>
     </div>
   `,
   styleUrl: './admin-layout.component.scss',
@@ -59,6 +69,7 @@ export class AdminLayoutComponent implements OnInit {
   portalLabel = 'Admin Portal';
   portalTitle = 'Dashboard';
   pageTitle = 'Dashboard';
+  isSidebarOpen = false;
 
   get pendingCount(): number {
     return this.pendingBookings().length;
@@ -112,6 +123,10 @@ export class AdminLayoutComponent implements OnInit {
   logout(): void {
     this.store.dispatch(logoutAction());
     void this.router.navigate(['/auth/login']);
+  }
+
+  closeSidebar(): void {
+    this.isSidebarOpen = false;
   }
 
   private updatePageTitle(): void {

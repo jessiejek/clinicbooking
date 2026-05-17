@@ -1,6 +1,14 @@
+.page-shell,
+:host {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+}
+
 .page-shell {
   display: grid;
   gap: var(--space-6);
+  width: 100%;
 }
 
 .page-shell__header {
@@ -26,12 +34,19 @@
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-6);
+  min-width: 0;
 }
 
 .chart-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-4);
+  min-width: 0;
+}
+
+.chart-grid > .clinic-card,
+.page-shell > .clinic-card {
+  min-width: 0;
 }
 
 .chart-card {
@@ -55,6 +70,13 @@
 .bar-row__value {
   font-size: var(--text-sm);
   color: var(--clinic-text-secondary);
+}
+
+.bar-row__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .bar-row__value {
@@ -100,8 +122,45 @@
 }
 
 @media (max-width: 640px) {
-  .stats-grid,
+  .page-shell {
+    gap: var(--space-3);
+  }
+
+  .page-shell__header {
+    margin-bottom: 0;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+  }
+
+  .stats-grid ::ng-deep app-stat-card {
+    display: block;
+    min-width: 0;
+  }
+
+  .stats-grid > app-stat-card {
+    min-width: 0;
+  }
+
   .chart-grid {
     grid-template-columns: 1fr;
+  }
+
+  .chart-grid > .clinic-card,
+  .page-shell > .clinic-card {
+    padding: var(--space-4);
+  }
+
+  .bar-row {
+    grid-template-columns: minmax(84px, 1fr) minmax(0, 2fr) auto;
+    gap: var(--space-2);
+  }
+}
+
+@media (min-width: 641px) and (max-width: 768px) {
+  .page-shell__header {
+    margin-bottom: var(--space-4);
   }
 }

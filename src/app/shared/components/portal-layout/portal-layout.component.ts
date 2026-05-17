@@ -79,7 +79,7 @@ import { TopbarComponent } from '../../../portals/admin/components/topbar/topbar
           [portalLabel]="portalLabel"
           [currentUser]="currentUser$ | async"
           [unreadCount]="(unreadCount$ | async) ?? 0"
-          (menuToggle)="openSidebar()"
+          (menuToggle)="toggleSidebar()"
           (logout)="logout()"
         ></app-admin-topbar>
 
@@ -173,12 +173,12 @@ export class PortalLayoutComponent implements OnInit {
       .subscribe(() => this.updatePageTitle());
   }
 
-  openSidebar(): void {
-    this.sidebarOpen = true;
-  }
-
   closeSidebar(): void {
     this.sidebarOpen = false;
+  }
+
+  toggleSidebar(): void {
+    this.sidebarOpen = !this.sidebarOpen;
   }
 
   logout(): void {

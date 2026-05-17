@@ -29,6 +29,7 @@ interface StaffRow {
       </div>
 
       <div class="clinic-card" *ngIf="staff.length > 0">
+        <div class="table-scroll-wrap">
         <table class="clinic-table">
           <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead>
           <tbody>
@@ -41,6 +42,7 @@ interface StaffRow {
             </tr>
           </tbody>
         </table>
+        </div>
       </div>
 
       <app-empty-state *ngIf="staff.length === 0" icon="person-add-outline" title="No staff accounts" description="Create the first front desk account to continue." ctaLabel="Add Staff" (ctaClick)="openModal()"></app-empty-state>

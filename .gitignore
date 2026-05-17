@@ -19,6 +19,7 @@ yarn-error.log
 *.launch
 .settings/
 *.sublime-workspace
+*.tmp-build
 .npm-cache/
 *.log
 # Visual Studio Code

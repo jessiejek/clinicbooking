@@ -680,8 +680,14 @@ ion-item.clinic-input {
 }
 
 /* Tables */
+.table-scroll-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .clinic-table {
   width: 100%;
+  min-width: 520px;
   border-collapse: separate;
   border-spacing: 0;
   font-size: var(--text-sm);
@@ -1006,6 +1012,20 @@ ion-item.clinic-input {
   margin: 0 auto;
 }
 
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.form-field__label {
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: var(--clinic-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
 @media (hover: none) {
   .clinic-card:hover,
   .doctor-card:hover,
@@ -1032,5 +1052,15 @@ ion-item.clinic-input {
   .page-shell__header .btn-outline {
     align-self: stretch;
     justify-content: center;
+  }
+}
+
+@media (max-width: 768px) {
+  .clinic-table td {
+    padding: var(--space-3) var(--space-3);
+  }
+
+  .clinic-table th {
+    padding: var(--space-2) var(--space-3);
   }
 }
