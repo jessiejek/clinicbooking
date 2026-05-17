@@ -1,33 +1,44 @@
 import { NgIf } from '@angular/common';
 import { Component, Input } from '@angular/core';
-import { IonIcon, IonPopover } from '@ionic/angular/standalone';
+import { IonIcon } from '@ionic/angular/standalone';
+import { addIcons } from 'ionicons';
+import { notificationsOutline } from 'ionicons/icons';
 import { NotificationPanelComponent } from '../../../../shared/components/notification-panel/notification-panel.component';
 
 @Component({
   selector: 'app-notification-bell',
   standalone: true,
-  imports: [NgIf, IonIcon, IonPopover, NotificationPanelComponent],
+  imports: [NgIf, IonIcon, NotificationPanelComponent],
   template: `
-    <button id="notification-bell-trigger" type="button" class="notification-bell">
-      <ion-icon name="notifications-outline"></ion-icon>
-      <span *ngIf="unreadCount > 0" class="notification-badge">{{ unreadCount }}</span>
-    </button>
+    <div class="notification-bell-shell">
+      <button type="button" class="notification-bell" (click)="togglePanel($event)">
+        <ion-icon name="notifications-outline"></ion-icon>
+        <span *ngIf="unreadCount > 0" class="notification-badge">{{ unreadCount }}</span>
+      </button>
 
-    <ion-popover
-      trigger="notification-bell-trigger"
-      triggerAction="click"
-      side="bottom"
-      alignment="end"
-      [dismissOnSelect]="false"
-      cssClass="notification-popover-shell"
-    >
-      <ng-template>
+      <div *ngIf="isOpen" class="notification-popover-backdrop" (click)="closePanel()" aria-hidden="true"></div>
+      <div *ngIf="isOpen" class="notification-popover-panel" (click)="$event.stopPropagation()">
         <app-notification-panel></app-notification-panel>
-      </ng-template>
-    </ion-popover>
+      </div>
+    </div>
   `,
   styleUrl: './notification-bell.component.scss'
 })
 export class NotificationBellComponent {
   @Input() unreadCount = 0;
+
+  isOpen = false;
+
+  constructor() {
+    addIcons({ notificationsOutline });
+  }
+
+  togglePanel(event: Event): void {
+    event.stopPropagation();
+    this.isOpen = !this.isOpen;
+  }
+
+  closePanel(): void {
+    this.isOpen = false;
+  }
 }

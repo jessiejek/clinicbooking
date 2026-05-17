@@ -8,6 +8,7 @@ import {
   documentTextOutline,
   gridOutline,
   logOutOutline,
+  medkitOutline,
   medicalOutline,
   personOutline
 } from 'ionicons/icons';
@@ -88,6 +89,7 @@ export class PatientLayoutComponent implements OnInit {
       calendarOutline,
       documentTextOutline,
       medicalOutline,
+      medkitOutline,
       personOutline,
       logOutOutline
     });

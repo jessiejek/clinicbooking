@@ -1,22 +1,29 @@
 :host {
   display: block;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .schedule-editor {
   display: grid;
   gap: var(--space-5);
+  min-width: 0;
+  max-width: 100%;
 }
 
 .schedule-card {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+  min-width: 0;
+  max-width: 100%;
 }
 
 .schedule-card__head {
   display: flex;
   justify-content: space-between;
   gap: var(--space-3);
+  min-width: 0;
 }
 
 .section-label {
@@ -32,8 +39,14 @@
   font-size: 22px;
 }
 
+.schedule-table {
+  width: 100%;
+  min-width: 0;
+}
+
 .schedule-table ion-input {
-  min-width: 120px;
+  width: 100%;
+  min-width: 0;
 }
 
 .blocked-form {
@@ -55,14 +68,20 @@
   gap: var(--space-3);
   padding: var(--space-4);
   border: 1px solid var(--clinic-border);
-  border-radius: 16px;
-  background: var(--clinic-surface);
+  border-radius: var(--radius-lg);
+  background: var(--clinic-bg-elevated);
+  min-width: 0;
+}
+
+.blocked-item > div {
+  min-width: 0;
 }
 
 .blocked-item p {
   margin: 4px 0 0;
   color: var(--clinic-text-muted);
   font-size: 13px;
+  overflow-wrap: anywhere;
 }
 
 .preview-picker {
@@ -72,5 +91,121 @@
 @media (max-width: 900px) {
   .blocked-form {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .schedule-editor {
+    gap: var(--space-4);
+  }
+
+  .schedule-card {
+    padding: var(--space-4);
+  }
+
+  .schedule-card__head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .schedule-card__head .btn-primary {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .schedule-table,
+  .schedule-table tbody,
+  .schedule-table tr,
+  .schedule-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .schedule-table {
+    border-spacing: 0;
+    min-width: 0;
+  }
+
+  .schedule-table thead {
+    display: none;
+  }
+
+  .schedule-table tbody {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .schedule-table tr {
+    display: grid;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    border: 1px solid var(--clinic-border);
+    border-radius: var(--radius-lg);
+    background: var(--clinic-bg-elevated);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .schedule-table td {
+    display: grid;
+    grid-template-columns: minmax(84px, 0.75fr) minmax(0, 1fr);
+    align-items: center;
+    gap: var(--space-3);
+    padding: 0;
+    border: 0;
+  }
+
+  .schedule-table td::before {
+    font-size: var(--text-xs);
+    font-weight: var(--font-semibold);
+    color: var(--clinic-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .schedule-table td:nth-child(1)::before {
+    content: 'Day';
+  }
+
+  .schedule-table td:nth-child(2)::before {
+    content: 'Active';
+  }
+
+  .schedule-table td:nth-child(3)::before {
+    content: 'Start';
+  }
+
+  .schedule-table td:nth-child(4)::before {
+    content: 'End';
+  }
+
+  .schedule-table td:nth-child(5)::before {
+    content: 'Duration';
+  }
+
+  .schedule-table td:nth-child(6)::before {
+    content: 'Capacity';
+  }
+
+  .schedule-table ion-toggle {
+    justify-self: end;
+  }
+
+  .blocked-form .btn-primary {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .blocked-item {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .blocked-item .btn-ghost {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .preview-picker {
+    max-width: none;
   }
 }

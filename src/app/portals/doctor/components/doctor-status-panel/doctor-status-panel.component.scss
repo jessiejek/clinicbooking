@@ -1,11 +1,13 @@
 :host {
   display: block;
+  min-width: 0;
 }
 
 .doctor-status-panel {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+  min-width: 0;
 }
 
 .doctor-status-panel__head {
@@ -13,6 +15,7 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-3);
+  min-width: 0;
 }
 
 .section-label {
@@ -37,12 +40,14 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-3);
+  min-width: 0;
 }
 
 .running-late-box {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  min-width: 0;
 }
 
 .running-late-box label {
@@ -53,5 +58,21 @@
 @media (max-width: 900px) {
   .doctor-status-panel__actions {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 580px) {
+  .doctor-status-panel {
+    padding: var(--space-4);
+  }
+
+  .doctor-status-panel__head {
+    flex-direction: column;
+  }
+
+  .doctor-status-panel__actions .btn-primary,
+  .doctor-status-panel__actions .btn-ghost {
+    width: 100%;
+    justify-content: center;
   }
 }

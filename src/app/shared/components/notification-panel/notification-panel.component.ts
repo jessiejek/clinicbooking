@@ -3,6 +3,14 @@ import { Component, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { Store } from '@ngrx/store';
 import { IonButton, IonIcon } from '@ionic/angular/standalone';
+import { addIcons } from 'ionicons';
+import {
+  calendarOutline,
+  cashOutline,
+  medicalOutline,
+  notificationsOutline,
+  refreshOutline
+} from 'ionicons/icons';
 import { Notification } from '../../../core/models';
 import { markAllNotificationsRead, markNotificationRead } from '../../../store/notifications/notifications.actions';
 import {
@@ -70,6 +78,16 @@ export class NotificationPanelComponent {
   readonly notifications = this.store.selectSignal(selectCurrentUserNotifications);
   readonly unreadCount = this.store.selectSignal(selectUnreadCount);
   readonly currentUser = this.store.selectSignal(selectCurrentUser);
+
+  constructor() {
+    addIcons({
+      calendarOutline,
+      cashOutline,
+      medicalOutline,
+      notificationsOutline,
+      refreshOutline
+    });
+  }
 
   latestNotifications(): Notification[] {
     return [...this.notifications()]

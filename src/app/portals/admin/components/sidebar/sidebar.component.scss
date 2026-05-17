@@ -15,6 +15,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  min-width: 0;
 }
 
 .sidebar__logo {
@@ -33,6 +34,8 @@
   font-size: var(--text-sm);
   font-weight: var(--font-bold);
   color: white;
+  line-height: var(--leading-snug);
+  overflow-wrap: break-word;
 }
 
 .sidebar__portal-label {
@@ -113,9 +116,13 @@
   width: 100%;
   border: none;
   background: rgba(255, 255, 255, 0.02);
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    'avatar meta'
+    'logout logout';
   align-items: center;
-  gap: var(--space-4);
+  gap: var(--space-3);
   cursor: pointer;
   padding: var(--space-4) var(--space-4);
   border-radius: var(--radius-lg);
@@ -125,40 +132,55 @@
   text-align: left;
 }
 
+.sidebar__user app-avatar {
+  grid-area: avatar;
+}
+
 .sidebar__user:hover {
   background: rgba(255, 255, 255, 0.06);
   transform: translateY(-1px);
 }
 
 .sidebar__user-meta {
+  grid-area: meta;
   display: flex;
   flex-direction: column;
   gap: 2px;
   min-width: 0;
-  flex: 1;
 }
 
 .sidebar__user-name {
   font-size: var(--text-sm);
   font-weight: var(--font-semibold);
   color: white;
-  line-height: 1.05;
+  line-height: var(--leading-snug);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .sidebar__user-role {
   font-size: var(--text-xs);
   color: rgba(255, 255, 255, 0.42);
-  line-height: 1.05;
+  line-height: var(--leading-snug);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .sidebar__logout-action {
+  grid-area: logout;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: var(--space-2);
   color: rgba(255, 255, 255, 0.78);
   font-size: var(--text-sm);
   font-weight: var(--font-semibold);
-  margin-left: auto;
+  width: 100%;
+  min-width: 0;
+  padding-top: var(--space-3);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .sidebar__user ion-icon {

@@ -1,10 +1,14 @@
 :host {
   display: block;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .dashboard-header-copy h2 {
   margin: 0;
   font-size: 28px;
+  line-height: var(--leading-tight);
+  overflow-wrap: break-word;
 }
 
 .dashboard-header-copy p {
@@ -17,17 +21,20 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-4);
   margin: var(--space-5) 0;
+  min-width: 0;
 }
 
 .stat-card {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  min-width: 0;
 }
 
 .stat-card__label {
   font-size: 13px;
   color: var(--clinic-text-muted);
+  overflow-wrap: anywhere;
 }
 
 .stat-card__value {
@@ -40,6 +47,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1.5fr) minmax(320px, 0.9fr);
   gap: var(--space-5);
+  min-width: 0;
 }
 
 .content-grid__main,
@@ -51,6 +59,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+  min-width: 0;
 }
 
 .card-head {
@@ -84,13 +93,21 @@
   gap: var(--space-3);
   padding: var(--space-4);
   border: 1px solid var(--clinic-border);
-  border-radius: 16px;
-  background: var(--clinic-surface);
+  border-radius: var(--radius-lg);
+  background: var(--clinic-bg-elevated);
+  min-width: 0;
+}
+
+.upcoming-item > div {
+  min-width: 0;
 }
 
 .upcoming-item strong {
   display: block;
   margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .upcoming-item p,
@@ -115,5 +132,29 @@
 @media (max-width: 580px) {
   .stat-grid {
     grid-template-columns: 1fr;
+    gap: var(--space-3);
+    margin: var(--space-4) 0;
+  }
+
+  .dashboard-header-copy h2 {
+    font-size: var(--text-xl);
+  }
+
+  .stat-card,
+  .upcoming-card {
+    padding: var(--space-4);
+  }
+
+  .stat-card__value {
+    font-size: var(--text-3xl);
+  }
+
+  .upcoming-item {
+    flex-direction: column;
+  }
+
+  .upcoming-item .btn-ghost {
+    width: 100%;
+    justify-content: center;
   }
 }

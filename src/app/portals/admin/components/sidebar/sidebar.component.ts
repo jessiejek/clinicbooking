@@ -3,7 +3,7 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { IonIcon } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { closeOutline } from 'ionicons/icons';
+import { closeOutline, logOutOutline } from 'ionicons/icons';
 import { AvatarComponent } from '../../../../shared/components/avatar/avatar.component';
 import { AuthUser, NavItem } from '../../../../core/models';
 
@@ -76,6 +76,6 @@ export class SidebarComponent {
   @Output() navClick = new EventEmitter<void>();
 
   constructor() {
-    addIcons({ closeOutline });
+    addIcons({ closeOutline, logOutOutline });
   }
 }
