@@ -78,3 +78,41 @@
   color: var(--ion-color-primary);
   font-weight: var(--font-semibold);
 }
+
+@media (max-width: 640px) {
+  .wizard-steps {
+    padding: var(--space-2) 0;
+    margin-bottom: var(--space-5);
+    scrollbar-width: none;
+  }
+
+  .wizard-steps::-webkit-scrollbar {
+    display: none;
+  }
+
+  .wizard-step {
+    min-width: 44px;
+    flex-shrink: 0;
+  }
+
+  .wizard-step__circle {
+    width: 28px;
+    height: 28px;
+    font-size: var(--text-xs);
+  }
+
+  .wizard-step:not(:last-child)::after {
+    top: 14px;
+  }
+
+  .wizard-step__label {
+    font-size: 9px;
+    white-space: normal;
+    max-width: 44px;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    line-height: 1.2;
+  }
+}

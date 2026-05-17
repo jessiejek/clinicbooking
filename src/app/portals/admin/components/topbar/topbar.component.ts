@@ -1,5 +1,7 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { IonIcon } from '@ionic/angular/standalone';
+import { addIcons } from 'ionicons';
+import { closeOutline, menuOutline, searchOutline } from 'ionicons/icons';
 import { AuthUser } from '../../../../core/models';
 import { AvatarComponent } from '../../../../shared/components/avatar/avatar.component';
 import { NotificationBellComponent } from '../notification-bell/notification-bell.component';
@@ -30,6 +32,10 @@ import { NotificationBellComponent } from '../notification-bell/notification-bel
           </span>
         </button>
       </div>
+
+      <button type="button" class="topbar__hamburger" aria-label="Open navigation menu" (click)="menuToggle.emit()">
+        <ion-icon name="menu-outline"></ion-icon>
+      </button>
     </header>
   `,
   styleUrl: './topbar.component.scss'
@@ -42,4 +48,9 @@ export class TopbarComponent {
   @Input() unreadCount = 0;
 
   @Output() logout = new EventEmitter<void>();
+  @Output() menuToggle = new EventEmitter<void>();
+
+  constructor() {
+    addIcons({ menuOutline, closeOutline, searchOutline });
+  }
 }

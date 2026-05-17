@@ -1,80 +1,71 @@
+:host {
+  display: block;
+  height: 100vh;
+}
+
 .portal-layout {
   display: flex;
-  min-height: 100vh;
-  background: var(--clinic-bg);
+  height: 100vh;
   overflow: hidden;
+  background: var(--clinic-bg);
 }
 
 .portal-layout__sidebar {
-  display: block;
+  flex: 0 0 260px;
+  width: 260px;
 }
 
 .portal-layout__main {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  flex: 1 1 0;
-  min-height: 0;
-  margin-left: 260px;
+  overflow: hidden;
+  min-width: 0;
 }
 
 .main-content {
-  flex: 1 1 0;
-  min-height: 0;
-  padding: var(--space-8);
-  background: var(--clinic-bg);
-  overflow-x: hidden;
+  flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--space-8);
+  min-height: 0;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
 }
 
-.bottom-tab-bar {
+.main-content > * {
+  animation: fadeSlideUp 250ms ease-out both;
+}
+
+.sidebar-overlay {
   display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.48);
+  z-index: 299;
+  opacity: 0;
+  transition: opacity 280ms ease;
+  -webkit-tap-highlight-color: transparent;
 }
 
 @media (max-width: 1024px) {
-  .portal-layout__main {
-    margin-left: 0;
-    padding-bottom: 72px;
+  .portal-layout__sidebar {
+    flex: none;
+    width: 0;
   }
 
   .main-content {
     padding: var(--space-5);
+    padding-bottom: env(safe-area-inset-bottom);
   }
 
-  .portal-layout__sidebar {
-    display: none;
+  .sidebar-overlay {
+    display: block;
+    pointer-events: none;
   }
 
-  .bottom-tab-bar {
-    display: flex;
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    height: 60px;
-    background: white;
-    border-top: 1px solid var(--clinic-border);
-    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.06);
-    z-index: 210;
+  .sidebar-overlay.is-visible {
+    opacity: 1;
+    pointer-events: auto;
   }
-}
-
-.tab-item {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  color: var(--clinic-text-muted);
-  font-size: 10px;
-  text-decoration: none;
-}
-
-.tab-item.active {
-  color: var(--ion-color-primary);
-}
-
-.tab-item ion-icon {
-  font-size: 22px;
 }

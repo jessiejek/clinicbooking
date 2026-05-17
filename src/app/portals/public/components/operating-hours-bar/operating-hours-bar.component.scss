@@ -25,3 +25,27 @@
 .hours-divider {
   color: var(--clinic-border-strong);
 }
+
+@media (max-width: 640px) {
+  .hours-bar {
+    padding: var(--space-2) var(--space-4);
+    justify-content: flex-start;
+    gap: var(--space-4);
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .hours-bar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .hours-item {
+    flex-shrink: 0;
+  }
+
+  .hours-divider {
+    display: none;
+  }
+}

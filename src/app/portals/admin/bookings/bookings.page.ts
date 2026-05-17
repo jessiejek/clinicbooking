@@ -46,59 +46,106 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
         <button type="button" class="btn-ghost" (click)="clearFilters()">Clear Filters</button>
       </div>
 
-      <div class="clinic-card">
-        <div class="table-wrap" *ngIf="!isLoading">
-          <table class="clinic-table">
-            <thead>
-              <tr>
-                <th><input type="checkbox" [checked]="selectAll" (change)="toggleSelectAll($event)" /></th>
-                <th>Queue#</th>
-                <th>Patient Name</th>
-                <th>Doctor</th>
-                <th>Service</th>
-                <th>Time</th>
-                <th>Status</th>
-                <th>Payment</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                *ngFor="let booking of filteredBookings"
-                tabindex="0"
-                role="button"
-                [attr.aria-label]="'Open booking ' + booking.id + ' for ' + patientName(booking.patientId)"
-                (click)="openBooking(booking.id)"
-                (keydown.enter)="openBooking(booking.id)"
-              >
-                <td>
-                  <input
-                    type="checkbox"
-                    [checked]="selectedIds.has(booking.id)"
-                    (click)="$event.stopPropagation()"
-                    (change)="toggleSelect(booking.id, $event)"
-                  />
-                </td>
-                <td class="data-mono">{{ booking.queueNumber ?? '-' }}</td>
-                <td>{{ patientName(booking.patientId) }}</td>
-                <td>{{ doctorName(booking.doctorId) }}</td>
-                <td>{{ serviceName(booking.serviceId) }}</td>
-                <td class="data-mono">{{ booking.appointmentDate }} {{ booking.slotStartTime }}</td>
-                <td><app-status-badge [status]="booking.status"></app-status-badge></td>
-                <td><app-status-badge [status]="booking.paymentStatus"></app-status-badge></td>
-              </tr>
-            </tbody>
-          </table>
+      <div class="clinic-card" *ngIf="!isLoading && filteredBookings.length > 0">
+        <div class="table-desktop">
+          <div class="table-wrap">
+            <table class="clinic-table">
+              <thead>
+                <tr>
+                  <th><input type="checkbox" [checked]="selectAll" (change)="toggleSelectAll($event)" /></th>
+                  <th>Queue#</th>
+                  <th>Patient Name</th>
+                  <th>Doctor</th>
+                  <th>Service</th>
+                  <th>Time</th>
+                  <th>Status</th>
+                  <th>Payment</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  *ngFor="let booking of filteredBookings"
+                  tabindex="0"
+                  role="button"
+                  [attr.aria-label]="'Open booking ' + booking.id + ' for ' + patientName(booking.patientId)"
+                  (click)="openBooking(booking.id)"
+                  (keydown.enter)="openBooking(booking.id)"
+                >
+                  <td>
+                    <input
+                      type="checkbox"
+                      [checked]="selectedIds.has(booking.id)"
+                      (click)="$event.stopPropagation()"
+                      (change)="toggleSelect(booking.id, $event)"
+                    />
+                  </td>
+                  <td class="data-mono">{{ booking.queueNumber ?? '-' }}</td>
+                  <td>{{ patientName(booking.patientId) }}</td>
+                  <td>{{ doctorName(booking.doctorId) }}</td>
+                  <td>{{ serviceName(booking.serviceId) }}</td>
+                  <td class="data-mono">{{ booking.appointmentDate }} {{ booking.slotStartTime }}</td>
+                  <td><app-status-badge [status]="booking.status"></app-status-badge></td>
+                  <td><app-status-badge [status]="booking.paymentStatus"></app-status-badge></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
 
-        <app-skeleton *ngIf="isLoading" variant="row" [count]="5"></app-skeleton>
+        <div class="table-mobile">
+          <article
+            *ngFor="let booking of filteredBookings"
+            class="mobile-card"
+            tabindex="0"
+            role="button"
+            [attr.aria-label]="'Open booking ' + booking.id + ' for ' + patientName(booking.patientId)"
+            (click)="openBooking(booking.id)"
+            (keydown.enter)="openBooking(booking.id)"
+          >
+            <div class="mobile-card__header">
+              <div>
+                <div class="mobile-card__name">{{ patientName(booking.patientId) }}</div>
+                <div class="mobile-card__code">Booking ID {{ booking.id }}</div>
+              </div>
+              <app-status-badge [status]="booking.status"></app-status-badge>
+            </div>
 
-        <app-empty-state
-          *ngIf="!isLoading && filteredBookings.length === 0"
-          icon="calendar-outline"
-          title="No bookings found"
-          description="Try adjusting the filters or create a new walk-in booking."
-        ></app-empty-state>
+            <div class="mobile-card__row">
+              <span class="mobile-card__label">Queue</span>
+              <span class="data-mono">{{ booking.queueNumber ?? '-' }}</span>
+            </div>
+
+            <div class="mobile-card__row">
+              <span class="mobile-card__label">Doctor</span>
+              <span>{{ doctorName(booking.doctorId) }}</span>
+            </div>
+
+            <div class="mobile-card__row">
+              <span class="mobile-card__label">Service</span>
+              <span>{{ serviceName(booking.serviceId) }}</span>
+            </div>
+
+            <div class="mobile-card__row">
+              <span class="mobile-card__label">Time</span>
+              <span class="data-mono">{{ booking.appointmentDate }} {{ booking.slotStartTime }}</span>
+            </div>
+
+            <div class="mobile-card__row">
+              <span class="mobile-card__label">Payment</span>
+              <app-status-badge [status]="booking.paymentStatus"></app-status-badge>
+            </div>
+          </article>
+        </div>
       </div>
+
+      <app-skeleton *ngIf="isLoading" variant="row" [count]="5"></app-skeleton>
+
+      <app-empty-state
+        *ngIf="!isLoading && filteredBookings.length === 0"
+        icon="calendar-outline"
+        title="No bookings found"
+        description="Try adjusting the filters or create a new walk-in booking."
+      ></app-empty-state>
     </section>
   `,
   styleUrl: './bookings.page.scss'

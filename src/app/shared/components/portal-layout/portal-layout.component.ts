@@ -1,4 +1,4 @@
-import { AsyncPipe, NgFor, NgIf } from '@angular/common';
+import { AsyncPipe } from '@angular/common';
 import {
   Component,
   DestroyRef,
@@ -7,11 +7,10 @@ import {
   OnInit,
   inject
 } from '@angular/core';
-import { ActivatedRoute, NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { ActivatedRoute, NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { Store } from '@ngrx/store';
 import { filter } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { IonIcon } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import {
   alertCircleOutline,
@@ -60,17 +59,7 @@ import { TopbarComponent } from '../../../portals/admin/components/topbar/topbar
 @Component({
   selector: 'app-portal-layout',
   standalone: true,
-  imports: [
-    AsyncPipe,
-    NgFor,
-    NgIf,
-    RouterLink,
-    RouterLinkActive,
-    RouterOutlet,
-    IonIcon,
-    SidebarComponent,
-    TopbarComponent
-  ],
+  imports: [AsyncPipe, RouterOutlet, SidebarComponent, TopbarComponent],
   template: `
     <div class="portal-layout" [style.--portal-accent]="portalColor">
       <app-admin-sidebar
@@ -79,6 +68,8 @@ import { TopbarComponent } from '../../../portals/admin/components/topbar/topbar
         [portalLabel]="portalLabel"
         [clinicName]="clinicName"
         [currentUser]="currentUser$ | async"
+        [isOpen]="sidebarOpen"
+        (navClick)="closeSidebar()"
         (logout)="logout()"
       ></app-admin-sidebar>
 
@@ -88,6 +79,7 @@ import { TopbarComponent } from '../../../portals/admin/components/topbar/topbar
           [portalLabel]="portalLabel"
           [currentUser]="currentUser$ | async"
           [unreadCount]="(unreadCount$ | async) ?? 0"
+          (menuToggle)="openSidebar()"
           (logout)="logout()"
         ></app-admin-topbar>
 
@@ -96,18 +88,12 @@ import { TopbarComponent } from '../../../portals/admin/components/topbar/topbar
         </main>
       </div>
 
-      <nav class="bottom-tab-bar" *ngIf="mobileNavItems.length > 0">
-        <a
-          *ngFor="let item of mobileNavItems"
-          [routerLink]="item.route"
-          routerLinkActive="active"
-          [routerLinkActiveOptions]="{ exact: item.route.endsWith('/dashboard') }"
-          class="tab-item"
-        >
-          <ion-icon [name]="item.icon"></ion-icon>
-          <span>{{ item.label }}</span>
-        </a>
-      </nav>
+      <div
+        class="sidebar-overlay"
+        [class.is-visible]="sidebarOpen"
+        (click)="closeSidebar()"
+        aria-hidden="true"
+      ></div>
     </div>
   `,
   styleUrl: './portal-layout.component.scss'
@@ -132,7 +118,7 @@ export class PortalLayoutComponent implements OnInit {
   clinicName = '';
   pageTitle = 'Dashboard';
   resolvedNavItems: NavItem[] = [];
-  mobileNavItems: NavItem[] = [];
+  sidebarOpen = false;
 
   constructor() {
     addIcons({
@@ -177,7 +163,6 @@ export class PortalLayoutComponent implements OnInit {
     this.clinicName = this.clinicSettingsService.load().clinicName;
     this.resolvedNavItems = (this.route.snapshot.data['navItems'] as NavItem[]) ?? this.navItems;
     this.portalLabel = (this.route.snapshot.data['portalLabel'] as string | undefined) ?? this.portalLabel;
-    this.mobileNavItems = this.resolvedNavItems.slice(0, 5);
     this.updatePageTitle();
 
     this.router.events
@@ -186,6 +171,14 @@ export class PortalLayoutComponent implements OnInit {
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe(() => this.updatePageTitle());
+  }
+
+  openSidebar(): void {
+    this.sidebarOpen = true;
+  }
+
+  closeSidebar(): void {
+    this.sidebarOpen = false;
   }
 
   logout(): void {

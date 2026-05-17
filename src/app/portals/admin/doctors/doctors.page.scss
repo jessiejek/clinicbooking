@@ -32,3 +32,18 @@ select {
   border-radius: var(--radius-md);
   background: white;
 }
+
+.table-mobile {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .table-desktop {
+    display: none;
+  }
+
+  .table-mobile {
+    display: grid;
+    gap: var(--space-3);
+  }
+}

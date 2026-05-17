@@ -2,6 +2,8 @@ import { NgFor, NgIf } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { IonIcon } from '@ionic/angular/standalone';
+import { addIcons } from 'ionicons';
+import { closeOutline } from 'ionicons/icons';
 import { AvatarComponent } from '../../../../shared/components/avatar/avatar.component';
 import { AuthUser, NavItem } from '../../../../core/models';
 
@@ -10,13 +12,16 @@ import { AuthUser, NavItem } from '../../../../core/models';
   standalone: true,
   imports: [NgFor, NgIf, RouterLink, RouterLinkActive, IonIcon, AvatarComponent],
   template: `
-    <aside class="sidebar">
+    <aside class="sidebar" [class.is-open]="isOpen">
       <div class="sidebar__brand">
         <div class="sidebar__logo" aria-hidden="true">G</div>
         <div>
           <div class="sidebar__clinic-name">{{ clinicName }}</div>
           <div class="sidebar__portal-label">{{ portalLabel }}</div>
         </div>
+        <button type="button" class="sidebar__close" aria-label="Close menu" (click)="navClick.emit()">
+          <ion-icon name="close-outline"></ion-icon>
+        </button>
       </div>
 
       <nav class="sidebar__nav">
@@ -32,6 +37,7 @@ import { AuthUser, NavItem } from '../../../../core/models';
             routerLinkActive="active"
             [routerLinkActiveOptions]="{ exact: item.route.endsWith('/dashboard') }"
             class="nav-item"
+            (click)="navClick.emit()"
           >
             <ion-icon class="nav-item__icon" [name]="item.icon"></ion-icon>
             <span>{{ item.label }}</span>
@@ -64,6 +70,12 @@ export class SidebarComponent {
   @Input() portalLabel = 'Portal';
   @Input() clinicName = 'Clinic';
   @Input() currentUser: AuthUser | null = null;
+  @Input() isOpen = false;
 
   @Output() logout = new EventEmitter<void>();
+  @Output() navClick = new EventEmitter<void>();
+
+  constructor() {
+    addIcons({ closeOutline });
+  }
 }

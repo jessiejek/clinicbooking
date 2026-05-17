@@ -2,6 +2,15 @@ import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { Store } from '@ngrx/store';
 import { filter } from 'rxjs';
+import { addIcons } from 'ionicons';
+import {
+  calendarOutline,
+  documentTextOutline,
+  gridOutline,
+  logOutOutline,
+  medicalOutline,
+  personOutline
+} from 'ionicons/icons';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavItem } from '../../../../core/models';
 import { ClinicSettingsService } from '../../../../core/services/clinic-settings.service';
@@ -24,6 +33,8 @@ import { PATIENT_NAV_ITEMS } from '../../patient.routes';
         [portalLabel]="portalLabel"
         [clinicName]="clinicName"
         [currentUser]="currentUser()"
+        [isOpen]="sidebarOpen"
+        (navClick)="closeSidebar()"
         (logout)="logout()"
       ></app-admin-sidebar>
 
@@ -34,6 +45,7 @@ import { PATIENT_NAV_ITEMS } from '../../patient.routes';
           [searchPlaceholder]="searchPlaceholder"
           [currentUser]="currentUser()"
           [unreadCount]="unreadCount()"
+          (menuToggle)="openSidebar()"
           (logout)="logout()"
         ></app-admin-topbar>
 
@@ -41,6 +53,13 @@ import { PATIENT_NAV_ITEMS } from '../../patient.routes';
           <router-outlet></router-outlet>
         </main>
       </div>
+
+      <div
+        class="sidebar-overlay"
+        [class.is-visible]="sidebarOpen"
+        (click)="closeSidebar()"
+        aria-hidden="true"
+      ></div>
     </div>
   `,
   styleUrl: './patient-layout.component.scss'
@@ -61,6 +80,18 @@ export class PatientLayoutComponent implements OnInit {
   pageTitle = 'Dashboard';
   searchPlaceholder = 'Search doctors, bookings...';
   navItems: NavItem[] = PATIENT_NAV_ITEMS;
+  sidebarOpen = false;
+
+  constructor() {
+    addIcons({
+      gridOutline,
+      calendarOutline,
+      documentTextOutline,
+      medicalOutline,
+      personOutline,
+      logOutOutline
+    });
+  }
 
   ngOnInit(): void {
     this.clinicName = this.clinicSettingsService.load().clinicName;
@@ -72,6 +103,14 @@ export class PatientLayoutComponent implements OnInit {
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe(() => this.updatePageTitle());
+  }
+
+  openSidebar(): void {
+    this.sidebarOpen = true;
+  }
+
+  closeSidebar(): void {
+    this.sidebarOpen = false;
   }
 
   logout(): void {

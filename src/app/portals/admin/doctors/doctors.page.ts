@@ -29,58 +29,117 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
       </div>
 
       <div class="clinic-card" *ngIf="!isLoading && doctors.length > 0">
-        <table class="clinic-table">
-          <thead>
-            <tr>
-              <th>Avatar</th>
-              <th>Name</th>
-              <th>Specialization</th>
-              <th>Fee</th>
-              <th>Working Days</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              *ngFor="let doctor of doctors"
-              tabindex="0"
-              role="button"
-              [attr.aria-label]="'Edit doctor ' + doctor.fullName"
-              (click)="editDoctor(doctor.id)"
-              (keydown.enter)="editDoctor(doctor.id)"
-            >
-              <td><app-avatar [name]="doctor.fullName"></app-avatar></td>
-              <td>{{ doctor.fullName }}</td>
-              <td>{{ doctor.specialization }}</td>
-              <td>PHP {{ doctor.consultationFee }}</td>
-              <td>{{ workingDays(doctor.id) }}</td>
-              <td>
-                <app-status-badge [status]="doctor.status"></app-status-badge>
-              </td>
-              <td>
-                <div class="table-actions">
-                  <button
-                    type="button"
-                    class="btn-icon"
-                    [attr.aria-label]="'Edit doctor ' + doctor.fullName"
-                    (click)="editDoctor(doctor.id); $event.stopPropagation()"
-                  >
-                    <ion-icon name="edit-outline"></ion-icon>
-                  </button>
-                  <button
-                    type="button"
-                    class="btn-icon"
-                    [attr.aria-label]="'Delete doctor ' + doctor.fullName"
-                    (click)="removeDoctor(doctor.id, $event)"
-                  >
-                    <ion-icon name="trash-outline"></ion-icon>
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="table-desktop">
+          <table class="clinic-table">
+            <thead>
+              <tr>
+                <th>Avatar</th>
+                <th>Name</th>
+                <th>Specialization</th>
+                <th>Fee</th>
+                <th>Working Days</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                *ngFor="let doctor of doctors"
+                tabindex="0"
+                role="button"
+                [attr.aria-label]="'Edit doctor ' + doctor.fullName"
+                (click)="editDoctor(doctor.id)"
+                (keydown.enter)="editDoctor(doctor.id)"
+              >
+                <td><app-avatar [name]="doctor.fullName"></app-avatar></td>
+                <td>{{ doctor.fullName }}</td>
+                <td>{{ doctor.specialization }}</td>
+                <td>PHP {{ doctor.consultationFee }}</td>
+                <td>{{ workingDays(doctor.id) }}</td>
+                <td>
+                  <app-status-badge [status]="doctor.status"></app-status-badge>
+                </td>
+                <td>
+                  <div class="table-actions">
+                    <button
+                      type="button"
+                      class="btn-icon"
+                      [attr.aria-label]="'Edit doctor ' + doctor.fullName"
+                      (click)="editDoctor(doctor.id); $event.stopPropagation()"
+                    >
+                      <ion-icon name="edit-outline"></ion-icon>
+                    </button>
+                    <button
+                      type="button"
+                      class="btn-icon"
+                      [attr.aria-label]="'Delete doctor ' + doctor.fullName"
+                      (click)="removeDoctor(doctor.id, $event)"
+                    >
+                      <ion-icon name="trash-outline"></ion-icon>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="table-mobile">
+          <article
+            *ngFor="let doctor of doctors"
+            class="mobile-card"
+            tabindex="0"
+            role="button"
+            [attr.aria-label]="'Edit doctor ' + doctor.fullName"
+            (click)="editDoctor(doctor.id)"
+            (keydown.enter)="editDoctor(doctor.id)"
+          >
+            <div class="mobile-card__header">
+              <div>
+                <div class="mobile-card__name">{{ doctor.fullName }}</div>
+                <div class="mobile-card__code">Doctor ID {{ doctor.id }}</div>
+              </div>
+              <app-status-badge [status]="doctor.status"></app-status-badge>
+            </div>
+
+            <div class="mobile-card__row">
+              <span class="mobile-card__label">Specialization</span>
+              <span>{{ doctor.specialization }}</span>
+            </div>
+
+            <div class="mobile-card__row">
+              <span class="mobile-card__label">Fee</span>
+              <span>PHP {{ doctor.consultationFee }}</span>
+            </div>
+
+            <div class="mobile-card__row">
+              <span class="mobile-card__label">Working Days</span>
+              <span>{{ workingDays(doctor.id) }}</span>
+            </div>
+
+            <div class="mobile-card__row">
+              <span class="mobile-card__label">Actions</span>
+              <span class="table-actions">
+                <button
+                  type="button"
+                  class="btn-icon"
+                  [attr.aria-label]="'Edit doctor ' + doctor.fullName"
+                  (click)="editDoctor(doctor.id); $event.stopPropagation()"
+                >
+                  <ion-icon name="edit-outline"></ion-icon>
+                </button>
+                <button
+                  type="button"
+                  class="btn-icon"
+                  [attr.aria-label]="'Delete doctor ' + doctor.fullName"
+                  (click)="removeDoctor(doctor.id, $event)"
+                >
+                  <ion-icon name="trash-outline"></ion-icon>
+                </button>
+              </span>
+            </div>
+          </article>
+        </div>
       </div>
 
       <app-skeleton *ngIf="isLoading" variant="row" [count]="3"></app-skeleton>

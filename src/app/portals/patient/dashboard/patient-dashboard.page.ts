@@ -8,10 +8,12 @@ import { MockDataService } from '../../../core/services/mock-data.service';
 import { loadBookings } from '../../../store/bookings/bookings.actions';
 import { selectBookingsByPatientId, selectPendingProofBookingsByPatientId, selectUpcomingBookingsByPatientId } from '../../../store/bookings/bookings.selectors';
 import { loadDoctors } from '../../../store/doctors/doctors.actions';
+import { selectAllDoctors } from '../../../store/doctors/doctors.selectors';
 import { loadPatients } from '../../../store/patients/patients.actions';
 import { selectCurrentPatient } from '../../../store/patients/patients.selectors';
 import { BannerComponent } from '../../../shared/components/banner/banner.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { DoctorCardComponent } from '../../public/components/doctor-card/doctor-card.component';
 import { MedicalRecordCardComponent } from '../components/medical-record-card/medical-record-card.component';
 import { PrescriptionCardComponent } from '../components/prescription-card/prescription-card.component';
 import { UpcomingAppointmentCardComponent } from '../components/upcoming-appointment-card/upcoming-appointment-card.component';
@@ -27,6 +29,7 @@ interface DashboardVm {
   pendingProofBookings: Booking[];
   consultations: Consultation[];
   prescriptions: Prescription[];
+  doctors: Doctor[];
   latestBooking?: Booking;
   latestBookingDoctor?: Doctor;
   latestBookingService?: Service;
@@ -51,6 +54,7 @@ interface DashboardVm {
     RouterLink,
     BannerComponent,
     EmptyStateComponent,
+    DoctorCardComponent,
     UpcomingAppointmentCardComponent,
     MedicalRecordCardComponent,
     PrescriptionCardComponent
@@ -103,6 +107,22 @@ interface DashboardVm {
           <div class="stat-card__value">{{ vm.activePrescriptionCount }}</div>
           <div class="stat-card__label">Active Prescriptions</div>
         </div>
+      </div>
+
+      <div class="dashboard-section">
+        <div class="section-heading">Book With a Doctor</div>
+        <div class="dashboard-doctors" *ngIf="vm.doctors.length > 0; else noDoctorsTpl">
+          <app-doctor-card *ngFor="let doctor of vm.doctors" [doctor]="doctor"></app-doctor-card>
+        </div>
+        <ng-template #noDoctorsTpl>
+          <app-empty-state
+            icon="medical-outline"
+            title="No doctors available"
+            description="Please check back later for available providers."
+            ctaLabel="Browse Doctors"
+            ctaRoute="/patient/doctors"
+          ></app-empty-state>
+        </ng-template>
       </div>
 
       <div class="dashboard-section" *ngIf="vm.latestBooking; else noUpcomingTpl">
@@ -192,13 +212,16 @@ export class PatientDashboardPage implements OnInit {
     )
   );
 
+  readonly doctors$ = this.store.select(selectAllDoctors);
+
   vm$ = combineLatest([
     this.currentUser$,
     this.patient$,
     this.upcomingBookings$,
-    this.pendingProofBookings$
+    this.pendingProofBookings$,
+    this.doctors$
   ]).pipe(
-    switchMap(([user, patient, upcomingBookings, pendingProofBookings]) => {
+    switchMap(([user, patient, upcomingBookings, pendingProofBookings, doctors]) => {
       if (!patient) {
         return of({
           user,
@@ -207,6 +230,7 @@ export class PatientDashboardPage implements OnInit {
           pendingProofBookings,
           consultations: [],
           prescriptions: [],
+          doctors: doctors.slice(0, 3),
           latestBooking: undefined,
           latestBookingDoctor: undefined,
           latestBookingService: undefined,
@@ -239,11 +263,12 @@ export class PatientDashboardPage implements OnInit {
             patient,
             upcomingBookings,
             pendingProofBookings,
-            consultations,
-            prescriptions,
-            latestBooking,
-            latestBookingDoctor,
-            latestBookingService,
+          consultations,
+          prescriptions,
+          doctors: doctors.slice(0, 3),
+          latestBooking,
+          latestBookingDoctor,
+          latestBookingService,
             recentConsultations: consultations.slice(0, 2).map((consultation) => ({
               consultation,
               doctor: this.mockData.getDoctorById(consultation.doctorId)

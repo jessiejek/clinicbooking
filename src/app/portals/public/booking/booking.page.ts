@@ -1,9 +1,12 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, DestroyRef, OnInit, ViewChild, inject } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { IonContent } from '@ionic/angular/standalone';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { skip } from 'rxjs/operators';
 import { MockDataService } from '../../../core/services/mock-data.service';
 import { BookingWizardComponent } from '../components/booking-wizard/booking-wizard.component';
 import { resetWizard, selectDoctor, selectService } from '../../../store/bookings/bookings.actions';
+import { selectCurrentStep } from '../../../store/bookings/bookings.selectors';
 import { Store } from '@ngrx/store';
 
 @Component({
@@ -11,7 +14,7 @@ import { Store } from '@ngrx/store';
   standalone: true,
   imports: [IonContent, BookingWizardComponent],
   template: `
-    <ion-content>
+    <ion-content #scrollContainer>
       <div class="booking-page-container page-enter">
         <app-booking-wizard></app-booking-wizard>
       </div>
@@ -23,6 +26,9 @@ export class BookingPage implements OnInit {
   private readonly store = inject(Store);
   private readonly route = inject(ActivatedRoute);
   private readonly mockData = inject(MockDataService);
+  private readonly destroyRef = inject(DestroyRef);
+
+  @ViewChild('scrollContainer', { static: true }) private content!: IonContent;
 
   ngOnInit(): void {
     this.store.dispatch(resetWizard());
@@ -40,5 +46,12 @@ export class BookingPage implements OnInit {
     if (serviceId) {
       this.store.dispatch(selectService({ serviceId }));
     }
+
+    this.store
+      .select(selectCurrentStep)
+      .pipe(skip(1), takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.content.scrollToTop(300);
+      });
   }
 }
