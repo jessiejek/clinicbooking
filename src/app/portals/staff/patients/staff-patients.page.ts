@@ -28,21 +28,44 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
 
       <input class="filter-input" [formControl]="searchControl" placeholder="Search by name, code, contact, or email" />
 
-      <div class="clinic-card">
-        <table class="clinic-table" *ngIf="!isLoading && filteredPatients.length > 0">
-          <thead>
-            <tr>
-              <th>Code</th>
-              <th>Name</th>
-              <th>Sex</th>
-              <th>DOB</th>
-              <th>Contact</th>
-              <th>Email</th>
-              <th>Registered</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
+      <div class="clinic-card patients-card">
+        <div class="patients-table-wrap" *ngIf="!isLoading && filteredPatients.length > 0">
+          <table class="clinic-table patients-table">
+            <thead>
+              <tr>
+                <th>Code</th>
+                <th>Name</th>
+                <th>Sex</th>
+                <th>DOB</th>
+                <th>Contact</th>
+                <th>Email</th>
+                <th>Registered</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                *ngFor="let patient of filteredPatients"
+                tabindex="0"
+                role="button"
+                [attr.aria-label]="'Open patient record for ' + patient.firstName + ' ' + patient.lastName"
+                (click)="openDetail(patient.id)"
+                (keydown.enter)="openDetail(patient.id)"
+              >
+                <td class="data-mono">{{ patient.patientCode }}</td>
+                <td>{{ patient.firstName }} {{ patient.lastName }}</td>
+                <td>{{ patient.sex }}</td>
+                <td>{{ patient.dateOfBirth }}</td>
+                <td>{{ patient.contactNumber }}</td>
+                <td>{{ patient.email }}</td>
+                <td><app-status-badge status="Active"></app-status-badge></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="patients-mobile-list" *ngIf="!isLoading && filteredPatients.length > 0">
+          <article
+            class="patient-mobile-card"
               *ngFor="let patient of filteredPatients"
               tabindex="0"
               role="button"
@@ -50,16 +73,34 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
               (click)="openDetail(patient.id)"
               (keydown.enter)="openDetail(patient.id)"
             >
-              <td class="data-mono">{{ patient.patientCode }}</td>
-              <td>{{ patient.firstName }} {{ patient.lastName }}</td>
-              <td>{{ patient.sex }}</td>
-              <td>{{ patient.dateOfBirth }}</td>
-              <td>{{ patient.contactNumber }}</td>
-              <td>{{ patient.email }}</td>
-              <td><app-status-badge status="Active"></app-status-badge></td>
-            </tr>
-          </tbody>
-        </table>
+            <div class="patient-mobile-card__header">
+              <div>
+                <strong>{{ patient.firstName }} {{ patient.lastName }}</strong>
+                <span class="data-mono">{{ patient.patientCode }}</span>
+              </div>
+              <app-status-badge status="Active"></app-status-badge>
+            </div>
+
+            <dl class="patient-mobile-card__details">
+              <div>
+                <dt>Sex</dt>
+                <dd>{{ patient.sex }}</dd>
+              </div>
+              <div>
+                <dt>DOB</dt>
+                <dd>{{ patient.dateOfBirth }}</dd>
+              </div>
+              <div>
+                <dt>Contact</dt>
+                <dd>{{ patient.contactNumber || 'No phone provided' }}</dd>
+              </div>
+              <div>
+                <dt>Email</dt>
+                <dd>{{ patient.email || 'No email provided' }}</dd>
+              </div>
+            </dl>
+          </article>
+        </div>
 
         <app-skeleton *ngIf="isLoading" variant="row" [count]="5"></app-skeleton>
 

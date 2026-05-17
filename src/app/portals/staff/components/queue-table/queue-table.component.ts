@@ -85,6 +85,79 @@ import { StatusBadgeComponent } from '../../../../shared/components/status-badge
         </table>
       </div>
 
+      <div class="queue-mobile-list" *ngIf="!isLoading && sortedBookings.length > 0">
+        <article
+          class="queue-mobile-card"
+          *ngFor="let booking of sortedBookings"
+          tabindex="0"
+          role="button"
+          [attr.aria-label]="'Open booking ' + (booking.queueNumber ?? booking.id) + ' for ' + patientName(booking.patientId)"
+          (click)="rowClicked.emit(booking.id)"
+          (keydown.enter)="rowClicked.emit(booking.id)"
+        >
+          <div class="queue-mobile-card__header">
+            <div class="queue-mobile-card__identity">
+              <span class="queue-mobile-card__queue data-mono">#{{ booking.queueNumber ?? '-' }}</span>
+              <strong>{{ patientName(booking.patientId) }}</strong>
+            </div>
+
+            <div class="queue-actions">
+              <button
+                type="button"
+                class="btn-icon queue-actions__toggle"
+                (click)="toggleMenu(booking.id, $event)"
+                aria-label="Open booking actions"
+              >
+                <ion-icon name="ellipsis-vertical"></ion-icon>
+              </button>
+
+              <div class="queue-actions__menu" *ngIf="activeMenuBookingId === booking.id">
+                <button type="button" class="queue-actions__item" (click)="takeAction('confirm', booking.id, $event)">
+                  Confirm
+                </button>
+                <button type="button" class="queue-actions__item" (click)="takeAction('reject', booking.id, $event)">
+                  Reject
+                </button>
+                <button type="button" class="queue-actions__item" (click)="takeAction('complete', booking.id, $event)">
+                  Mark Complete
+                </button>
+                <button type="button" class="queue-actions__item" (click)="takeAction('noshow', booking.id, $event)">
+                  Mark No Show
+                </button>
+                <ng-container *ngIf="showWaiveRefund">
+                  <button type="button" class="queue-actions__item" (click)="takeAction('waive', booking.id, $event)">
+                    Waive
+                  </button>
+                  <button type="button" class="queue-actions__item" (click)="takeAction('refund', booking.id, $event)">
+                    Refund
+                  </button>
+                </ng-container>
+              </div>
+            </div>
+          </div>
+
+          <div class="queue-mobile-card__badges">
+            <app-status-badge [status]="booking.status"></app-status-badge>
+            <app-status-badge [status]="booking.paymentStatus"></app-status-badge>
+          </div>
+
+          <dl class="queue-mobile-card__details">
+            <div>
+              <dt>Doctor</dt>
+              <dd>{{ doctorName(booking.doctorId) }}</dd>
+            </div>
+            <div>
+              <dt>Service</dt>
+              <dd>{{ serviceName(booking.serviceId) }}</dd>
+            </div>
+            <div>
+              <dt>Time</dt>
+              <dd class="data-mono">{{ booking.slotStartTime }} - {{ booking.slotEndTime }}</dd>
+            </div>
+          </dl>
+        </article>
+      </div>
+
       <app-skeleton *ngIf="isLoading" variant="row" [count]="5"></app-skeleton>
 
       <app-empty-state
