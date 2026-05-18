@@ -1,6 +1,7 @@
 import { NgFor, NgIf } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { Router } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { IonIcon } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { alertCircleOutline } from 'ionicons/icons';
@@ -80,6 +81,7 @@ export class StaffDashboardPage implements OnInit {
   private readonly doctorState = inject(DoctorStateService);
   private readonly patientState = inject(PatientStateService);
   private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
 
   todaysBookings: Booking[] = [];
   doctors: Doctor[] = [];
@@ -110,19 +112,31 @@ export class StaffDashboardPage implements OnInit {
   }
 
   ngOnInit(): void {
-    this.bookingService.getTodaysBookings().subscribe((bookings) => (this.todaysBookings = bookings));
-    this.bookingService.getPendingVerifications().subscribe((bookings) => {
+    this.bookingService
+      .getTodaysBookings()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((bookings) => (this.todaysBookings = bookings));
+    this.bookingService
+      .getPendingVerifications()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((bookings) => {
       this.pendingVerificationCount = bookings.length;
     });
-    this.doctorState.getDoctors().subscribe((doctors) => (this.doctors = doctors));
-    this.patientState.getPatients().subscribe((patients) => (this.patients = patients));
-    this.bookingService.isLoading$.subscribe((bookingsLoading) => {
+    this.doctorState
+      .getDoctors()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((doctors) => (this.doctors = doctors));
+    this.patientState
+      .getPatients()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((patients) => (this.patients = patients));
+    this.bookingService.isLoading$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((bookingsLoading) => {
       this.bookingsLoading = bookingsLoading;
     });
-    this.doctorState.isLoading$.subscribe((doctorsLoading) => {
+    this.doctorState.isLoading$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((doctorsLoading) => {
       this.doctorsLoading = doctorsLoading;
     });
-    this.patientState.isLoading$.subscribe((patientsLoading) => {
+    this.patientState.isLoading$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((patientsLoading) => {
       this.patientsLoading = patientsLoading;
     });
   }
@@ -136,6 +150,7 @@ export class StaffDashboardPage implements OnInit {
   }
 
   onQueueAction(event: { action: string; bookingId: string }): void {
+    // Booking lifecycle actions mirror the demo clinic workflow used by admin/staff queues.
     switch (event.action) {
       case 'confirm':
         this.bookingService.confirmBooking(event.bookingId);

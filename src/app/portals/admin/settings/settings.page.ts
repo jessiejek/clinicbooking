@@ -1,6 +1,7 @@
 import { CommonModule, NgFor, NgIf, NgSwitch, NgSwitchCase, NgSwitchDefault } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ToastController } from '@ionic/angular/standalone';
 import { ClinicSettings } from '../../../core/models';
 import { ClinicSettingsService } from '../../../core/services/clinic-settings.service';
@@ -221,6 +222,7 @@ type SettingsTab = 'general' | 'hours' | 'payments' | 'privacy' | 'branding';
 export class SettingsPage implements OnInit {
   private readonly clinicSettingsService = inject(ClinicSettingsService);
   private readonly toastCtrl = inject(ToastController);
+  private readonly destroyRef = inject(DestroyRef);
 
   tabs: Array<{ id: SettingsTab; label: string }> = [
     { id: 'general', label: 'General' },
@@ -238,8 +240,13 @@ export class SettingsPage implements OnInit {
   dirty = false;
 
   ngOnInit(): void {
-    this.clinicSettingsService.isLoading$.subscribe((loading) => (this.isLoading = loading));
-    this.clinicSettingsService.getSettings().subscribe((settings) => {
+    this.clinicSettingsService.isLoading$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((loading) => (this.isLoading = loading));
+    this.clinicSettingsService
+      .getSettings()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((settings) => {
       if (settings) {
         this.draft = this.cloneSettings(settings);
         this.logoFileName = settings.logoUrl ? settings.logoUrl.split('/').pop() ?? 'Uploaded logo' : 'No file selected';

@@ -3,6 +3,7 @@ import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { IonModal } from '@ionic/angular/standalone';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { map, of, switchMap, tap } from 'rxjs';
 import { AuthUser, Booking, Doctor, Patient, Service } from '../../../core/models';
 import { AuthStateService } from '../../../core/services/auth-state.service';
 import { BookingService } from '../../../core/services/booking.service';
@@ -159,43 +160,26 @@ export class PatientBookingsPage implements OnInit {
 
   ngOnInit(): void {
     this.authState.currentUser$
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((user) => {
-        this.currentUser = user;
-        if (!user) {
-          this.currentPatient = null;
-          this.bookings = [];
-          this.refreshFilteredBookings();
-          return;
-        }
-
-        this.patientState
-          .getPatientByUserId(user.id)
-          .pipe(takeUntilDestroyed(this.destroyRef))
-          .subscribe((patient) => {
-            this.currentPatient = patient ?? null;
-            this.refreshFilteredBookings();
-          });
-      });
-
-    this.authState.currentUser$
       .pipe(
+        tap((user) => (this.currentUser = user)),
+        switchMap((user) => {
+          if (!user) {
+            return of({ user: null, patient: null });
+          }
+          return this.patientState.getPatientByUserId(user.id).pipe(map((patient) => ({ user, patient: patient ?? null })));
+        }),
+        switchMap(({ user, patient }) => {
+          this.currentPatient = patient;
+          if (!user) {
+            return of([]);
+          }
+          return this.bookingService.getBookingsByPatientId(this.patientId(user));
+        }),
         takeUntilDestroyed(this.destroyRef)
       )
-      .subscribe((user) => {
-        if (!user) {
-          this.bookings = [];
-          this.refreshFilteredBookings();
-          return;
-        }
-
-        this.bookingService
-          .getBookingsByPatientId(this.patientId(user))
-          .pipe(takeUntilDestroyed(this.destroyRef))
-          .subscribe((bookings) => {
-            this.bookings = bookings;
-            this.refreshFilteredBookings();
-          });
+      .subscribe((bookings) => {
+        this.bookings = bookings;
+        this.refreshFilteredBookings();
       });
   }
 
@@ -252,6 +236,7 @@ export class PatientBookingsPage implements OnInit {
       return false;
     }
 
+    // Demo cancellation rule: patients can cancel only before the clinic's configured cutoff.
     const appointmentDateTime = new Date(`${booking.appointmentDate}T${booking.slotStartTime}:00`);
     const cancellationWindow = this.mockData.getClinicSettings().cancellationDeadlineHours * 3600000;
     return appointmentDateTime.getTime() - Date.now() > cancellationWindow;

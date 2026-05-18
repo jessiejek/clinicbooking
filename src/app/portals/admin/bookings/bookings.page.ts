@@ -1,7 +1,8 @@
 import { AsyncPipe, NgFor, NgIf } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Booking, Doctor, Patient, Service } from '../../../core/models';
 import { BookingService } from '../../../core/services/booking.service';
 import { DoctorStateService } from '../../../core/services/doctor-state.service';
@@ -149,6 +150,7 @@ export class BookingsPage implements OnInit {
   private readonly patientState = inject(PatientStateService);
   private readonly router = inject(Router);
   private readonly mockData = inject(MockDataService);
+  private readonly destroyRef = inject(DestroyRef);
 
   bookings: Booking[] = [];
   doctors: Doctor[] = [];
@@ -164,10 +166,21 @@ export class BookingsPage implements OnInit {
   statuses = ['Pending', 'Confirmed', 'Completed', 'Cancelled', 'OnHold', 'ProofSubmitted', 'NoShow'];
 
   ngOnInit(): void {
-    this.bookingService.getBookings().subscribe((bookings) => (this.bookings = bookings));
-    this.bookingService.isLoading$.subscribe((loading) => (this.isLoading = loading));
-    this.doctorState.getDoctors().subscribe((doctors) => (this.doctors = doctors.length ? doctors : this.mockData.getDoctors()));
-    this.patientState.getPatients().subscribe((patients) => (this.patients = patients.length ? patients : this.mockData.getPatients()));
+    this.bookingService
+      .getBookings()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((bookings) => (this.bookings = bookings));
+    this.bookingService.isLoading$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((loading) => (this.isLoading = loading));
+    this.doctorState
+      .getDoctors()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((doctors) => (this.doctors = doctors.length ? doctors : this.mockData.getDoctors()));
+    this.patientState
+      .getPatients()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((patients) => (this.patients = patients.length ? patients : this.mockData.getPatients()));
   }
 
   get filteredBookings(): Booking[] {
