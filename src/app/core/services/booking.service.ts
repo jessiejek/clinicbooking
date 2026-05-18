@@ -165,7 +165,8 @@ export class BookingService {
   }
 
   markComplete(bookingId: string): void {
-    this.updateBooking(bookingId, { status: 'Completed' });
+    const orNumber = this.mockData.generateOrNumber();
+    this.updateBooking(bookingId, { status: 'Completed', orNumber });
   }
 
   markNoShow(bookingId: string): void {

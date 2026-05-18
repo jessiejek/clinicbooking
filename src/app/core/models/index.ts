@@ -155,6 +155,7 @@ export interface Booking {
   rescheduledFromBookingId?: string;
   receiptUrl?: string;
   createdAt: string;
+  orNumber?: string;
 }
 
 export interface Payment {
@@ -450,4 +451,28 @@ export interface AdminDashboardStats {
   unpaidCompleted: number;
   noShowsToday: number;
   upcomingFollowUps: number;
+}
+
+export interface ReceiptData {
+  orNumber: string;
+  clinicName: string;
+  clinicAddress: string;
+  clinicPhone: string;
+  clinicEmail: string;
+  patientName: string;
+  patientCode: string;
+  doctorName: string;
+  serviceName: string;
+  appointmentDate: string;
+  slotTime: string;
+  queueNumber: number | null;
+  consultationFee: number;
+  serviceFee: number;
+  totalFee: number;
+  paymentMethod: string;
+  paymentStatus: PaymentStatus;
+  waivedReason?: string;
+  isWalkIn: boolean;
+  printedBy: string;
+  printedAt: string;
 }

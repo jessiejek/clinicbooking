@@ -3,11 +3,12 @@ import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { IonModal, ToastController } from '@ionic/angular/standalone';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Booking, Doctor, Patient, ProofType, Service } from '../../../core/models';
+import { Booking, Doctor, Patient, ProofType, Service, ReceiptData } from '../../../core/models';
 import { AuthStateService } from '../../../core/services/auth-state.service';
 import { BookingService } from '../../../core/services/booking.service';
 import { MockDataService } from '../../../core/services/mock-data.service';
 import { PatientStateService } from '../../../core/services/patient-state.service';
+import { ClinicSettingsService } from '../../../core/services/clinic-settings.service';
 import { BannerComponent } from '../../../shared/components/banner/banner.component';
 import { BookingTimelineComponent } from '../components/booking-timeline/booking-timeline.component';
 import { ProofSubmissionFormComponent } from '../components/proof-submission-form/proof-submission-form.component';
@@ -16,6 +17,7 @@ import { BookingTimerComponent } from '../../../shared/components/booking-timer/
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
+import { ReceiptModalComponent } from '../../../shared/components/receipt-modal/receipt-modal.component';
 
 @Component({
   selector: 'app-patient-booking-detail-page',
@@ -32,7 +34,8 @@ import { AvatarComponent } from '../../../shared/components/avatar/avatar.compon
     StatusBadgeComponent,
     EmptyStateComponent,
     AvatarComponent,
-    IonModal
+    IonModal,
+    ReceiptModalComponent
   ],
   template: `
     <section class="page-shell" *ngIf="booking; else emptyTpl">
@@ -80,6 +83,12 @@ import { AvatarComponent } from '../../../shared/components/avatar/avatar.compon
               <div><span>Proof Type</span><strong>{{ booking.proofType || 'None' }}</strong></div>
               <div><span>Proof Submitted</span><strong>{{ booking.proofSubmittedAt ? (booking.proofSubmittedAt | date : 'MMM d, y h:mm a') : 'Not yet submitted' }}</strong></div>
             </div>
+          </div>
+
+          <div class="clinic-card" *ngIf="booking.status === 'Completed'">
+            <div class="section-heading">Official Receipt</div>
+            <p>Your payment has been processed and your official receipt is available.</p>
+            <button type="button" class="btn-primary" (click)="openReceipt()">View Receipt</button>
           </div>
 
           <app-proof-submission-form
@@ -144,6 +153,7 @@ import { AvatarComponent } from '../../../shared/components/avatar/avatar.compon
         (confirmed)="confirmCancel()"
         (cancelled)="cancelModalOpen = false"
       ></app-confirm-modal>
+      <app-receipt-modal [isOpen]="receiptModalOpen" [data]="receiptData" (closed)="receiptModalOpen = false"></app-receipt-modal>
     </section>
 
     <ng-template #emptyTpl>
@@ -167,6 +177,11 @@ export class PatientBookingDetailPage implements OnInit {
   private readonly mockData = inject(MockDataService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly toastCtrl = inject(ToastController);
+  private readonly clinicSettings = inject(ClinicSettingsService);
+
+
+  receiptModalOpen = false;
+  receiptData: ReceiptData | null = null;
 
   booking: Booking | null = null;
   doctor: Doctor | undefined;
@@ -290,5 +305,49 @@ export class PatientBookingDetailPage implements OnInit {
       position: 'top'
     });
     await toast.present();
+  }
+  openReceipt(): void {
+    if (!this.booking) {
+      return;
+    }
+    this.receiptData = this.buildReceiptData(this.booking);
+    this.receiptModalOpen = true;
+  }
+
+  private buildReceiptData(booking: Booking): ReceiptData {
+    const patient = this.mockData.getPatients().find((p) => p.id === booking.patientId);
+    const doctor = this.mockData.getDoctors().find((d) => d.id === booking.doctorId);
+    const service = this.mockData.getServices().find((s) => s.id === booking.serviceId);
+    const settings = this.clinicSettings.load();
+    const currentUser = this.authState.snapshot;
+
+    return {
+      orNumber: booking.orNumber ?? '—',
+      clinicName: settings.clinicName,
+      clinicAddress: settings.address ?? '',
+      clinicPhone: settings.phone ?? '',
+      clinicEmail: settings.email ?? '',
+      patientName: patient ? `${patient.firstName} ${patient.lastName}` : '—',
+      patientCode: patient?.patientCode ?? '—',
+      doctorName: doctor?.fullName ?? '—',
+      serviceName: service?.name ?? '—',
+      appointmentDate: new Date(booking.appointmentDate).toLocaleDateString('en-PH', {
+        year: 'numeric', month: 'long', day: 'numeric'
+      }),
+      slotTime: booking.slotStartTime,
+      queueNumber: booking.queueNumber,
+      consultationFee: booking.consultationFeeSnapshot,
+      serviceFee: booking.serviceFeeSnapshot,
+      totalFee: booking.totalFee,
+      paymentMethod: booking.paymentMode === 'PayAtClinic' ? 'Pay at Clinic' : 'Online',
+      paymentStatus: booking.paymentStatus,
+      waivedReason: undefined,
+      isWalkIn: booking.isWalkIn,
+      printedBy: currentUser?.fullName ?? 'Patient',
+      printedAt: new Date().toLocaleDateString('en-PH', {
+        year: 'numeric', month: 'long', day: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+      })
+    };
   }
 }

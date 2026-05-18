@@ -4,14 +4,17 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { IonIcon } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { informationCircleOutline } from 'ionicons/icons';
-import { Booking, Doctor, Patient, Service } from '../../../core/models';
+import { Booking, Doctor, Patient, Service, ReceiptData } from '../../../core/models';
 import { BookingService } from '../../../core/services/booking.service';
 import { DoctorStateService } from '../../../core/services/doctor-state.service';
 import { MockDataService } from '../../../core/services/mock-data.service';
 import { PatientStateService } from '../../../core/services/patient-state.service';
+import { ClinicSettingsService } from '../../../core/services/clinic-settings.service';
+import { AuthStateService } from '../../../core/services/auth-state.service';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { ConfirmModalComponent } from '../../../shared/components/confirm-modal/confirm-modal.component';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
+import { ReceiptModalComponent } from '../../../shared/components/receipt-modal/receipt-modal.component';
 
 type BookingAction =
   | 'confirm'
@@ -34,7 +37,8 @@ type BookingAction =
     IonIcon,
     AvatarComponent,
     ConfirmModalComponent,
-    StatusBadgeComponent
+    StatusBadgeComponent,
+    ReceiptModalComponent
   ],
   template: `
     <section class="page-shell" *ngIf="!isLoading; else loadingTpl">
@@ -154,7 +158,7 @@ type BookingAction =
                 <button class="btn-danger" type="button" (click)="openConfirm('cancel', true)">Cancel Booking</button>
               </div>
               <div *ngSwitchCase="'Completed'" class="action-stack">
-                <button class="btn-ghost" type="button" disabled>No actions available</button>
+                <button class="btn-primary" type="button" (click)="openReceipt(booking)">Print Receipt</button>
               </div>
               <div *ngSwitchDefault class="action-stack">
                 <button class="btn-ghost" type="button" disabled>No actions available</button>
@@ -197,6 +201,7 @@ type BookingAction =
       (confirmed)="runAction($event)"
       (cancelled)="confirmOpen = false"
     ></app-confirm-modal>
+    <app-receipt-modal [isOpen]="receiptModalOpen" [data]="receiptData" (closed)="receiptModalOpen = false"></app-receipt-modal>
   `,
   styleUrl: './staff-booking-detail.page.scss'
 })
@@ -207,6 +212,8 @@ export class StaffBookingDetailPage implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly mockData = inject(MockDataService);
+  private readonly clinicSettings = inject(ClinicSettingsService);
+  private readonly authState = inject(AuthStateService);
 
   booking: Booking | null = null;
   doctor: Doctor | null = null;
@@ -224,6 +231,8 @@ export class StaffBookingDetailPage implements OnInit {
   modalTitle = 'Confirm Action';
   modalMessage = 'Are you sure?';
   modalConfirmLabel = 'Confirm';
+  receiptModalOpen = false;
+  receiptData: ReceiptData | null = null;
 
   get isLoading(): boolean {
     return this.bookingsLoading || this.doctorsLoading || this.patientsLoading;
@@ -357,5 +366,46 @@ export class StaffBookingDetailPage implements OnInit {
       this.patients.find((patient) => patient.id === booking.patientId) ??
       this.mockData.getPatientById(booking.patientId) ??
       null;
+  }
+  openReceipt(booking: Booking): void {
+    this.receiptData = this.buildReceiptData(booking);
+    this.receiptModalOpen = true;
+  }
+
+  private buildReceiptData(booking: Booking): ReceiptData {
+    const patient = this.mockData.getPatients().find((p) => p.id === booking.patientId);
+    const doctor = this.mockData.getDoctors().find((d) => d.id === booking.doctorId);
+    const service = this.mockData.getServices().find((s) => s.id === booking.serviceId);
+    const settings = this.clinicSettings.load();
+    const currentUser = this.authState.snapshot;
+
+    return {
+      orNumber: booking.orNumber ?? '—',
+      clinicName: settings.clinicName,
+      clinicAddress: settings.address ?? '',
+      clinicPhone: settings.phone ?? '',
+      clinicEmail: settings.email ?? '',
+      patientName: patient ? `${patient.firstName} ${patient.lastName}` : '—',
+      patientCode: patient?.patientCode ?? '—',
+      doctorName: doctor?.fullName ?? '—',
+      serviceName: service?.name ?? '—',
+      appointmentDate: new Date(booking.appointmentDate).toLocaleDateString('en-PH', {
+        year: 'numeric', month: 'long', day: 'numeric'
+      }),
+      slotTime: booking.slotStartTime,
+      queueNumber: booking.queueNumber,
+      consultationFee: booking.consultationFeeSnapshot,
+      serviceFee: booking.serviceFeeSnapshot,
+      totalFee: booking.totalFee,
+      paymentMethod: booking.paymentMode === 'PayAtClinic' ? 'Pay at Clinic' : 'Online',
+      paymentStatus: booking.paymentStatus,
+      waivedReason: undefined,
+      isWalkIn: booking.isWalkIn,
+      printedBy: currentUser?.fullName ?? 'System',
+      printedAt: new Date().toLocaleDateString('en-PH', {
+        year: 'numeric', month: 'long', day: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+      })
+    };
   }
 }

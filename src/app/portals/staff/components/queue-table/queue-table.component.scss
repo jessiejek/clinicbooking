@@ -29,7 +29,6 @@
   position: relative;
   display: inline-flex;
   justify-content: flex-end;
-  width: 100%;
   min-width: 0;
 }
 
@@ -144,6 +143,11 @@
   gap: var(--space-2);
 }
 
+.queue-table .badge-with-action {
+  width: 100%;
+  justify-content: space-between;
+}
+
 .queue-actions__menu--left {
   right: auto;
   left: 0;
@@ -157,11 +161,6 @@
   .queue-mobile-list {
     display: grid;
     gap: var(--space-3);
-  }
-
-  .queue-actions {
-    width: auto;
-    flex-shrink: 0;
   }
 
   .queue-actions__menu {

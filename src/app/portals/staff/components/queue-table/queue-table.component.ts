@@ -3,16 +3,19 @@ import { Component, EventEmitter, Input, Output, inject } from '@angular/core';
 import { IonIcon } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { ellipsisVertical } from 'ionicons/icons';
-import { Booking, Doctor, Patient, Service } from '../../../../core/models';
+import { Booking, Doctor, Patient, Service, ReceiptData } from '../../../../core/models';
 import { MockDataService } from '../../../../core/services/mock-data.service';
+import { ClinicSettingsService } from '../../../../core/services/clinic-settings.service';
+import { AuthStateService } from '../../../../core/services/auth-state.service';
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
 import { SkeletonComponent } from '../../../../shared/components/skeleton/skeleton.component';
 import { StatusBadgeComponent } from '../../../../shared/components/status-badge/status-badge.component';
+import { ReceiptModalComponent } from '../../../../shared/components/receipt-modal/receipt-modal.component';
 
 @Component({
   selector: 'app-queue-table',
   standalone: true,
-  imports: [NgFor, NgIf, IonIcon, EmptyStateComponent, SkeletonComponent, StatusBadgeComponent],
+  imports: [NgFor, NgIf, IonIcon, EmptyStateComponent, SkeletonComponent, StatusBadgeComponent, ReceiptModalComponent],
   template: `
     <div class="queue-table-shell">
       <div class="table-wrap" *ngIf="!isLoading && sortedBookings.length > 0">
@@ -55,10 +58,11 @@ import { StatusBadgeComponent } from '../../../../shared/components/status-badge
                       <ion-icon name="ellipsis-vertical"></ion-icon>
                     </button>
                     <div class="queue-actions__menu queue-actions__menu--left" *ngIf="activeStatusMenuBookingId === booking.id">
-                      <button type="button" class="queue-actions__item" (click)="takeAction('confirm', booking.id, $event)">Confirm</button>
-                      <button type="button" class="queue-actions__item" (click)="takeAction('reject', booking.id, $event)">Reject</button>
-                      <button type="button" class="queue-actions__item" (click)="takeAction('complete', booking.id, $event)">Mark Complete</button>
-                      <button type="button" class="queue-actions__item" (click)="takeAction('noshow', booking.id, $event)">Mark No Show</button>
+                      <button *ngIf="booking.status !== 'Completed'" type="button" class="queue-actions__item" (click)="takeAction('confirm', booking.id, $event)">Confirm</button>
+                      <button *ngIf="booking.status !== 'Completed'" type="button" class="queue-actions__item" (click)="takeAction('reject', booking.id, $event)">Reject</button>
+                      <button *ngIf="booking.status !== 'Completed'" type="button" class="queue-actions__item" (click)="takeAction('complete', booking.id, $event)">Mark Complete</button>
+                      <button *ngIf="booking.status !== 'Completed'" type="button" class="queue-actions__item" (click)="takeAction('noshow', booking.id, $event)">Mark No Show</button>
+                      <button *ngIf="booking.status === 'Completed'" type="button" class="queue-actions__item" (click)="openReceipt(booking, $event)">Print Receipt</button>
                     </div>
                   </div>
                 </div>
@@ -136,10 +140,11 @@ import { StatusBadgeComponent } from '../../../../shared/components/status-badge
                   <ion-icon name="ellipsis-vertical"></ion-icon>
                 </button>
                 <div class="queue-actions__menu queue-actions__menu--left" *ngIf="activeStatusMenuBookingId === booking.id">
-                  <button type="button" class="queue-actions__item" (click)="takeAction('confirm', booking.id, $event)">Confirm</button>
-                  <button type="button" class="queue-actions__item" (click)="takeAction('reject', booking.id, $event)">Reject</button>
-                  <button type="button" class="queue-actions__item" (click)="takeAction('complete', booking.id, $event)">Mark Complete</button>
-                  <button type="button" class="queue-actions__item" (click)="takeAction('noshow', booking.id, $event)">Mark No Show</button>
+                  <button *ngIf="booking.status !== 'Completed'" type="button" class="queue-actions__item" (click)="takeAction('confirm', booking.id, $event)">Confirm</button>
+                  <button *ngIf="booking.status !== 'Completed'" type="button" class="queue-actions__item" (click)="takeAction('reject', booking.id, $event)">Reject</button>
+                  <button *ngIf="booking.status !== 'Completed'" type="button" class="queue-actions__item" (click)="takeAction('complete', booking.id, $event)">Mark Complete</button>
+                  <button *ngIf="booking.status !== 'Completed'" type="button" class="queue-actions__item" (click)="takeAction('noshow', booking.id, $event)">Mark No Show</button>
+                  <button *ngIf="booking.status === 'Completed'" type="button" class="queue-actions__item" (click)="openReceipt(booking, $event)">Print Receipt</button>
                 </div>
               </div>
             </div>
@@ -168,10 +173,7 @@ import { StatusBadgeComponent } from '../../../../shared/components/status-badge
             </div>
           </div>
 
-          <div class="queue-mobile-card__badges">
-            <app-status-badge [status]="booking.status"></app-status-badge>
-            <app-status-badge [status]="booking.paymentStatus"></app-status-badge>
-          </div>
+
 
           <dl class="queue-mobile-card__details">
             <div>
@@ -198,12 +200,20 @@ import { StatusBadgeComponent } from '../../../../shared/components/status-badge
         title="No appointments scheduled for today."
         description="The queue will appear here when bookings are created."
       ></app-empty-state>
+
+      <app-receipt-modal
+        [isOpen]="receiptModalOpen"
+        [data]="receiptData"
+        (closed)="receiptModalOpen = false"
+      ></app-receipt-modal>
     </div>
   `,
   styleUrl: './queue-table.component.scss'
 })
 export class QueueTableComponent {
   private readonly mockData = inject(MockDataService);
+  private readonly clinicSettings = inject(ClinicSettingsService);
+  private readonly authState = inject(AuthStateService);
 
   @Input() bookings: Booking[] = [];
   @Input() doctors: Doctor[] = [];
@@ -216,6 +226,8 @@ export class QueueTableComponent {
 
   activeStatusMenuBookingId: string | null = null;
   activePaymentMenuBookingId: string | null = null;
+  receiptModalOpen = false;
+  receiptData: ReceiptData | null = null;
 
   constructor() {
     addIcons({ ellipsisVertical });
@@ -278,5 +290,50 @@ export class QueueTableComponent {
     this.activeStatusMenuBookingId = null;
     this.activePaymentMenuBookingId = null;
     this.actionTaken.emit({ action, bookingId });
+  }
+
+  openReceipt(booking: Booking, event: Event): void {
+    event.stopPropagation();
+    this.activeStatusMenuBookingId = null;
+    this.activePaymentMenuBookingId = null;
+    this.receiptData = this.buildReceiptData(booking);
+    this.receiptModalOpen = true;
+  }
+
+  private buildReceiptData(booking: Booking): ReceiptData {
+    const patient = this.patients.find((p) => p.id === booking.patientId) ?? this.mockData.getPatientById(booking.patientId);
+    const doctor = this.doctors.find((d) => d.id === booking.doctorId) ?? this.mockData.getDoctorById(booking.doctorId);
+    const service = this.mockData.getServiceById(booking.serviceId);
+    const settings = this.clinicSettings.load();
+    const currentUser = this.authState.snapshot;
+
+    return {
+      orNumber: booking.orNumber ?? '—',
+      clinicName: settings.clinicName,
+      clinicAddress: settings.address ?? '',
+      clinicPhone: settings.phone ?? '',
+      clinicEmail: settings.email ?? '',
+      patientName: patient ? `${patient.firstName} ${patient.lastName}` : '—',
+      patientCode: patient?.patientCode ?? '—',
+      doctorName: doctor?.fullName ?? '—',
+      serviceName: service?.name ?? '—',
+      appointmentDate: new Date(booking.appointmentDate).toLocaleDateString('en-PH', {
+        year: 'numeric', month: 'long', day: 'numeric'
+      }),
+      slotTime: booking.slotStartTime,
+      queueNumber: booking.queueNumber,
+      consultationFee: booking.consultationFeeSnapshot,
+      serviceFee: booking.serviceFeeSnapshot,
+      totalFee: booking.totalFee,
+      paymentMethod: booking.paymentMode === 'PayAtClinic' ? 'Pay at Clinic' : 'Online',
+      paymentStatus: booking.paymentStatus,
+      waivedReason: undefined,
+      isWalkIn: booking.isWalkIn,
+      printedBy: currentUser?.fullName ?? 'System',
+      printedAt: new Date().toLocaleDateString('en-PH', {
+        year: 'numeric', month: 'long', day: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+      })
+    };
   }
 }

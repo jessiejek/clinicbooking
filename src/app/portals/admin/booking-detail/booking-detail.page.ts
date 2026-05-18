@@ -2,9 +2,11 @@ import { CommonModule, NgFor, NgIf } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ToastController } from '@ionic/angular/standalone';
-import { Booking, Doctor, Patient, Service } from '../../../core/models';
+import { Booking, Doctor, Patient, Service, ReceiptData } from '../../../core/models';
 import { BookingService } from '../../../core/services/booking.service';
 import { MockDataService } from '../../../core/services/mock-data.service';
+import { ClinicSettingsService } from '../../../core/services/clinic-settings.service';
+import { AuthStateService } from '../../../core/services/auth-state.service';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { ConfirmModalComponent } from '../../../shared/components/confirm-modal/confirm-modal.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
@@ -12,6 +14,7 @@ import { SkeletonComponent } from '../../../shared/components/skeleton/skeleton.
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 import { RefundPaymentModalComponent } from '../components/refund-payment-modal/refund-payment-modal.component';
 import { WaivePaymentModalComponent } from '../components/waive-payment-modal/waive-payment-modal.component';
+import { ReceiptModalComponent } from '../../../shared/components/receipt-modal/receipt-modal.component';
 
 type BookingAction =
   | 'confirm'
@@ -34,7 +37,8 @@ type BookingAction =
     SkeletonComponent,
     StatusBadgeComponent,
     WaivePaymentModalComponent,
-    RefundPaymentModalComponent
+    RefundPaymentModalComponent,
+    ReceiptModalComponent
   ],
   template: `
     <section class="page-shell" *ngIf="isLoading; else loadedTpl">
@@ -140,7 +144,7 @@ type BookingAction =
               </div>
 
               <div *ngSwitchCase="'Completed'" class="action-stack">
-                <button class="btn-outline" type="button" disabled (click)="soon()">Download Receipt</button>
+                <button class="btn-primary" type="button" (click)="openReceipt(booking)">Print Receipt</button>
                 <button class="btn-outline" type="button" disabled (click)="soon()">Download Visit Summary</button>
               </div>
 
@@ -199,6 +203,7 @@ type BookingAction =
       (confirmed)="refundPaymentAction($event.bookingId, $event.reason)"
       (cancelled)="refundModalOpen = false"
     ></app-refund-payment-modal>
+    <app-receipt-modal [isOpen]="receiptModalOpen" [data]="receiptData" (closed)="receiptModalOpen = false"></app-receipt-modal>
   `,
   styleUrl: './booking-detail.page.scss'
 })
@@ -208,6 +213,8 @@ export class BookingDetailPage implements OnInit {
   private readonly router = inject(Router);
   private readonly mockData = inject(MockDataService);
   private readonly toastCtrl = inject(ToastController);
+  private readonly clinicSettings = inject(ClinicSettingsService);
+  private readonly authState = inject(AuthStateService);
 
   booking: Booking | null = null;
   doctor: Doctor | null = null;
@@ -224,6 +231,8 @@ export class BookingDetailPage implements OnInit {
   modalTitle = 'Confirm Action';
   modalMessage = 'Are you sure?';
   modalConfirmLabel = 'Confirm';
+  receiptModalOpen = false;
+  receiptData: ReceiptData | null = null;
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id') ?? '';
@@ -379,5 +388,46 @@ export class BookingDetailPage implements OnInit {
       position: 'top'
     });
     await toast.present();
+  }
+  openReceipt(booking: Booking): void {
+    this.receiptData = this.buildReceiptData(booking);
+    this.receiptModalOpen = true;
+  }
+
+  private buildReceiptData(booking: Booking): ReceiptData {
+    const patient = this.mockData.getPatients().find((p) => p.id === booking.patientId);
+    const doctor = this.mockData.getDoctors().find((d) => d.id === booking.doctorId);
+    const service = this.mockData.getServices().find((s) => s.id === booking.serviceId);
+    const settings = this.clinicSettings.load();
+    const currentUser = this.authState.snapshot;
+
+    return {
+      orNumber: booking.orNumber ?? '—',
+      clinicName: settings.clinicName,
+      clinicAddress: settings.address ?? '',
+      clinicPhone: settings.phone ?? '',
+      clinicEmail: settings.email ?? '',
+      patientName: patient ? `${patient.firstName} ${patient.lastName}` : '—',
+      patientCode: patient?.patientCode ?? '—',
+      doctorName: doctor?.fullName ?? '—',
+      serviceName: service?.name ?? '—',
+      appointmentDate: new Date(booking.appointmentDate).toLocaleDateString('en-PH', {
+        year: 'numeric', month: 'long', day: 'numeric'
+      }),
+      slotTime: booking.slotStartTime,
+      queueNumber: booking.queueNumber,
+      consultationFee: booking.consultationFeeSnapshot,
+      serviceFee: booking.serviceFeeSnapshot,
+      totalFee: booking.totalFee,
+      paymentMethod: booking.paymentMode === 'PayAtClinic' ? 'Pay at Clinic' : 'Online',
+      paymentStatus: booking.paymentStatus,
+      waivedReason: undefined,
+      isWalkIn: booking.isWalkIn,
+      printedBy: currentUser?.fullName ?? 'System',
+      printedAt: new Date().toLocaleDateString('en-PH', {
+        year: 'numeric', month: 'long', day: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+      })
+    };
   }
 }

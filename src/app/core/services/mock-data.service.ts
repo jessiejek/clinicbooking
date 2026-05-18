@@ -44,6 +44,12 @@ interface SeedUser {
 @Injectable({ providedIn: 'root' })
 export class MockDataService {
   private readonly today = new Date();
+  private _orSequence = 10;
+
+  generateOrNumber(): string {
+    this._orSequence++;
+    return `OR-2025-${String(this._orSequence).padStart(5, '0')}`;
+  }
 
   private _clinicSettings: ClinicSettings = {
     id: 'settings-1',
@@ -1343,6 +1349,12 @@ export class MockDataService {
         0
       )
     ];
+
+    for (const booking of this._bookings) {
+      if (booking.status === 'Completed' && (booking.paymentStatus === 'Paid' || booking.paymentStatus === 'Waived')) {
+        booking.orNumber = this.generateOrNumber();
+      }
+    }
 
     this._notifications.push(
       ...this.buildNotificationsForUser('user-staff-1', [
