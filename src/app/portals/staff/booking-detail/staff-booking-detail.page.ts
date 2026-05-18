@@ -17,6 +17,7 @@ type BookingAction =
   | 'confirm'
   | 'reject'
   | 'confirm-payment'
+  | 'waive-pf'
   | 'mark-complete'
   | 'mark-no-show'
   | 'cancel'
@@ -100,13 +101,53 @@ type BookingAction =
             <ng-container [ngSwitch]="booking.status">
               <div *ngSwitchCase="'Pending'" class="action-stack">
                 <button class="btn-primary" type="button" (click)="openConfirm('confirm')">Confirm Booking</button>
+                <button
+                  *ngIf="canMarkAsPaid(booking)"
+                  class="btn-outline"
+                  type="button"
+                  (click)="openConfirm('confirm-payment')"
+                >
+                  Mark as Paid
+                </button>
+                <button
+                  *ngIf="canWaivePf(booking)"
+                  class="btn-ghost"
+                  type="button"
+                  (click)="openConfirm('waive-pf')"
+                >
+                  Waive PF
+                </button>
                 <button class="btn-danger" type="button" (click)="openConfirm('reject', true)">Reject Booking</button>
               </div>
               <div *ngSwitchCase="'ProofSubmitted'" class="action-stack">
                 <button class="btn-primary" type="button" (click)="openConfirm('confirm-payment')">Confirm Payment</button>
+                <button
+                  *ngIf="canWaivePf(booking)"
+                  class="btn-ghost"
+                  type="button"
+                  (click)="openConfirm('waive-pf')"
+                >
+                  Waive PF
+                </button>
                 <button class="btn-danger" type="button" (click)="openConfirm('reject', true)">Reject Proof</button>
               </div>
               <div *ngSwitchCase="'Confirmed'" class="action-stack">
+                <button
+                  *ngIf="canMarkAsPaid(booking)"
+                  class="btn-outline"
+                  type="button"
+                  (click)="openConfirm('confirm-payment')"
+                >
+                  Mark as Paid
+                </button>
+                <button
+                  *ngIf="canWaivePf(booking)"
+                  class="btn-ghost"
+                  type="button"
+                  (click)="openConfirm('waive-pf')"
+                >
+                  Waive PF
+                </button>
                 <button class="btn-primary" type="button" (click)="openConfirm('mark-complete')">Mark Complete</button>
                 <button class="btn-ghost" type="button" (click)="openConfirm('mark-no-show')">Mark No Show</button>
                 <button class="btn-outline" type="button" (click)="reschedule()">Reschedule</button>
@@ -223,6 +264,17 @@ export class StaffBookingDetailPage implements OnInit {
     return this.patient ? `${this.patient.firstName} ${this.patient.lastName}` : 'Unknown Patient';
   }
 
+  canMarkAsPaid(booking: Booking): boolean {
+    return (
+      booking.paymentStatus === 'Unpaid' &&
+      !['Cancelled', 'NoShow', 'Expired'].includes(booking.status)
+    );
+  }
+
+  canWaivePf(booking: Booking): boolean {
+    return this.canMarkAsPaid(booking);
+  }
+
   goBack(): void {
     void this.router.navigate(['/staff/bookings']);
   }
@@ -236,6 +288,7 @@ export class StaffBookingDetailPage implements OnInit {
       confirm: 'Confirm this booking?',
       reject: 'Reject this booking?',
       'confirm-payment': 'Confirm that the payment is valid?',
+      'waive-pf': 'Waive the professional fee for this booking?',
       'mark-complete': 'Mark this visit as completed?',
       'mark-no-show': 'Mark the patient as no-show?',
       cancel: 'Cancel this booking?',
@@ -261,6 +314,9 @@ export class StaffBookingDetailPage implements OnInit {
         break;
       case 'confirm-payment':
         this.bookingService.confirmPayment(bookingId);
+        break;
+      case 'waive-pf':
+        this.bookingService.waivePayment(bookingId, reason ?? 'Professional fee waived by staff.');
         break;
       case 'mark-complete':
         this.bookingService.markComplete(bookingId);

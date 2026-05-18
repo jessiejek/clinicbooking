@@ -143,6 +143,12 @@ export class StaffDashboardPage implements OnInit {
       case 'reject':
         this.bookingService.rejectBooking(event.bookingId, 'Rejected by staff.');
         break;
+      case 'paid':
+        this.bookingService.confirmPayment(event.bookingId);
+        break;
+      case 'waive-pf':
+        this.bookingService.waivePayment(event.bookingId, 'Professional fee waived by staff.');
+        break;
       case 'complete':
         this.bookingService.markComplete(event.bookingId);
         break;

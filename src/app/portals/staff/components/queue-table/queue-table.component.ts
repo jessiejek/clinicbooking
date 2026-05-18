@@ -63,6 +63,22 @@ import { StatusBadgeComponent } from '../../../../shared/components/status-badge
                     <button type="button" class="queue-actions__item" (click)="takeAction('reject', booking.id, $event)">
                       Reject
                     </button>
+                    <button
+                      *ngIf="canMarkAsPaid(booking)"
+                      type="button"
+                      class="queue-actions__item"
+                      (click)="takeAction('paid', booking.id, $event)"
+                    >
+                      Mark as Paid
+                    </button>
+                    <button
+                      *ngIf="canWaivePf(booking)"
+                      type="button"
+                      class="queue-actions__item"
+                      (click)="takeAction('waive-pf', booking.id, $event)"
+                    >
+                      Waive PF
+                    </button>
                     <button type="button" class="queue-actions__item" (click)="takeAction('complete', booking.id, $event)">
                       Mark Complete
                     </button>
@@ -117,6 +133,22 @@ import { StatusBadgeComponent } from '../../../../shared/components/status-badge
                 </button>
                 <button type="button" class="queue-actions__item" (click)="takeAction('reject', booking.id, $event)">
                   Reject
+                </button>
+                <button
+                  *ngIf="canMarkAsPaid(booking)"
+                  type="button"
+                  class="queue-actions__item"
+                  (click)="takeAction('paid', booking.id, $event)"
+                >
+                  Mark as Paid
+                </button>
+                <button
+                  *ngIf="canWaivePf(booking)"
+                  type="button"
+                  class="queue-actions__item"
+                  (click)="takeAction('waive-pf', booking.id, $event)"
+                >
+                  Waive PF
                 </button>
                 <button type="button" class="queue-actions__item" (click)="takeAction('complete', booking.id, $event)">
                   Mark Complete
@@ -211,6 +243,17 @@ export class QueueTableComponent {
   serviceName(serviceId: string): string {
     const service = this.mockData.getServiceById(serviceId) as Service | undefined;
     return service?.name ?? 'Unknown Service';
+  }
+
+  canMarkAsPaid(booking: Booking): boolean {
+    return (
+      booking.paymentStatus === 'Unpaid' &&
+      !['Cancelled', 'NoShow', 'Expired'].includes(booking.status)
+    );
+  }
+
+  canWaivePf(booking: Booking): boolean {
+    return this.canMarkAsPaid(booking);
   }
 
   toggleMenu(bookingId: string, event: Event): void {
