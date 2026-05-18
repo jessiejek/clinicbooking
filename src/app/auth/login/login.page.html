@@ -109,7 +109,7 @@
     <a routerLink="/auth/register">Create one</a>
   </p>
 
-  <div *ngIf="!isProduction" class="dev-credentials">
+  <div  class="dev-credentials">
     <button type="button" class="dev-credentials__toggle" (click)="devExpanded = !devExpanded">
       Quick Login (Dev Only) {{ devExpanded ? '▼' : '▶' }}
     </button>
