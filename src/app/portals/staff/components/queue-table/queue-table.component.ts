@@ -26,7 +26,6 @@ import { StatusBadgeComponent } from '../../../../shared/components/status-badge
               <th>Time</th>
               <th>Status</th>
               <th>Payment</th>
-              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -43,56 +42,62 @@ import { StatusBadgeComponent } from '../../../../shared/components/status-badge
               <td>{{ doctorName(booking.doctorId) }}</td>
               <td>{{ serviceName(booking.serviceId) }}</td>
               <td class="data-mono">{{ booking.slotStartTime }} - {{ booking.slotEndTime }}</td>
-              <td><app-status-badge [status]="booking.status"></app-status-badge></td>
-              <td><app-status-badge [status]="booking.paymentStatus"></app-status-badge></td>
               <td>
-                <div class="queue-actions">
-                  <button
-                    type="button"
-                    class="btn-icon queue-actions__toggle"
-                    (click)="toggleMenu(booking.id, $event)"
-                    aria-label="Open booking actions"
-                  >
-                    <ion-icon name="ellipsis-vertical"></ion-icon>
-                  </button>
-
-                  <div class="queue-actions__menu" *ngIf="activeMenuBookingId === booking.id">
-                    <button type="button" class="queue-actions__item" (click)="takeAction('confirm', booking.id, $event)">
-                      Confirm
-                    </button>
-                    <button type="button" class="queue-actions__item" (click)="takeAction('reject', booking.id, $event)">
-                      Reject
-                    </button>
+                <div class="badge-with-action">
+                  <app-status-badge [status]="booking.status"></app-status-badge>
+                  <div class="queue-actions">
                     <button
-                      *ngIf="canMarkAsPaid(booking)"
                       type="button"
-                      class="queue-actions__item"
-                      (click)="takeAction('paid', booking.id, $event)"
+                      class="btn-icon queue-actions__toggle"
+                      (click)="toggleStatusMenu(booking.id, $event)"
+                      aria-label="Open status actions"
                     >
-                      Mark as Paid
+                      <ion-icon name="ellipsis-vertical"></ion-icon>
                     </button>
+                    <div class="queue-actions__menu queue-actions__menu--left" *ngIf="activeStatusMenuBookingId === booking.id">
+                      <button type="button" class="queue-actions__item" (click)="takeAction('confirm', booking.id, $event)">Confirm</button>
+                      <button type="button" class="queue-actions__item" (click)="takeAction('reject', booking.id, $event)">Reject</button>
+                      <button type="button" class="queue-actions__item" (click)="takeAction('complete', booking.id, $event)">Mark Complete</button>
+                      <button type="button" class="queue-actions__item" (click)="takeAction('noshow', booking.id, $event)">Mark No Show</button>
+                    </div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <div class="badge-with-action">
+                  <app-status-badge [status]="booking.paymentStatus"></app-status-badge>
+                  <div class="queue-actions">
                     <button
-                      *ngIf="canWaivePf(booking)"
+                      *ngIf="hasPaymentActions(booking)"
                       type="button"
-                      class="queue-actions__item"
-                      (click)="takeAction('waive-pf', booking.id, $event)"
+                      class="btn-icon queue-actions__toggle"
+                      (click)="togglePaymentMenu(booking.id, $event)"
+                      aria-label="Open payment actions"
                     >
-                      Waive PF
+                      <ion-icon name="ellipsis-vertical"></ion-icon>
                     </button>
-                    <button type="button" class="queue-actions__item" (click)="takeAction('complete', booking.id, $event)">
-                      Mark Complete
-                    </button>
-                    <button type="button" class="queue-actions__item" (click)="takeAction('noshow', booking.id, $event)">
-                      Mark No Show
-                    </button>
-                    <ng-container *ngIf="showWaiveRefund">
-                      <button type="button" class="queue-actions__item" (click)="takeAction('waive', booking.id, $event)">
-                        Waive
+                    <div class="queue-actions__menu queue-actions__menu--left" *ngIf="activePaymentMenuBookingId === booking.id">
+                      <button
+                        *ngIf="canMarkAsPaid(booking)"
+                        type="button"
+                        class="queue-actions__item"
+                        (click)="takeAction('paid', booking.id, $event)"
+                      >
+                        Mark as Paid
                       </button>
-                      <button type="button" class="queue-actions__item" (click)="takeAction('refund', booking.id, $event)">
-                        Refund
+                      <button
+                        *ngIf="canWaivePf(booking)"
+                        type="button"
+                        class="queue-actions__item"
+                        (click)="takeAction('waive-pf', booking.id, $event)"
+                      >
+                        Waive PF
                       </button>
-                    </ng-container>
+                      <ng-container *ngIf="showWaiveRefund">
+                        <button type="button" class="queue-actions__item" (click)="takeAction('waive', booking.id, $event)">Waive</button>
+                        <button type="button" class="queue-actions__item" (click)="takeAction('refund', booking.id, $event)">Refund</button>
+                      </ng-container>
+                    </div>
                   </div>
                 </div>
               </td>
@@ -116,54 +121,49 @@ import { StatusBadgeComponent } from '../../../../shared/components/status-badge
               <span class="queue-mobile-card__queue data-mono">#{{ booking.queueNumber ?? '-' }}</span>
               <strong>{{ patientName(booking.patientId) }}</strong>
             </div>
+          </div>
 
-            <div class="queue-actions">
-              <button
-                type="button"
-                class="btn-icon queue-actions__toggle"
-                (click)="toggleMenu(booking.id, $event)"
-                aria-label="Open booking actions"
-              >
-                <ion-icon name="ellipsis-vertical"></ion-icon>
-              </button>
+          <div class="queue-mobile-card__badges">
+            <div class="badge-with-action">
+              <app-status-badge [status]="booking.status"></app-status-badge>
+              <div class="queue-actions">
+                <button
+                  type="button"
+                  class="btn-icon queue-actions__toggle"
+                  (click)="toggleStatusMenu(booking.id, $event)"
+                  aria-label="Open status actions"
+                >
+                  <ion-icon name="ellipsis-vertical"></ion-icon>
+                </button>
+                <div class="queue-actions__menu queue-actions__menu--left" *ngIf="activeStatusMenuBookingId === booking.id">
+                  <button type="button" class="queue-actions__item" (click)="takeAction('confirm', booking.id, $event)">Confirm</button>
+                  <button type="button" class="queue-actions__item" (click)="takeAction('reject', booking.id, $event)">Reject</button>
+                  <button type="button" class="queue-actions__item" (click)="takeAction('complete', booking.id, $event)">Mark Complete</button>
+                  <button type="button" class="queue-actions__item" (click)="takeAction('noshow', booking.id, $event)">Mark No Show</button>
+                </div>
+              </div>
+            </div>
 
-              <div class="queue-actions__menu" *ngIf="activeMenuBookingId === booking.id">
-                <button type="button" class="queue-actions__item" (click)="takeAction('confirm', booking.id, $event)">
-                  Confirm
-                </button>
-                <button type="button" class="queue-actions__item" (click)="takeAction('reject', booking.id, $event)">
-                  Reject
-                </button>
+            <div class="badge-with-action">
+              <app-status-badge [status]="booking.paymentStatus"></app-status-badge>
+              <div class="queue-actions">
                 <button
-                  *ngIf="canMarkAsPaid(booking)"
+                  *ngIf="hasPaymentActions(booking)"
                   type="button"
-                  class="queue-actions__item"
-                  (click)="takeAction('paid', booking.id, $event)"
+                  class="btn-icon queue-actions__toggle"
+                  (click)="togglePaymentMenu(booking.id, $event)"
+                  aria-label="Open payment actions"
                 >
-                  Mark as Paid
+                  <ion-icon name="ellipsis-vertical"></ion-icon>
                 </button>
-                <button
-                  *ngIf="canWaivePf(booking)"
-                  type="button"
-                  class="queue-actions__item"
-                  (click)="takeAction('waive-pf', booking.id, $event)"
-                >
-                  Waive PF
-                </button>
-                <button type="button" class="queue-actions__item" (click)="takeAction('complete', booking.id, $event)">
-                  Mark Complete
-                </button>
-                <button type="button" class="queue-actions__item" (click)="takeAction('noshow', booking.id, $event)">
-                  Mark No Show
-                </button>
-                <ng-container *ngIf="showWaiveRefund">
-                  <button type="button" class="queue-actions__item" (click)="takeAction('waive', booking.id, $event)">
-                    Waive
-                  </button>
-                  <button type="button" class="queue-actions__item" (click)="takeAction('refund', booking.id, $event)">
-                    Refund
-                  </button>
-                </ng-container>
+                <div class="queue-actions__menu queue-actions__menu--left" *ngIf="activePaymentMenuBookingId === booking.id">
+                  <button *ngIf="canMarkAsPaid(booking)" type="button" class="queue-actions__item" (click)="takeAction('paid', booking.id, $event)">Mark as Paid</button>
+                  <button *ngIf="canWaivePf(booking)" type="button" class="queue-actions__item" (click)="takeAction('waive-pf', booking.id, $event)">Waive PF</button>
+                  <ng-container *ngIf="showWaiveRefund">
+                    <button type="button" class="queue-actions__item" (click)="takeAction('waive', booking.id, $event)">Waive</button>
+                    <button type="button" class="queue-actions__item" (click)="takeAction('refund', booking.id, $event)">Refund</button>
+                  </ng-container>
+                </div>
               </div>
             </div>
           </div>
@@ -214,7 +214,8 @@ export class QueueTableComponent {
   @Output() actionTaken = new EventEmitter<{ action: string; bookingId: string; reason?: string }>();
   @Output() rowClicked = new EventEmitter<string>();
 
-  activeMenuBookingId: string | null = null;
+  activeStatusMenuBookingId: string | null = null;
+  activePaymentMenuBookingId: string | null = null;
 
   constructor() {
     addIcons({ ellipsisVertical });
@@ -256,14 +257,26 @@ export class QueueTableComponent {
     return this.canMarkAsPaid(booking);
   }
 
-  toggleMenu(bookingId: string, event: Event): void {
+  hasPaymentActions(booking: Booking): boolean {
+    return this.canMarkAsPaid(booking) || this.canWaivePf(booking) || this.showWaiveRefund;
+  }
+
+  toggleStatusMenu(bookingId: string, event: Event): void {
     event.stopPropagation();
-    this.activeMenuBookingId = this.activeMenuBookingId === bookingId ? null : bookingId;
+    this.activeStatusMenuBookingId = this.activeStatusMenuBookingId === bookingId ? null : bookingId;
+    this.activePaymentMenuBookingId = null;
+  }
+
+  togglePaymentMenu(bookingId: string, event: Event): void {
+    event.stopPropagation();
+    this.activePaymentMenuBookingId = this.activePaymentMenuBookingId === bookingId ? null : bookingId;
+    this.activeStatusMenuBookingId = null;
   }
 
   takeAction(action: string, bookingId: string, event: Event): void {
     event.stopPropagation();
-    this.activeMenuBookingId = null;
+    this.activeStatusMenuBookingId = null;
+    this.activePaymentMenuBookingId = null;
     this.actionTaken.emit({ action, bookingId });
   }
 }
