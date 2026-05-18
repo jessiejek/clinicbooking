@@ -1,7 +1,7 @@
 import { DatePipe, NgFor, NgIf } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { Store } from '@ngrx/store';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { IonButton, IonIcon } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import {
@@ -12,12 +12,8 @@ import {
   refreshOutline
 } from 'ionicons/icons';
 import { Notification } from '../../../core/models';
-import { markAllNotificationsRead, markNotificationRead } from '../../../store/notifications/notifications.actions';
-import {
-  selectCurrentUserNotifications,
-  selectUnreadCount
-} from '../../../store/notifications/notifications.selectors';
-import { selectCurrentUser } from '../../../store/auth/auth.selectors';
+import { AuthStateService } from '../../../core/services/auth-state.service';
+import { NotificationService } from '../../../core/services/notification.service';
 
 @Component({
   selector: 'app-notification-panel',
@@ -72,12 +68,13 @@ import { selectCurrentUser } from '../../../store/auth/auth.selectors';
   styleUrl: './notification-panel.component.scss'
 })
 export class NotificationPanelComponent {
-  private readonly store = inject(Store);
+  private readonly authState = inject(AuthStateService);
+  private readonly notificationService = inject(NotificationService);
   private readonly router = inject(Router);
 
-  readonly notifications = this.store.selectSignal(selectCurrentUserNotifications);
-  readonly unreadCount = this.store.selectSignal(selectUnreadCount);
-  readonly currentUser = this.store.selectSignal(selectCurrentUser);
+  readonly notifications = toSignal(this.notificationService.currentUserNotifications$, { initialValue: [] });
+  readonly unreadCount = this.notificationService.unreadCount;
+  readonly currentUser = this.authState.currentUser;
 
   constructor() {
     addIcons({
@@ -100,11 +97,11 @@ export class NotificationPanelComponent {
     if (!userId) {
       return;
     }
-    this.store.dispatch(markAllNotificationsRead({ userId }));
+    this.notificationService.markAllRead(userId);
   }
 
   openNotification(notification: Notification): void {
-    this.store.dispatch(markNotificationRead({ id: notification.id }));
+    this.notificationService.markRead(notification.id);
     if (notification.navigateTo) {
       void this.router.navigateByUrl(notification.navigateTo);
     }

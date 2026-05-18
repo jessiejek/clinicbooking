@@ -1,12 +1,10 @@
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AsyncPipe, NgIf } from '@angular/common';
-import { Store } from '@ngrx/store';
 import { IonIcon, IonInput, IonItem, IonLabel } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { cloudUploadOutline, imageOutline, receiptOutline } from 'ionicons/icons';
-import { prevStep, submitBooking } from '../../../../store/bookings/bookings.actions';
-import { selectWizard, selectWizardLoading } from '../../../../store/bookings/bookings.selectors';
+import { BookingWizardService } from '../../../../core/services/booking-wizard.service';
 
 type ProofChoice = 'ReferenceNumber' | 'Screenshot';
 
@@ -119,14 +117,14 @@ type ProofChoice = 'ReferenceNumber' | 'Screenshot';
   styleUrl: './step-proof.component.scss'
 })
 export class StepProofComponent {
-  private readonly store = inject(Store);
+  private readonly wizardService = inject(BookingWizardService);
 
   proofType: ProofChoice = 'ReferenceNumber';
   referenceNumber = '';
   screenshotFileName = '';
 
-  wizard$ = this.store.select(selectWizard);
-  isLoading$ = this.store.select(selectWizardLoading);
+  wizard$ = this.wizardService.state$;
+  isLoading$ = this.wizardService.isLoading$;
 
   constructor() {
     addIcons({ receiptOutline, imageOutline, cloudUploadOutline });
@@ -149,14 +147,14 @@ export class StepProofComponent {
   onSubmit(): void {
     const value =
       this.proofType === 'ReferenceNumber' ? this.referenceNumber.trim() : this.screenshotFileName;
-    this.store.dispatch(submitBooking({ proofType: this.proofType, proofValue: value }));
+    this.wizardService.submitBooking(this.proofType, value);
   }
 
   submitPayAtClinic(): void {
-    this.store.dispatch(submitBooking({ proofType: null, proofValue: null }));
+    this.wizardService.submitBooking(null, null);
   }
 
   goBack(): void {
-    this.store.dispatch(prevStep());
+    this.wizardService.prevStep();
   }
 }

@@ -1,22 +1,15 @@
 import { AsyncPipe, NgFor, NgIf } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { Store } from '@ngrx/store';
 import { ToastController } from '@ionic/angular/standalone';
 import { of } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
 import { Booking, Patient, Service } from '../../../core/models';
+import { AuthStateService } from '../../../core/services/auth-state.service';
+import { BookingService } from '../../../core/services/booking.service';
+import { DoctorStateService } from '../../../core/services/doctor-state.service';
 import { MockDataService } from '../../../core/services/mock-data.service';
-import { loadBookings, markComplete, markNoShow } from '../../../store/bookings/bookings.actions';
-import {
-  selectTodaysBookingsByDoctorId,
-  selectUpcomingBookingsByDoctorId
-} from '../../../store/bookings/bookings.selectors';
-import { selectAllPatients } from '../../../store/patients/patients.selectors';
-import { selectCurrentUser } from '../../../store/auth/auth.selectors';
-import { selectDoctorByUserId, selectDoctorDayStatus } from '../../../store/doctors/doctors.selectors';
-import { loadDoctors, loadSchedules, setDoctorDayStatus } from '../../../store/doctors/doctors.actions';
-import { loadPatients } from '../../../store/patients/patients.actions';
+import { PatientStateService } from '../../../core/services/patient-state.service';
 import { DoctorQueueTableComponent } from '../components/doctor-queue-table/doctor-queue-table.component';
 import { DoctorStatusPanelComponent } from '../components/doctor-status-panel/doctor-status-panel.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
@@ -132,34 +125,37 @@ interface DashboardSummary {
   styleUrl: './doctor-dashboard.page.scss'
 })
 export class DoctorDashboardPage implements OnInit {
-  private readonly store = inject(Store);
+  private readonly authState = inject(AuthStateService);
+  private readonly bookingService = inject(BookingService);
+  private readonly doctorState = inject(DoctorStateService);
+  private readonly patientState = inject(PatientStateService);
   private readonly router = inject(Router);
   private readonly toastController = inject(ToastController);
   private readonly mockData = inject(MockDataService);
 
   readonly services: Service[] = this.mockData.getServices();
 
-  readonly doctor$ = this.store.select(selectCurrentUser).pipe(
-    switchMap((user) => (user ? this.store.select(selectDoctorByUserId(user.id)) : of(undefined)))
+  readonly doctor$ = this.authState.currentUser$.pipe(
+    switchMap((user) => (user ? this.doctorState.getDoctorByUserId(user.id) : of(undefined)))
   );
 
   readonly doctorDayStatus$ = this.doctor$.pipe(
-    switchMap((doctor) => (doctor ? this.store.select(selectDoctorDayStatus(doctor.id)) : of(null)))
+    switchMap((doctor) => (doctor ? this.doctorState.getDoctorDayStatus(doctor.id) : of(null)))
   );
 
   readonly todayBookings$ = this.doctor$.pipe(
-    switchMap((doctor) => (doctor ? this.store.select(selectTodaysBookingsByDoctorId(doctor.id)) : of([])))
+    switchMap((doctor) => (doctor ? this.bookingService.getTodaysBookingsByDoctorId(doctor.id) : of([])))
   );
 
   readonly upcomingBookings$ = this.doctor$.pipe(
-    switchMap((doctor) => (doctor ? this.store.select(selectUpcomingBookingsByDoctorId(doctor.id)) : of([]))),
+    switchMap((doctor) => (doctor ? this.bookingService.getUpcomingBookingsByDoctorId(doctor.id) : of([]))),
     map((bookings) => bookings.slice(0, 3))
   );
 
   readonly doctorPatients$ = this.doctor$.pipe(
     switchMap((doctor) =>
       doctor
-        ? this.store.select(selectAllPatients).pipe(
+        ? this.patientState.getPatients().pipe(
             map((patients) => {
               const patientIds = new Set(
                 this.mockData.getBookings().filter((booking) => booking.doctorId === doctor.id).map((booking) => booking.patientId)
@@ -174,10 +170,9 @@ export class DoctorDashboardPage implements OnInit {
   readonly summary$ = this.todayBookings$.pipe(map((todayBookings) => this.buildSummary(todayBookings)));
 
   ngOnInit(): void {
-    this.store.dispatch(loadBookings());
-    this.store.dispatch(loadDoctors());
-    this.store.dispatch(loadSchedules());
-    this.store.dispatch(loadPatients());
+    this.bookingService.refresh();
+    this.doctorState.refresh();
+    this.patientState.refresh();
   }
 
   updateStatus(event: {
@@ -185,13 +180,11 @@ export class DoctorDashboardPage implements OnInit {
     status: 'Available' | 'RunningLate' | 'UnavailableToday';
     runningLateMinutes?: number;
   }): void {
-    this.store.dispatch(
-      setDoctorDayStatus({
+    this.doctorState.setDoctorDayStatus({
         doctorId: event.doctorId,
         status: event.status,
         runningLateMinutes: event.runningLateMinutes
-      })
-    );
+      });
     void this.presentToast(`Status updated to ${event.status}.`);
   }
 
@@ -204,11 +197,11 @@ export class DoctorDashboardPage implements OnInit {
   }
 
   completeBooking(bookingId: string): void {
-    this.store.dispatch(markComplete({ bookingId }));
+    this.bookingService.markComplete(bookingId);
   }
 
   noShowBooking(bookingId: string): void {
-    this.store.dispatch(markNoShow({ bookingId }));
+    this.bookingService.markNoShow(bookingId);
   }
 
   patientName(patientId: string, patients: Patient[]): string {

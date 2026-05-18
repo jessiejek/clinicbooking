@@ -1,22 +1,13 @@
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { AsyncPipe, DatePipe, NgFor, NgIf } from '@angular/common';
-import { Store } from '@ngrx/store';
 import { IonIcon } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { chevronBackOutline, chevronForwardOutline } from 'ionicons/icons';
 import { MockDataService } from '../../../../core/services/mock-data.service';
 import { DayOfWeek } from '../../../../core/models';
+import { BookingWizardService } from '../../../../core/services/booking-wizard.service';
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
 import { Subscription } from 'rxjs';
-import {
-  nextStep,
-  prevStep,
-  selectDate
-} from '../../../../store/bookings/bookings.actions';
-import {
-  selectSelectedDate,
-  selectSelectedDoctorId
-} from '../../../../store/bookings/bookings.selectors';
 
 @Component({
   selector: 'app-step-date-picker',
@@ -95,14 +86,14 @@ import {
   styleUrl: './step-date-picker.component.scss'
 })
 export class StepDatePickerComponent implements OnInit, OnDestroy {
-  private readonly store = inject(Store);
+  private readonly wizardService = inject(BookingWizardService);
   private readonly mockData = inject(MockDataService);
   private readonly subscriptions = new Subscription();
 
   currentMonth = this.startOfMonth(new Date());
 
-  selectedDoctorId$ = this.store.select(selectSelectedDoctorId);
-  selectedDate$ = this.store.select(selectSelectedDate);
+  selectedDoctorId$ = this.wizardService.selectedDoctorId$;
+  selectedDate$ = this.wizardService.selectedDate$;
   private latestSelectedDate: string | null = null;
 
   weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -165,15 +156,15 @@ export class StepDatePickerComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.store.dispatch(selectDate({ date: this.toIsoDate(date) }));
+    this.wizardService.selectDate(this.toIsoDate(date));
   }
 
   goBack(): void {
-    this.store.dispatch(prevStep());
+    this.wizardService.prevStep();
   }
 
   goNext(): void {
-    this.store.dispatch(nextStep());
+    this.wizardService.nextStep();
   }
 
   isToday(date: Date): boolean {

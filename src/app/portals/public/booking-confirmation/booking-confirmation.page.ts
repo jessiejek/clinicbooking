@@ -2,13 +2,12 @@ import { Component, inject } from '@angular/core';
 import { AsyncPipe, DatePipe, NgIf } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { IonContent } from '@ionic/angular/standalone';
-import { Store } from '@ngrx/store';
 import { combineLatest, map } from 'rxjs';
 import { MockDataService } from '../../../core/services/mock-data.service';
+import { BookingWizardService } from '../../../core/services/booking-wizard.service';
 import { PesoPipe } from '../../../shared/pipes/peso.pipe';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 import { TimeSlotPipe } from '../../../shared/pipes/time-slot.pipe';
-import { selectWizard } from '../../../store/bookings/bookings.selectors';
 
 @Component({
   selector: 'app-booking-confirmation-page',
@@ -80,10 +79,10 @@ import { selectWizard } from '../../../store/bookings/bookings.selectors';
 })
 export class BookingConfirmationPage {
   private readonly route = inject(ActivatedRoute);
-  private readonly store = inject(Store);
+  private readonly wizardService = inject(BookingWizardService);
   private readonly mockData = inject(MockDataService);
 
-  vm$ = combineLatest([this.route.paramMap, this.store.select(selectWizard)]).pipe(
+  vm$ = combineLatest([this.route.paramMap, this.wizardService.state$]).pipe(
     map(([params, wizard]) => {
       const bookingId = params.get('bookingId') ?? wizard.bookingId ?? '-';
       const doctor = wizard.selectedDoctorId

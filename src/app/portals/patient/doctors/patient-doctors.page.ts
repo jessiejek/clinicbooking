@@ -1,8 +1,7 @@
 import { AsyncPipe, NgFor, NgIf } from '@angular/common';
 import { Component, inject } from '@angular/core';
-import { Store } from '@ngrx/store';
 import { combineLatest, map } from 'rxjs';
-import { selectAllDoctors, selectDoctorsLoading } from '../../../store/doctors/doctors.selectors';
+import { DoctorStateService } from '../../../core/services/doctor-state.service';
 import { DoctorCardComponent } from '../../public/components/doctor-card/doctor-card.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { SkeletonComponent } from '../../../shared/components/skeleton/skeleton.component';
@@ -39,10 +38,10 @@ import { SkeletonComponent } from '../../../shared/components/skeleton/skeleton.
   styleUrl: './patient-doctors.page.scss'
 })
 export class PatientDoctorsPage {
-  private readonly store = inject(Store);
+  private readonly doctorState = inject(DoctorStateService);
 
   vm$ = combineLatest([
-    this.store.select(selectAllDoctors),
-    this.store.select(selectDoctorsLoading)
+    this.doctorState.getDoctors(),
+    this.doctorState.isLoading$
   ]).pipe(map(([doctors, isLoading]) => ({ doctors, isLoading })));
 }

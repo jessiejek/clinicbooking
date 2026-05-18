@@ -1,15 +1,12 @@
 import { DatePipe, NgIf } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { Store } from '@ngrx/store';
 import { ToastController } from '@ionic/angular/standalone';
 import { Booking, Patient, Review } from '../../../core/models';
+import { AuthStateService } from '../../../core/services/auth-state.service';
+import { BookingService } from '../../../core/services/booking.service';
 import { MockDataService } from '../../../core/services/mock-data.service';
-import { selectBookingById } from '../../../store/bookings/bookings.selectors';
-import { selectCurrentUser } from '../../../store/auth/auth.selectors';
-import { selectCurrentPatient } from '../../../store/patients/patients.selectors';
-import { loadBookings } from '../../../store/bookings/bookings.actions';
-import { loadPatients } from '../../../store/patients/patients.actions';
+import { PatientStateService } from '../../../core/services/patient-state.service';
 import { ReviewFormComponent } from '../components/review-form/review-form.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 
@@ -56,7 +53,9 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
   styleUrl: './patient-reviews.page.scss'
 })
 export class PatientReviewsPage implements OnInit {
-  private readonly store = inject(Store);
+  private readonly authState = inject(AuthStateService);
+  private readonly bookingService = inject(BookingService);
+  private readonly patientState = inject(PatientStateService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly mockData = inject(MockDataService);
@@ -66,18 +65,15 @@ export class PatientReviewsPage implements OnInit {
   currentPatient: Patient | null = null;
 
   ngOnInit(): void {
-    this.store.dispatch(loadBookings());
-    this.store.dispatch(loadPatients());
-
     const bookingId = this.route.snapshot.paramMap.get('bookingId') ?? '';
-    this.store.select(selectCurrentUser).subscribe((user) => {
+    this.authState.currentUser$.subscribe((user) => {
       if (!user) {
         this.currentPatient = null;
         return;
       }
-      this.store.select(selectCurrentPatient(user.id)).subscribe((patient) => {
+      this.patientState.getPatientByUserId(user.id).subscribe((patient) => {
         this.currentPatient = patient ?? null;
-        this.store.select(selectBookingById(bookingId)).subscribe((booking) => {
+        this.bookingService.getBookingById$(bookingId).subscribe((booking) => {
           this.booking = booking && (!this.currentPatient || booking.patientId === this.currentPatient.id) ? booking : null;
         });
       });

@@ -199,6 +199,176 @@ export class MockDataService {
       s2Number: 'S2-33333',
       averageRating: 4.7,
       reviewCount: 18
+    },
+    {
+      id: 'doc-4',
+      userId: 'user-doctor-4',
+      fullName: 'Dr. Miguel Tan',
+      specialization: 'Internal Medicine',
+      bio: 'Internist focused on adult primary care, hypertension, diabetes, and preventive health planning.',
+      consultationFee: 650,
+      slotDurationMinutes: 30,
+      slotCapacity: 1,
+      dailyPatientLimit: 12,
+      status: 'Active',
+      licenseNumber: 'PRC-44551',
+      ptrNumber: 'PTR-44551',
+      s2Number: 'S2-44551',
+      averageRating: 4.8,
+      reviewCount: 27
+    },
+    {
+      id: 'doc-5',
+      userId: 'user-doctor-5',
+      fullName: 'Dr. Liza Mercado',
+      specialization: 'Dermatology',
+      bio: 'Dermatologist providing care for acne, eczema, rashes, skin allergies, and routine skin checks.',
+      consultationFee: 750,
+      slotDurationMinutes: 30,
+      slotCapacity: 1,
+      dailyPatientLimit: 10,
+      status: 'Active',
+      licenseNumber: 'PRC-44552',
+      ptrNumber: 'PTR-44552',
+      s2Number: 'S2-44552',
+      averageRating: 4.6,
+      reviewCount: 22
+    },
+    {
+      id: 'doc-6',
+      userId: 'user-doctor-6',
+      fullName: 'Dr. Carlo Lim',
+      specialization: 'Cardiology',
+      bio: 'Cardiologist handling blood pressure control, heart risk screening, and follow-up cardiac care.',
+      consultationFee: 900,
+      slotDurationMinutes: 30,
+      slotCapacity: 1,
+      dailyPatientLimit: 10,
+      status: 'Active',
+      licenseNumber: 'PRC-44553',
+      ptrNumber: 'PTR-44553',
+      s2Number: 'S2-44553',
+      averageRating: 4.9,
+      reviewCount: 35
+    },
+    {
+      id: 'doc-7',
+      userId: 'user-doctor-7',
+      fullName: 'Dr. Patricia Uy',
+      specialization: 'ENT',
+      bio: 'ENT specialist for ear infections, sinus concerns, throat problems, and hearing-related consults.',
+      consultationFee: 700,
+      slotDurationMinutes: 30,
+      slotCapacity: 1,
+      dailyPatientLimit: 12,
+      status: 'Active',
+      licenseNumber: 'PRC-44554',
+      ptrNumber: 'PTR-44554',
+      s2Number: 'S2-44554',
+      averageRating: 4.7,
+      reviewCount: 19
+    },
+    {
+      id: 'doc-8',
+      userId: 'user-doctor-8',
+      fullName: 'Dr. Ramon Villanueva',
+      specialization: 'Orthopedics',
+      bio: 'Orthopedic doctor for joint pain, sports injuries, back pain, and mobility concerns.',
+      consultationFee: 850,
+      slotDurationMinutes: 30,
+      slotCapacity: 1,
+      dailyPatientLimit: 10,
+      status: 'Active',
+      licenseNumber: 'PRC-44555',
+      ptrNumber: 'PTR-44555',
+      s2Number: 'S2-44555',
+      averageRating: 4.8,
+      reviewCount: 24
+    },
+    {
+      id: 'doc-9',
+      userId: 'user-doctor-9',
+      fullName: 'Dr. Bianca Navarro',
+      specialization: 'Endocrinology',
+      bio: 'Endocrinologist specializing in diabetes, thyroid disease, and hormone-related conditions.',
+      consultationFee: 850,
+      slotDurationMinutes: 30,
+      slotCapacity: 1,
+      dailyPatientLimit: 10,
+      status: 'Active',
+      licenseNumber: 'PRC-44556',
+      ptrNumber: 'PTR-44556',
+      s2Number: 'S2-44556',
+      averageRating: 4.7,
+      reviewCount: 21
+    },
+    {
+      id: 'doc-10',
+      userId: 'user-doctor-10',
+      fullName: 'Dr. Enrico Bautista',
+      specialization: 'Pulmonology',
+      bio: 'Pulmonologist for asthma, chronic cough, respiratory infections, and lung health follow-ups.',
+      consultationFee: 800,
+      slotDurationMinutes: 30,
+      slotCapacity: 1,
+      dailyPatientLimit: 11,
+      status: 'Active',
+      licenseNumber: 'PRC-44557',
+      ptrNumber: 'PTR-44557',
+      s2Number: 'S2-44557',
+      averageRating: 4.6,
+      reviewCount: 16
+    },
+    {
+      id: 'doc-11',
+      userId: 'user-doctor-11',
+      fullName: 'Dr. Camille Garcia',
+      specialization: 'Neurology',
+      bio: 'Neurologist managing headaches, dizziness, nerve pain, seizures, and stroke follow-up visits.',
+      consultationFee: 950,
+      slotDurationMinutes: 30,
+      slotCapacity: 1,
+      dailyPatientLimit: 9,
+      status: 'Active',
+      licenseNumber: 'PRC-44558',
+      ptrNumber: 'PTR-44558',
+      s2Number: 'S2-44558',
+      averageRating: 4.9,
+      reviewCount: 29
+    },
+    {
+      id: 'doc-12',
+      userId: 'user-doctor-12',
+      fullName: 'Dr. Sofia Ramos',
+      specialization: 'Psychiatry',
+      bio: 'Psychiatrist offering consults for anxiety, depression, sleep concerns, and medication management.',
+      consultationFee: 900,
+      slotDurationMinutes: 45,
+      slotCapacity: 1,
+      dailyPatientLimit: 8,
+      status: 'Active',
+      licenseNumber: 'PRC-44559',
+      ptrNumber: 'PTR-44559',
+      s2Number: 'S2-44559',
+      averageRating: 4.8,
+      reviewCount: 20
+    },
+    {
+      id: 'doc-13',
+      userId: 'user-doctor-13',
+      fullName: 'Dr. Victor Chua',
+      specialization: 'Ophthalmology',
+      bio: 'Ophthalmologist for eye exams, blurry vision, dry eyes, infections, and diabetic eye screening.',
+      consultationFee: 800,
+      slotDurationMinutes: 30,
+      slotCapacity: 1,
+      dailyPatientLimit: 11,
+      status: 'Active',
+      licenseNumber: 'PRC-44560',
+      ptrNumber: 'PTR-44560',
+      s2Number: 'S2-44560',
+      averageRating: 4.7,
+      reviewCount: 17
     }
   ];
 
@@ -212,7 +382,27 @@ export class MockDataService {
     ['doc-2', 'Wednesday', '09:00', '16:00'],
     ['doc-2', 'Friday', '09:00', '16:00'],
     ['doc-3', 'Tuesday', '08:00', '15:00'],
-    ['doc-3', 'Thursday', '08:00', '15:00']
+    ['doc-3', 'Thursday', '08:00', '15:00'],
+    ['doc-4', 'Monday', '08:30', '16:30'],
+    ['doc-4', 'Thursday', '08:30', '16:30'],
+    ['doc-5', 'Tuesday', '10:00', '17:00'],
+    ['doc-5', 'Friday', '10:00', '17:00'],
+    ['doc-6', 'Monday', '09:00', '15:00'],
+    ['doc-6', 'Wednesday', '09:00', '15:00'],
+    ['doc-7', 'Tuesday', '08:00', '14:00'],
+    ['doc-7', 'Thursday', '08:00', '14:00'],
+    ['doc-8', 'Wednesday', '10:00', '17:00'],
+    ['doc-8', 'Saturday', '09:00', '12:00'],
+    ['doc-9', 'Monday', '11:00', '17:00'],
+    ['doc-9', 'Friday', '11:00', '17:00'],
+    ['doc-10', 'Tuesday', '09:00', '16:00'],
+    ['doc-10', 'Thursday', '09:00', '16:00'],
+    ['doc-11', 'Wednesday', '08:00', '15:00'],
+    ['doc-11', 'Friday', '08:00', '15:00'],
+    ['doc-12', 'Monday', '10:00', '16:00'],
+    ['doc-12', 'Saturday', '09:00', '13:00'],
+    ['doc-13', 'Tuesday', '10:00', '17:00'],
+    ['doc-13', 'Thursday', '10:00', '17:00']
   ].map(([doctorId, dayOfWeek, startTime, endTime], index) => ({
     id: `sch-${index + 1}`,
     doctorId: doctorId as string,
@@ -230,7 +420,7 @@ export class MockDataService {
       category: 'Consultation',
       price: 0,
       estimatedDurationMinutes: 30,
-      doctorIds: ['doc-1']
+      doctorIds: ['doc-1', 'doc-4', 'doc-5', 'doc-6', 'doc-7', 'doc-8', 'doc-9', 'doc-10', 'doc-11', 'doc-12', 'doc-13']
     },
     {
       id: 'svc-2',
@@ -254,7 +444,7 @@ export class MockDataService {
       category: 'Procedure',
       price: 1000,
       estimatedDurationMinutes: 60,
-      doctorIds: ['doc-1']
+      doctorIds: ['doc-1', 'doc-4', 'doc-6', 'doc-9', 'doc-10']
     },
     {
       id: 'svc-5',
@@ -270,7 +460,7 @@ export class MockDataService {
       category: 'Laboratory',
       price: 350,
       estimatedDurationMinutes: 15,
-      doctorIds: ['doc-1', 'doc-2', 'doc-3']
+      doctorIds: ['doc-1', 'doc-2', 'doc-3', 'doc-4', 'doc-6', 'doc-9', 'doc-10']
     },
     {
       id: 'svc-7',
@@ -278,7 +468,7 @@ export class MockDataService {
       category: 'Laboratory',
       price: 150,
       estimatedDurationMinutes: 15,
-      doctorIds: ['doc-1', 'doc-2', 'doc-3']
+      doctorIds: ['doc-1', 'doc-2', 'doc-3', 'doc-4', 'doc-6', 'doc-9', 'doc-10']
     },
     {
       id: 'svc-8',
@@ -286,7 +476,7 @@ export class MockDataService {
       category: 'Laboratory',
       price: 200,
       estimatedDurationMinutes: 15,
-      doctorIds: ['doc-1', 'doc-3']
+      doctorIds: ['doc-1', 'doc-3', 'doc-4', 'doc-9']
     },
     {
       id: 'svc-9',
@@ -294,7 +484,7 @@ export class MockDataService {
       category: 'Diagnostic',
       price: 500,
       estimatedDurationMinutes: 20,
-      doctorIds: ['doc-1']
+      doctorIds: ['doc-1', 'doc-10']
     },
     {
       id: 'svc-10',

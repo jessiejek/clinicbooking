@@ -1,13 +1,11 @@
 import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, NavigationEnd, Router, RouterOutlet } from '@angular/router';
-import { Store } from '@ngrx/store';
 import { filter } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavItem } from '../../core/models';
+import { AuthStateService } from '../../core/services/auth-state.service';
 import { ClinicSettingsService } from '../../core/services/clinic-settings.service';
-import { logout as logoutAction } from '../../store/auth/auth.actions';
-import { selectCurrentUser } from '../../store/auth/auth.selectors';
-import { selectUnreadCount } from '../../store/notifications/notifications.selectors';
+import { NotificationService } from '../../core/services/notification.service';
 import { SidebarComponent } from '../../portals/admin/components/sidebar/sidebar.component';
 import { TopbarComponent } from '../../portals/admin/components/topbar/topbar.component';
 
@@ -44,14 +42,15 @@ import { TopbarComponent } from '../../portals/admin/components/topbar/topbar.co
   imports: [RouterOutlet, SidebarComponent, TopbarComponent]
 })
 export class StaffLayoutComponent implements OnInit {
-  private readonly store = inject(Store);
+  private readonly authState = inject(AuthStateService);
+  private readonly notificationService = inject(NotificationService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly clinicSettingsService = inject(ClinicSettingsService);
   private readonly destroyRef = inject(DestroyRef);
 
-  readonly currentUser = this.store.selectSignal(selectCurrentUser);
-  readonly unreadCount = this.store.selectSignal(selectUnreadCount);
+  readonly currentUser = this.authState.currentUser;
+  readonly unreadCount = this.notificationService.unreadCount;
 
   clinicName = '';
   portalLabel = 'Staff Portal';
@@ -85,8 +84,7 @@ export class StaffLayoutComponent implements OnInit {
   }
 
   logout(): void {
-    this.store.dispatch(logoutAction());
-    void this.router.navigate(['/auth/login']);
+    this.authState.logout();
   }
 
   private updatePageTitle(): void {

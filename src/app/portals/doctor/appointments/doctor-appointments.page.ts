@@ -2,18 +2,14 @@ import { AsyncPipe, NgFor, NgIf } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { Store } from '@ngrx/store';
 import { BehaviorSubject, combineLatest, of } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
 import { Booking, Patient, Service } from '../../../core/models';
+import { AuthStateService } from '../../../core/services/auth-state.service';
+import { BookingService } from '../../../core/services/booking.service';
+import { DoctorStateService } from '../../../core/services/doctor-state.service';
 import { MockDataService } from '../../../core/services/mock-data.service';
-import { loadBookings } from '../../../store/bookings/bookings.actions';
-import { selectBookingsByDoctorId } from '../../../store/bookings/bookings.selectors';
-import { selectCurrentUser } from '../../../store/auth/auth.selectors';
-import { selectDoctorByUserId } from '../../../store/doctors/doctors.selectors';
-import { loadDoctors, loadSchedules } from '../../../store/doctors/doctors.actions';
-import { loadPatients } from '../../../store/patients/patients.actions';
-import { selectAllPatients } from '../../../store/patients/patients.selectors';
+import { PatientStateService } from '../../../core/services/patient-state.service';
 import { DoctorAppointmentCardComponent } from '../components/doctor-appointment-card/doctor-appointment-card.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
@@ -142,7 +138,10 @@ interface AppointmentFilters {
   styleUrl: './doctor-appointments.page.scss'
 })
 export class DoctorAppointmentsPage implements OnInit {
-  private readonly store = inject(Store);
+  private readonly authState = inject(AuthStateService);
+  private readonly bookingService = inject(BookingService);
+  private readonly doctorState = inject(DoctorStateService);
+  private readonly patientState = inject(PatientStateService);
   private readonly router = inject(Router);
   private readonly mockData = inject(MockDataService);
 
@@ -158,17 +157,17 @@ export class DoctorAppointmentsPage implements OnInit {
 
   private readonly filters$ = new BehaviorSubject<AppointmentFilters>(this.filters);
 
-  readonly currentDoctor$ = this.store.select(selectCurrentUser).pipe(
-    switchMap((user) => (user ? this.store.select(selectDoctorByUserId(user.id)) : of(undefined)))
+  readonly currentDoctor$ = this.authState.currentUser$.pipe(
+    switchMap((user) => (user ? this.doctorState.getDoctorByUserId(user.id) : of(undefined)))
   );
 
   readonly doctorBookings$ = this.currentDoctor$.pipe(
-    switchMap((doctor) => (doctor ? this.store.select(selectBookingsByDoctorId(doctor.id)) : of([])))
+    switchMap((doctor) => (doctor ? this.bookingService.getBookingsByDoctorId(doctor.id) : of([])))
   );
 
   readonly filteredBookings$ = combineLatest([
     this.doctorBookings$,
-    this.store.select(selectAllPatients),
+    this.patientState.getPatients(),
     this.filters$
   ]).pipe(
     map(([bookings, patients, filters]) => {
@@ -204,10 +203,9 @@ export class DoctorAppointmentsPage implements OnInit {
   );
 
   ngOnInit(): void {
-    this.store.dispatch(loadBookings());
-    this.store.dispatch(loadDoctors());
-    this.store.dispatch(loadSchedules());
-    this.store.dispatch(loadPatients());
+    this.bookingService.refresh();
+    this.doctorState.refresh();
+    this.patientState.refresh();
   }
 
   setDate(value: string): void {

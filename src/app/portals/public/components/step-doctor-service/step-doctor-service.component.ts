@@ -1,6 +1,5 @@
-import { Component, ElementRef, OnDestroy, ViewChild, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { AsyncPipe, NgFor, NgIf } from '@angular/common';
-import { Store } from '@ngrx/store';
 import { IonIcon } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import {
@@ -10,20 +9,12 @@ import {
 } from 'ionicons/icons';
 import { MockDataService } from '../../../../core/services/mock-data.service';
 import { Doctor, Service } from '../../../../core/models';
+import { BookingWizardService } from '../../../../core/services/booking-wizard.service';
 import { AvatarComponent } from '../../../../shared/components/avatar/avatar.component';
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
 import { StatusBadgeComponent } from '../../../../shared/components/status-badge/status-badge.component';
 import { PesoPipe } from '../../../../shared/pipes/peso.pipe';
 import { Subscription } from 'rxjs';
-import {
-  nextStep,
-  selectDoctor,
-  selectService
-} from '../../../../store/bookings/bookings.actions';
-import {
-  selectSelectedDoctorId,
-  selectSelectedServiceId
-} from '../../../../store/bookings/bookings.selectors';
 
 @Component({
   selector: 'app-step-doctor-service',
@@ -66,7 +57,7 @@ import {
           </button>
         </div>
 
-        <div class="service-list" #serviceSection>
+        <div class="service-list">
           <div class="service-list__header">
             <h3>Select a service</h3>
           </div>
@@ -139,16 +130,14 @@ import {
   styleUrl: './step-doctor-service.component.scss'
 })
 export class StepDoctorServiceComponent {
-  private readonly store = inject(Store);
+  private readonly wizardService = inject(BookingWizardService);
   private readonly mockData = inject(MockDataService);
   private readonly subscriptions = new Subscription();
 
-  @ViewChild('serviceSection') serviceSection?: ElementRef<HTMLElement>;
-
   doctors: Doctor[] = this.mockData.getDoctors();
 
-  selectedDoctorId$ = this.store.select(selectSelectedDoctorId);
-  selectedServiceId$ = this.store.select(selectSelectedServiceId);
+  selectedDoctorId$ = this.wizardService.selectedDoctorId$;
+  selectedServiceId$ = this.wizardService.selectedServiceId$;
   private latestSelectedDoctorId: string | null = null;
   private latestSelectedServiceId: string | null = null;
 
@@ -189,23 +178,20 @@ export class StepDoctorServiceComponent {
   }
 
   selectDoctor(doctor: Doctor): void {
-    this.store.dispatch(selectDoctor({ doctorId: doctor.id }));
-    window.setTimeout(() => {
-      this.serviceSection?.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 0);
+    this.wizardService.selectDoctor(doctor.id);
   }
 
   selectService(serviceId: string): void {
-    this.store.dispatch(selectService({ serviceId }));
+    this.wizardService.selectService(serviceId);
   }
 
   changeDoctor(): void {
-    this.store.dispatch(selectDoctor({ doctorId: null }));
+    this.wizardService.selectDoctor(null);
   }
 
   goNext(): void {
     if (this.canContinue) {
-      this.store.dispatch(nextStep());
+      this.wizardService.nextStep();
     }
   }
 }

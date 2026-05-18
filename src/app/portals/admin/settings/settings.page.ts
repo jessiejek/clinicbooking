@@ -1,17 +1,12 @@
 import { CommonModule, NgFor, NgIf, NgSwitch, NgSwitchCase, NgSwitchDefault } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Store } from '@ngrx/store';
 import { ToastController } from '@ionic/angular/standalone';
 import { ClinicSettings } from '../../../core/models';
+import { ClinicSettingsService } from '../../../core/services/clinic-settings.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { SkeletonComponent } from '../../../shared/components/skeleton/skeleton.component';
 import { ConfirmModalComponent } from '../../../shared/components/confirm-modal/confirm-modal.component';
-import { loadClinicSettings, bumpConsentVersion, updateClinicSettings } from '../../../store/clinic-settings/clinic-settings.actions';
-import {
-  selectClinicSettings,
-  selectClinicSettingsLoading
-} from '../../../store/clinic-settings/clinic-settings.selectors';
 import { OperatingHoursEditorComponent } from '../components/operating-hours-editor/operating-hours-editor.component';
 import { ColorPickerComponent } from '../components/color-picker/color-picker.component';
 
@@ -224,7 +219,7 @@ type SettingsTab = 'general' | 'hours' | 'payments' | 'privacy' | 'branding';
   styleUrl: './settings.page.scss'
 })
 export class SettingsPage implements OnInit {
-  private readonly store = inject(Store);
+  private readonly clinicSettingsService = inject(ClinicSettingsService);
   private readonly toastCtrl = inject(ToastController);
 
   tabs: Array<{ id: SettingsTab; label: string }> = [
@@ -243,9 +238,8 @@ export class SettingsPage implements OnInit {
   dirty = false;
 
   ngOnInit(): void {
-    this.store.dispatch(loadClinicSettings());
-    this.store.select(selectClinicSettingsLoading).subscribe((loading) => (this.isLoading = loading));
-    this.store.select(selectClinicSettings).subscribe((settings) => {
+    this.clinicSettingsService.isLoading$.subscribe((loading) => (this.isLoading = loading));
+    this.clinicSettingsService.getSettings().subscribe((settings) => {
       if (settings) {
         this.draft = this.cloneSettings(settings);
         this.logoFileName = settings.logoUrl ? settings.logoUrl.split('/').pop() ?? 'Uploaded logo' : 'No file selected';
@@ -311,7 +305,7 @@ export class SettingsPage implements OnInit {
       void this.presentToast('Please complete the required settings fields.', 'warning');
       return;
     }
-    this.store.dispatch(updateClinicSettings({ settings: this.cloneSettings(this.draft) }));
+    this.clinicSettingsService.updateSettings(this.cloneSettings(this.draft));
     this.dirty = false;
     void this.presentToast('Settings saved.');
   }
@@ -321,7 +315,7 @@ export class SettingsPage implements OnInit {
   }
 
   bumpConsent(): void {
-    this.store.dispatch(bumpConsentVersion());
+    this.clinicSettingsService.bumpConsentVersion();
     this.bumpConsentOpen = false;
     void this.presentToast('Consent version bumped.');
   }

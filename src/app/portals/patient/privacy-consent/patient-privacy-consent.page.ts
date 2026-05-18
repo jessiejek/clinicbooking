@@ -2,14 +2,11 @@ import { DatePipe, NgIf } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { Store } from '@ngrx/store';
 import { IonButton, IonCheckbox, IonItem, IonLabel, ToastController } from '@ionic/angular/standalone';
 import { AuthUser, ClinicSettings, Patient } from '../../../core/models';
+import { AuthStateService } from '../../../core/services/auth-state.service';
 import { ClinicSettingsService } from '../../../core/services/clinic-settings.service';
-import { MockDataService } from '../../../core/services/mock-data.service';
-import { loadPatients, updatePatient } from '../../../store/patients/patients.actions';
-import { selectCurrentUser } from '../../../store/auth/auth.selectors';
-import { selectCurrentPatient } from '../../../store/patients/patients.selectors';
+import { PatientStateService } from '../../../core/services/patient-state.service';
 
 @Component({
   selector: 'app-patient-privacy-consent-page',
@@ -47,9 +44,9 @@ import { selectCurrentPatient } from '../../../store/patients/patients.selectors
   styleUrl: './patient-privacy-consent.page.scss'
 })
 export class PatientPrivacyConsentPage implements OnInit {
-  private readonly store = inject(Store);
+  private readonly authState = inject(AuthStateService);
   private readonly router = inject(Router);
-  private readonly mockData = inject(MockDataService);
+  private readonly patientState = inject(PatientStateService);
   private readonly clinicSettingsService = inject(ClinicSettingsService);
   private readonly toastCtrl = inject(ToastController);
 
@@ -59,13 +56,12 @@ export class PatientPrivacyConsentPage implements OnInit {
   accepted = false;
 
   ngOnInit(): void {
-    this.store.dispatch(loadPatients());
     this.settings = this.clinicSettingsService.load();
 
-    this.store.select(selectCurrentUser).subscribe((user) => {
+    this.authState.currentUser$.subscribe((user) => {
       this.currentUser = user;
       if (user) {
-        this.store.select(selectCurrentPatient(user.id)).subscribe((patient) => {
+        this.patientState.getPatientByUserId(user.id).subscribe((patient) => {
           this.currentPatient = patient ?? null;
         });
       }
@@ -82,8 +78,7 @@ export class PatientPrivacyConsentPage implements OnInit {
       consentVersion: this.settings.consentVersion,
       consentedAt: new Date().toISOString()
     };
-    this.mockData.updatePatientConsent(updated.id, this.settings.consentVersion);
-    this.store.dispatch(updatePatient({ patient: updated }));
+    this.patientState.savePatient(updated);
     const toast = await this.toastCtrl.create({
       message: 'Privacy consent accepted.',
       duration: 2200,

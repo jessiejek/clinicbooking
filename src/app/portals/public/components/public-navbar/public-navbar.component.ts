@@ -1,12 +1,11 @@
 import { AsyncPipe, NgClass, NgIf } from '@angular/common';
 import { Component, Input, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
-import { Store } from '@ngrx/store';
 import { IonIcon } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { closeOutline, menuOutline } from 'ionicons/icons';
+import { AuthStateService } from '../../../../core/services/auth-state.service';
 import { ClinicSettingsService } from '../../../../core/services/clinic-settings.service';
-import { selectCurrentUser } from '../../../../store/auth/auth.selectors';
 
 @Component({
   selector: 'app-public-navbar',
@@ -83,7 +82,7 @@ export class PublicNavbarComponent {
   /** Vertical scroll position of `.public-main` (body/window does not scroll with Ionic defaults). */
   @Input() mainScrollTop = 0;
 
-  readonly currentUser$ = inject(Store).select(selectCurrentUser);
+  readonly currentUser$ = inject(AuthStateService).currentUser$;
 
   private readonly clinicSettings = inject(ClinicSettingsService);
   readonly settings = this.clinicSettings.load();

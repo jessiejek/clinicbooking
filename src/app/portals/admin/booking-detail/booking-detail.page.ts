@@ -1,21 +1,10 @@
 import { CommonModule, NgFor, NgIf } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { Store } from '@ngrx/store';
 import { ToastController } from '@ionic/angular/standalone';
 import { Booking, Doctor, Patient, Service } from '../../../core/models';
+import { BookingService } from '../../../core/services/booking.service';
 import { MockDataService } from '../../../core/services/mock-data.service';
-import {
-  cancelBooking,
-  confirmBooking,
-  confirmPayment,
-  markComplete,
-  markNoShow,
-  rejectBooking,
-  refundPayment,
-  waivedPayment
-} from '../../../store/bookings/bookings.actions';
-import { selectBookingById, selectBookingsLoading } from '../../../store/bookings/bookings.selectors';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { ConfirmModalComponent } from '../../../shared/components/confirm-modal/confirm-modal.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
@@ -214,7 +203,7 @@ type BookingAction =
   styleUrl: './booking-detail.page.scss'
 })
 export class BookingDetailPage implements OnInit {
-  private readonly store = inject(Store);
+  private readonly bookingService = inject(BookingService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly mockData = inject(MockDataService);
@@ -238,8 +227,8 @@ export class BookingDetailPage implements OnInit {
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id') ?? '';
-    this.store.select(selectBookingsLoading).subscribe((loading) => (this.isLoading = loading));
-    this.store.select(selectBookingById(id)).subscribe((booking) => {
+    this.bookingService.isLoading$.subscribe((loading) => (this.isLoading = loading));
+    this.bookingService.getBookingById$(id).subscribe((booking) => {
       this.booking = booking ?? null;
       this.doctor = booking ? this.mockData.getDoctorById(booking.doctorId) ?? null : null;
       this.patient = booking ? this.mockData.getPatientById(booking.patientId) ?? null : null;
@@ -309,33 +298,27 @@ export class BookingDetailPage implements OnInit {
     const bookingId = this.booking.id;
     switch (this.pendingAction) {
       case 'confirm':
-        this.mockData.confirmBooking(bookingId);
-        this.store.dispatch(confirmBooking({ bookingId }));
+        this.bookingService.confirmBooking(bookingId);
         this.addAuditLog('Booking', bookingId, 'Confirmed booking', reason);
         break;
       case 'reject':
-        this.store.dispatch(rejectBooking({ bookingId, reason: reason ?? 'Rejected by admin.' }));
-        this.mockData.cancelBooking(bookingId, reason ?? 'Rejected by admin.');
+        this.bookingService.rejectBooking(bookingId, reason ?? 'Rejected by admin.');
         this.addAuditLog('Booking', bookingId, 'Rejected booking', reason);
         break;
       case 'confirm-payment':
-        this.mockData.confirmPayment(bookingId);
-        this.store.dispatch(confirmPayment({ bookingId }));
+        this.bookingService.confirmPayment(bookingId);
         this.addAuditLog('Payment', bookingId, 'Confirmed payment', reason);
         break;
       case 'mark-complete':
-        this.mockData.markComplete(bookingId);
-        this.store.dispatch(markComplete({ bookingId }));
+        this.bookingService.markComplete(bookingId);
         this.addAuditLog('Booking', bookingId, 'Marked booking completed', reason);
         break;
       case 'mark-no-show':
-        this.mockData.markNoShow(bookingId);
-        this.store.dispatch(markNoShow({ bookingId }));
+        this.bookingService.markNoShow(bookingId);
         this.addAuditLog('Booking', bookingId, 'Marked no-show', reason);
         break;
       case 'cancel':
-        this.store.dispatch(cancelBooking({ bookingId, reason: reason ?? 'Cancelled by admin.' }));
-        this.mockData.cancelBooking(bookingId, reason ?? 'Cancelled by admin.');
+        this.bookingService.cancelBooking(bookingId, reason ?? 'Cancelled by admin.');
         this.addAuditLog('Booking', bookingId, 'Cancelled booking', reason);
         break;
     }
@@ -344,9 +327,8 @@ export class BookingDetailPage implements OnInit {
   }
 
   waivePayment(bookingId: string, reason: string): void {
-    const updated = this.mockData.waivePayment(bookingId, reason);
-    if (updated) {
-      this.store.dispatch(waivedPayment({ bookingId, reason }));
+    if (this.bookingService.getBookingById(bookingId)) {
+      this.bookingService.waivePayment(bookingId, reason);
       this.addAuditLog('Payment', bookingId, 'Waived payment', reason);
       void this.presentToast('Payment waived.');
     }
@@ -354,9 +336,8 @@ export class BookingDetailPage implements OnInit {
   }
 
   refundPaymentAction(bookingId: string, reason: string): void {
-    const updated = this.mockData.refundPayment(bookingId, reason);
-    if (updated) {
-      this.store.dispatch(refundPayment({ bookingId, reason }));
+    if (this.bookingService.getBookingById(bookingId)) {
+      this.bookingService.refundPayment(bookingId, reason);
       this.addAuditLog('Payment', bookingId, 'Refunded payment', reason);
       void this.presentToast('Payment refunded.');
     }

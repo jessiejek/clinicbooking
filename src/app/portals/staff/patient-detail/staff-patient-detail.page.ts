@@ -2,13 +2,10 @@ import { NgFor, NgIf, DatePipe, CommonModule } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { Store } from '@ngrx/store';
 import { IonLabel, IonModal, IonSegment, IonSegmentButton } from '@ionic/angular/standalone';
 import { Booking, Patient } from '../../../core/models';
-import { loadBookings } from '../../../store/bookings/bookings.actions';
-import { selectBookingsByPatient } from '../../../store/bookings/bookings.selectors';
-import { loadPatients, updatePatient } from '../../../store/patients/patients.actions';
-import { selectPatientById } from '../../../store/patients/patients.selectors';
+import { BookingService } from '../../../core/services/booking.service';
+import { PatientStateService } from '../../../core/services/patient-state.service';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
@@ -138,7 +135,8 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
   styleUrl: './staff-patient-detail.page.scss'
 })
 export class StaffPatientDetailPage implements OnInit {
-  private readonly store = inject(Store);
+  private readonly bookingService = inject(BookingService);
+  private readonly patientState = inject(PatientStateService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly fb = inject(FormBuilder);
@@ -159,17 +157,14 @@ export class StaffPatientDetailPage implements OnInit {
   });
 
   ngOnInit(): void {
-    this.store.dispatch(loadPatients());
-    this.store.dispatch(loadBookings());
-
     const id = this.route.snapshot.paramMap.get('id') ?? '';
-    this.store.select(selectPatientById(id)).subscribe((patient) => {
+    this.patientState.getPatientById(id).subscribe((patient) => {
       this.patient = patient ?? null;
       if (patient) {
         this.form.patchValue(patient);
       }
     });
-    this.store.select(selectBookingsByPatient(id)).subscribe((bookings) => (this.bookings = bookings));
+    this.bookingService.getBookingsByPatientId(id).subscribe((bookings) => (this.bookings = bookings));
   }
 
   back(): void {
@@ -197,7 +192,7 @@ export class StaffPatientDetailPage implements OnInit {
       emergencyContactNumber: value.emergencyContactNumber ?? this.patient.emergencyContactNumber,
       emergencyContactRelationship: value.emergencyContactRelationship ?? this.patient.emergencyContactRelationship
     };
-    this.store.dispatch(updatePatient({ patient: updated }));
+    this.patientState.savePatient(updated);
     this.editOpen = false;
   }
 }

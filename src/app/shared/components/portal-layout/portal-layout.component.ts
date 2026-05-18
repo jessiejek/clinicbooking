@@ -7,8 +7,7 @@ import {
   OnInit,
   inject
 } from '@angular/core';
-import { ActivatedRoute, NavigationEnd, Router, RouterOutlet } from '@angular/router';
-import { Store } from '@ngrx/store';
+import { ActivatedRoute, ActivationEnd, NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { addIcons } from 'ionicons';
@@ -49,10 +48,9 @@ import {
   warningOutline
 } from 'ionicons/icons';
 import { NavItem } from '../../../core/models';
+import { AuthStateService } from '../../../core/services/auth-state.service';
 import { ClinicSettingsService } from '../../../core/services/clinic-settings.service';
-import { logout } from '../../../store/auth/auth.actions';
-import { selectCurrentUser } from '../../../store/auth/auth.selectors';
-import { selectUnreadCount } from '../../../store/notifications/notifications.selectors';
+import { NotificationService } from '../../../core/services/notification.service';
 import { SidebarComponent } from '../../../portals/admin/components/sidebar/sidebar.component';
 import { TopbarComponent } from '../../../portals/admin/components/topbar/topbar.component';
 
@@ -106,10 +104,12 @@ export class PortalLayoutComponent implements OnInit {
 
   @HostBinding('style.display') readonly display = 'block';
 
-  readonly currentUser$ = inject(Store).select(selectCurrentUser);
-  readonly unreadCount$ = inject(Store).select(selectUnreadCount);
+  private readonly authState = inject(AuthStateService);
+  private readonly notificationService = inject(NotificationService);
 
-  private readonly store = inject(Store);
+  readonly currentUser$ = this.authState.currentUser$;
+  readonly unreadCount$ = this.notificationService.unreadCount$;
+
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly clinicSettingsService = inject(ClinicSettingsService);
@@ -167,7 +167,10 @@ export class PortalLayoutComponent implements OnInit {
 
     this.router.events
       .pipe(
-        filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+        filter(
+          (event): event is ActivationEnd | NavigationEnd =>
+            event instanceof ActivationEnd || event instanceof NavigationEnd
+        ),
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe(() => this.updatePageTitle());
@@ -182,8 +185,7 @@ export class PortalLayoutComponent implements OnInit {
   }
 
   logout(): void {
-    this.store.dispatch(logout());
-    void this.router.navigate(['/auth/login']);
+    this.authState.logout();
   }
 
   private updatePageTitle(): void {

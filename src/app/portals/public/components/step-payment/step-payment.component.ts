@@ -1,14 +1,12 @@
 import { Component, inject } from '@angular/core';
 import { AsyncPipe, NgIf, NgSwitch, NgSwitchCase } from '@angular/common';
-import { Store } from '@ngrx/store';
 import { ToastController } from '@ionic/angular';
 import { IonIcon } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { copyOutline } from 'ionicons/icons';
 import { map } from 'rxjs';
 import { MockDataService } from '../../../../core/services/mock-data.service';
-import { nextStep, prevStep, selectPaymentMode } from '../../../../store/bookings/bookings.actions';
-import { selectWizard } from '../../../../store/bookings/bookings.selectors';
+import { BookingWizardService } from '../../../../core/services/booking-wizard.service';
 
 type PaymentTab = 'gcash' | 'maya' | 'bank';
 type BookingPaymentMode = 'Online' | 'PayAtClinic';
@@ -158,13 +156,13 @@ type BookingPaymentMode = 'Online' | 'PayAtClinic';
   styleUrl: './step-payment.component.scss'
 })
 export class StepPaymentComponent {
-  private readonly store = inject(Store);
+  private readonly wizardService = inject(BookingWizardService);
   private readonly toastCtrl = inject(ToastController);
   private readonly mockData = inject(MockDataService);
 
   activeTab: PaymentTab = 'gcash';
 
-  vm$ = this.store.select(selectWizard).pipe(
+  vm$ = this.wizardService.state$.pipe(
     map((wizard) => {
       const doctor = wizard.selectedDoctorId
         ? this.mockData.getDoctors().find((item) => item.id === wizard.selectedDoctorId)
@@ -186,7 +184,7 @@ export class StepPaymentComponent {
   }
 
   setPaymentMode(paymentMode: BookingPaymentMode): void {
-    this.store.dispatch(selectPaymentMode({ paymentMode }));
+    this.wizardService.selectPaymentMode(paymentMode);
   }
 
   async copyToClipboard(value: string): Promise<void> {
@@ -205,10 +203,10 @@ export class StepPaymentComponent {
   }
 
   goNext(): void {
-    this.store.dispatch(nextStep());
+    this.wizardService.nextStep();
   }
 
   goBack(): void {
-    this.store.dispatch(prevStep());
+    this.wizardService.prevStep();
   }
 }

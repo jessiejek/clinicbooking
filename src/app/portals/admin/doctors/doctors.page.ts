@@ -1,14 +1,12 @@
 import { AsyncPipe, NgFor, NgIf } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { Store } from '@ngrx/store';
 import { IonIcon } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { createOutline, trashOutline } from 'ionicons/icons';
 import { Doctor } from '../../../core/models';
+import { DoctorStateService } from '../../../core/services/doctor-state.service';
 import { MockDataService } from '../../../core/services/mock-data.service';
-import { loadDoctors, loadSchedules } from '../../../store/doctors/doctors.actions';
-import { selectAllDoctors, selectDoctorsLoading } from '../../../store/doctors/doctors.selectors';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { SkeletonComponent } from '../../../shared/components/skeleton/skeleton.component';
@@ -157,7 +155,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
   styleUrl: './doctors.page.scss'
 })
 export class DoctorsPage implements OnInit {
-  private readonly store = inject(Store);
+  private readonly doctorState = inject(DoctorStateService);
   private readonly router = inject(Router);
   private readonly mockData = inject(MockDataService);
 
@@ -169,10 +167,8 @@ export class DoctorsPage implements OnInit {
   }
 
   ngOnInit(): void {
-    this.store.dispatch(loadDoctors());
-    this.store.dispatch(loadSchedules());
-    this.store.select(selectAllDoctors).subscribe((doctors) => (this.doctors = doctors));
-    this.store.select(selectDoctorsLoading).subscribe((loading) => (this.isLoading = loading));
+    this.doctorState.getDoctors().subscribe((doctors) => (this.doctors = doctors));
+    this.doctorState.isLoading$.subscribe((loading) => (this.isLoading = loading));
   }
 
   addDoctor(): void {

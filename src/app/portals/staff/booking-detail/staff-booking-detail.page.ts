@@ -1,26 +1,14 @@
 import { AsyncPipe, CommonModule, NgFor, NgIf } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { Store } from '@ngrx/store';
 import { IonIcon } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { informationCircleOutline } from 'ionicons/icons';
 import { Booking, Doctor, Patient, Service } from '../../../core/models';
+import { BookingService } from '../../../core/services/booking.service';
+import { DoctorStateService } from '../../../core/services/doctor-state.service';
 import { MockDataService } from '../../../core/services/mock-data.service';
-import {
-  cancelBooking,
-  confirmBooking,
-  confirmPayment,
-  markComplete,
-  markNoShow,
-  rejectBooking,
-} from '../../../store/bookings/bookings.actions';
-import { selectBookingById, selectBookingsLoading } from '../../../store/bookings/bookings.selectors';
-import { loadBookings } from '../../../store/bookings/bookings.actions';
-import { loadDoctors } from '../../../store/doctors/doctors.actions';
-import { selectAllDoctors, selectDoctorsLoading } from '../../../store/doctors/doctors.selectors';
-import { loadPatients } from '../../../store/patients/patients.actions';
-import { selectAllPatients, selectPatientsLoading } from '../../../store/patients/patients.selectors';
+import { PatientStateService } from '../../../core/services/patient-state.service';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { ConfirmModalComponent } from '../../../shared/components/confirm-modal/confirm-modal.component';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
@@ -172,7 +160,9 @@ type BookingAction =
   styleUrl: './staff-booking-detail.page.scss'
 })
 export class StaffBookingDetailPage implements OnInit {
-  private readonly store = inject(Store);
+  private readonly bookingService = inject(BookingService);
+  private readonly doctorState = inject(DoctorStateService);
+  private readonly patientState = inject(PatientStateService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly mockData = inject(MockDataService);
@@ -203,32 +193,28 @@ export class StaffBookingDetailPage implements OnInit {
   }
 
   ngOnInit(): void {
-    this.store.dispatch(loadBookings());
-    this.store.dispatch(loadDoctors());
-    this.store.dispatch(loadPatients());
-
     const id = this.route.snapshot.paramMap.get('id') ?? '';
-    this.store.select(selectBookingById(id)).subscribe((booking) => {
+    this.bookingService.getBookingById$(id).subscribe((booking) => {
       this.booking = booking ?? null;
       this.syncDetails();
       this.service = booking ? this.mockData.getServiceById(booking.serviceId) ?? null : null;
     });
 
-    this.store.select(selectAllDoctors).subscribe((doctors) => {
+    this.doctorState.getDoctors().subscribe((doctors) => {
       this.doctors = doctors;
       this.syncDetails();
     });
-    this.store.select(selectAllPatients).subscribe((patients) => {
+    this.patientState.getPatients().subscribe((patients) => {
       this.patients = patients;
       this.syncDetails();
     });
-    this.store.select(selectBookingsLoading).subscribe((loading) => {
+    this.bookingService.isLoading$.subscribe((loading) => {
       this.bookingsLoading = loading;
     });
-    this.store.select(selectDoctorsLoading).subscribe((loading) => {
+    this.doctorState.isLoading$.subscribe((loading) => {
       this.doctorsLoading = loading;
     });
-    this.store.select(selectPatientsLoading).subscribe((loading) => {
+    this.patientState.isLoading$.subscribe((loading) => {
       this.patientsLoading = loading;
     });
   }
@@ -268,22 +254,22 @@ export class StaffBookingDetailPage implements OnInit {
     const bookingId = this.booking.id;
     switch (this.pendingAction) {
       case 'confirm':
-        this.store.dispatch(confirmBooking({ bookingId }));
+        this.bookingService.confirmBooking(bookingId);
         break;
       case 'reject':
-        this.store.dispatch(rejectBooking({ bookingId, reason: reason ?? 'Rejected by staff.' }));
+        this.bookingService.rejectBooking(bookingId, reason ?? 'Rejected by staff.');
         break;
       case 'confirm-payment':
-        this.store.dispatch(confirmPayment({ bookingId }));
+        this.bookingService.confirmPayment(bookingId);
         break;
       case 'mark-complete':
-        this.store.dispatch(markComplete({ bookingId }));
+        this.bookingService.markComplete(bookingId);
         break;
       case 'mark-no-show':
-        this.store.dispatch(markNoShow({ bookingId }));
+        this.bookingService.markNoShow(bookingId);
         break;
       case 'cancel':
-        this.store.dispatch(cancelBooking({ bookingId, reason: reason ?? 'Cancelled by staff.' }));
+        this.bookingService.cancelBooking(bookingId, reason ?? 'Cancelled by staff.');
         break;
       case 'reschedule':
         this.reschedule();

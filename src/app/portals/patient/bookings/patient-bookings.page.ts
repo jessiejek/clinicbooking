@@ -1,17 +1,13 @@
 import { AsyncPipe, DatePipe, NgFor, NgIf } from '@angular/common';
 import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { Store } from '@ngrx/store';
 import { IonModal } from '@ionic/angular/standalone';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthUser, Booking, Doctor, Patient, Service } from '../../../core/models';
+import { AuthStateService } from '../../../core/services/auth-state.service';
+import { BookingService } from '../../../core/services/booking.service';
 import { MockDataService } from '../../../core/services/mock-data.service';
-import { loadBookings, cancelBooking } from '../../../store/bookings/bookings.actions';
-import { selectBookingsByPatientId } from '../../../store/bookings/bookings.selectors';
-import { loadDoctors } from '../../../store/doctors/doctors.actions';
-import { loadPatients } from '../../../store/patients/patients.actions';
-import { selectCurrentUser } from '../../../store/auth/auth.selectors';
-import { selectCurrentPatient } from '../../../store/patients/patients.selectors';
+import { PatientStateService } from '../../../core/services/patient-state.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 import { ConfirmModalComponent } from '../../../shared/components/confirm-modal/confirm-modal.component';
@@ -135,7 +131,9 @@ type BookingFilter = 'all' | 'upcoming' | 'pending' | 'confirmed' | 'completed' 
   styleUrl: './patient-bookings.page.scss'
 })
 export class PatientBookingsPage implements OnInit {
-  private readonly store = inject(Store);
+  private readonly authState = inject(AuthStateService);
+  private readonly bookingService = inject(BookingService);
+  private readonly patientState = inject(PatientStateService);
   private readonly router = inject(Router);
   private readonly mockData = inject(MockDataService);
   private readonly destroyRef = inject(DestroyRef);
@@ -160,12 +158,7 @@ export class PatientBookingsPage implements OnInit {
   services = this.mockData.getServices();
 
   ngOnInit(): void {
-    this.store.dispatch(loadBookings());
-    this.store.dispatch(loadDoctors());
-    this.store.dispatch(loadPatients());
-
-    this.store
-      .select(selectCurrentUser)
+    this.authState.currentUser$
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((user) => {
         this.currentUser = user;
@@ -176,8 +169,8 @@ export class PatientBookingsPage implements OnInit {
           return;
         }
 
-        this.store
-          .select(selectCurrentPatient(user.id))
+        this.patientState
+          .getPatientByUserId(user.id)
           .pipe(takeUntilDestroyed(this.destroyRef))
           .subscribe((patient) => {
             this.currentPatient = patient ?? null;
@@ -185,8 +178,7 @@ export class PatientBookingsPage implements OnInit {
           });
       });
 
-    this.store
-      .select(selectCurrentUser)
+    this.authState.currentUser$
       .pipe(
         takeUntilDestroyed(this.destroyRef)
       )
@@ -197,8 +189,8 @@ export class PatientBookingsPage implements OnInit {
           return;
         }
 
-        this.store
-          .select(selectBookingsByPatientId(this.patientId(user)))
+        this.bookingService
+          .getBookingsByPatientId(this.patientId(user))
           .pipe(takeUntilDestroyed(this.destroyRef))
           .subscribe((bookings) => {
             this.bookings = bookings;
@@ -236,10 +228,7 @@ export class PatientBookingsPage implements OnInit {
     if (!this.bookingToCancel) {
       return;
     }
-    this.mockData.cancelBooking(this.bookingToCancel.id, 'Cancelled by patient.');
-    this.store.dispatch(
-      cancelBooking({ bookingId: this.bookingToCancel.id, reason: 'Cancelled by patient.' })
-    );
+    this.bookingService.cancelBooking(this.bookingToCancel.id, 'Cancelled by patient.');
     this.cancelModalOpen = false;
     this.bookingToCancel = null;
     this.refreshFilteredBookings();

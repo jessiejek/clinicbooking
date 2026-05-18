@@ -1,22 +1,12 @@
 import { AsyncPipe, CurrencyPipe, DatePipe, NgFor, NgIf } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { Store } from '@ngrx/store';
 import { distinctUntilChanged } from 'rxjs';
 import { Booking } from '../../../core/models';
+import { BookingService } from '../../../core/services/booking.service';
+import { DoctorStateService } from '../../../core/services/doctor-state.service';
 import { MockDataService } from '../../../core/services/mock-data.service';
-import { loadBookings } from '../../../store/bookings/bookings.actions';
-import {
-  selectBookings,
-  selectBookingsLoading,
-  selectPendingVerifications,
-  selectTodaysBookings
-} from '../../../store/bookings/bookings.selectors';
-import { loadDoctors } from '../../../store/doctors/doctors.actions';
-import { selectAllDoctors } from '../../../store/doctors/doctors.selectors';
-import { loadNotifications } from '../../../store/notifications/notifications.actions';
-import { loadPatients } from '../../../store/patients/patients.actions';
-import { selectAllPatients } from '../../../store/patients/patients.selectors';
+import { PatientStateService } from '../../../core/services/patient-state.service';
 import { TodayAppointmentsTableComponent } from '../components/today-appointments-table/today-appointments-table.component';
 import { StatCardComponent } from '../components/stat-card/stat-card.component';
 
@@ -103,7 +93,9 @@ import { StatCardComponent } from '../components/stat-card/stat-card.component';
   styleUrl: './dashboard.page.scss'
 })
 export class DashboardPage implements OnInit {
-  private readonly store = inject(Store);
+  private readonly bookingService = inject(BookingService);
+  private readonly doctorState = inject(DoctorStateService);
+  private readonly patientState = inject(PatientStateService);
   private readonly mockData = inject(MockDataService);
   private readonly router = inject(Router);
 
@@ -130,44 +122,38 @@ export class DashboardPage implements OnInit {
   private readonly revenueData = this.buildRevenueSeries(this.getRevenueSeed());
 
   ngOnInit(): void {
-    this.store.dispatch(loadBookings());
-    this.store.dispatch(loadDoctors());
-    this.store.dispatch(loadPatients());
-    this.store.dispatch(loadNotifications());
-
-    this.store
-      .select(selectBookingsLoading)
+    this.bookingService.isLoading$
       .pipe(distinctUntilChanged())
       .subscribe((isLoading) => (this.isLoading = isLoading));
-    this.store
-      .select(selectBookings)
+    this.bookingService
+      .getBookings()
       .pipe(distinctUntilChanged())
       .subscribe((bookings) => {
         this.bookings = bookings;
         this.refreshStats();
       });
-    this.store
-      .select(selectTodaysBookings)
+    this.bookingService
+      .getTodaysBookings()
       .pipe(distinctUntilChanged())
       .subscribe((bookings) => {
         this.todaysBookings = bookings;
         this.refreshCharts();
       });
-    this.store
-      .select(selectPendingVerifications)
+    this.bookingService
+      .getPendingVerifications()
       .pipe(distinctUntilChanged())
       .subscribe((bookings) => {
         this.pendingVerificationCount = bookings.length;
       });
-    this.store
-      .select(selectAllDoctors)
+    this.doctorState
+      .getDoctors()
       .pipe(distinctUntilChanged())
       .subscribe((doctors) => {
         this.doctors = doctors.length ? doctors : this.mockData.getDoctors();
         this.refreshCharts();
       });
-    this.store
-      .select(selectAllPatients)
+    this.patientState
+      .getPatients()
       .pipe(distinctUntilChanged())
       .subscribe((patients) => {
         this.patients = patients.length ? patients : this.mockData.getPatients();

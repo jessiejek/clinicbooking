@@ -1,16 +1,12 @@
 import { AsyncPipe, CurrencyPipe, NgIf } from '@angular/common';
 import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Store } from '@ngrx/store';
 import { ToastController } from '@ionic/angular/standalone';
 import { of } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
 import { AuthUser, Doctor } from '../../../core/models';
-import { loadBookings } from '../../../store/bookings/bookings.actions';
-import { selectCurrentUser } from '../../../store/auth/auth.selectors';
-import { selectDoctorByUserId } from '../../../store/doctors/doctors.selectors';
-import { loadDoctors, loadSchedules, updateDoctor } from '../../../store/doctors/doctors.actions';
-import { loadPatients } from '../../../store/patients/patients.actions';
+import { AuthStateService } from '../../../core/services/auth-state.service';
+import { DoctorStateService } from '../../../core/services/doctor-state.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -117,15 +113,16 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 })
 export class DoctorProfilePage implements OnInit {
   private readonly fb = inject(FormBuilder);
-  private readonly store = inject(Store);
+  private readonly authState = inject(AuthStateService);
+  private readonly doctorState = inject(DoctorStateService);
   private readonly toastController = inject(ToastController);
   private readonly destroyRef = inject(DestroyRef);
 
   currentUser: AuthUser | null = null;
 
-  readonly currentUser$ = this.store.select(selectCurrentUser);
+  readonly currentUser$ = this.authState.currentUser$;
   readonly doctor$ = this.currentUser$.pipe(
-    switchMap((user) => (user ? this.store.select(selectDoctorByUserId(user.id)) : of(undefined)))
+    switchMap((user) => (user ? this.doctorState.getDoctorByUserId(user.id) : of(undefined)))
   );
 
   profileForm = this.fb.nonNullable.group({
@@ -142,10 +139,7 @@ export class DoctorProfilePage implements OnInit {
   });
 
   ngOnInit(): void {
-    this.store.dispatch(loadBookings());
-    this.store.dispatch(loadDoctors());
-    this.store.dispatch(loadSchedules());
-    this.store.dispatch(loadPatients());
+    this.doctorState.refresh();
 
     this.currentUser$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((user) => {
       this.currentUser = user;
@@ -175,9 +169,7 @@ export class DoctorProfilePage implements OnInit {
       return;
     }
 
-    this.store.dispatch(
-      updateDoctor({
-        doctor: {
+    this.doctorState.updateDoctor({
           ...doctor,
           fullName: values.fullName,
           specialization: values.specialization,
@@ -186,9 +178,7 @@ export class DoctorProfilePage implements OnInit {
           licenseNumber: values.licenseNumber || undefined,
           ptrNumber: values.ptrNumber || undefined,
           s2Number: values.s2Number || undefined
-        }
-      })
-    );
+        });
 
     this.profileForm.patchValue({
       newPassword: '',

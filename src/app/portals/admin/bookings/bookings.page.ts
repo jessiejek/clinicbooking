@@ -2,18 +2,11 @@ import { AsyncPipe, NgFor, NgIf } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { Store } from '@ngrx/store';
 import { Booking, Doctor, Patient, Service } from '../../../core/models';
+import { BookingService } from '../../../core/services/booking.service';
+import { DoctorStateService } from '../../../core/services/doctor-state.service';
 import { MockDataService } from '../../../core/services/mock-data.service';
-import { loadBookings } from '../../../store/bookings/bookings.actions';
-import {
-  selectBookings,
-  selectBookingsLoading
-} from '../../../store/bookings/bookings.selectors';
-import { loadDoctors } from '../../../store/doctors/doctors.actions';
-import { selectAllDoctors } from '../../../store/doctors/doctors.selectors';
-import { loadPatients } from '../../../store/patients/patients.actions';
-import { selectAllPatients } from '../../../store/patients/patients.selectors';
+import { PatientStateService } from '../../../core/services/patient-state.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { SkeletonComponent } from '../../../shared/components/skeleton/skeleton.component';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
@@ -151,7 +144,9 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
   styleUrl: './bookings.page.scss'
 })
 export class BookingsPage implements OnInit {
-  private readonly store = inject(Store);
+  private readonly bookingService = inject(BookingService);
+  private readonly doctorState = inject(DoctorStateService);
+  private readonly patientState = inject(PatientStateService);
   private readonly router = inject(Router);
   private readonly mockData = inject(MockDataService);
 
@@ -169,14 +164,10 @@ export class BookingsPage implements OnInit {
   statuses = ['Pending', 'Confirmed', 'Completed', 'Cancelled', 'OnHold', 'ProofSubmitted', 'NoShow'];
 
   ngOnInit(): void {
-    this.store.dispatch(loadBookings());
-    this.store.dispatch(loadDoctors());
-    this.store.dispatch(loadPatients());
-
-    this.store.select(selectBookings).subscribe((bookings) => (this.bookings = bookings));
-    this.store.select(selectBookingsLoading).subscribe((loading) => (this.isLoading = loading));
-    this.store.select(selectAllDoctors).subscribe((doctors) => (this.doctors = doctors.length ? doctors : this.mockData.getDoctors()));
-    this.store.select(selectAllPatients).subscribe((patients) => (this.patients = patients.length ? patients : this.mockData.getPatients()));
+    this.bookingService.getBookings().subscribe((bookings) => (this.bookings = bookings));
+    this.bookingService.isLoading$.subscribe((loading) => (this.isLoading = loading));
+    this.doctorState.getDoctors().subscribe((doctors) => (this.doctors = doctors.length ? doctors : this.mockData.getDoctors()));
+    this.patientState.getPatients().subscribe((patients) => (this.patients = patients.length ? patients : this.mockData.getPatients()));
   }
 
   get filteredBookings(): Booking[] {

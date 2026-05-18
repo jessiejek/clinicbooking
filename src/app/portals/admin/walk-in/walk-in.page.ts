@@ -2,14 +2,11 @@ import { AsyncPipe, NgFor, NgIf } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule, ReactiveFormsModule, FormControl } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { Store } from '@ngrx/store';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
 import { Booking, Doctor, Patient, Service, TimeSlot } from '../../../core/models';
+import { BookingService } from '../../../core/services/booking.service';
+import { PatientStateService } from '../../../core/services/patient-state.service';
 import { MockDataService } from '../../../core/services/mock-data.service';
-import { addBooking, loadBookings } from '../../../store/bookings/bookings.actions';
-import { selectBookings } from '../../../store/bookings/bookings.selectors';
-import { addPatientSuccess } from '../../../store/patients/patients.actions';
-import { selectAllPatients } from '../../../store/patients/patients.selectors';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { SlotGridComponent } from '../../../shared/components/slot-grid/slot-grid.component';
 
@@ -116,7 +113,8 @@ import { SlotGridComponent } from '../../../shared/components/slot-grid/slot-gri
   styleUrl: './walk-in.page.scss'
 })
 export class WalkInPage implements OnInit {
-  private readonly store = inject(Store);
+  private readonly bookingService = inject(BookingService);
+  private readonly patientState = inject(PatientStateService);
   private readonly mockData = inject(MockDataService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
@@ -139,11 +137,10 @@ export class WalkInPage implements OnInit {
   paymentMode: 'PayAtClinic' | 'Online' = 'PayAtClinic';
 
   ngOnInit(): void {
-    this.store.dispatch(loadBookings());
-    this.store.select(selectAllPatients).subscribe((patients) => {
+    this.patientState.getPatients().subscribe((patients) => {
       this.patients = patients.length ? patients : this.mockData.getPatients();
     });
-    this.store.select(selectBookings).subscribe((bookings) => (this.bookings = bookings));
+    this.bookingService.getBookings().subscribe((bookings) => (this.bookings = bookings));
     this.searchControl.valueChanges.pipe(debounceTime(300), distinctUntilChanged()).subscribe((value) => {
       this.searchResults = this.filterPatients(value);
       this.showQuickRegister = false;
@@ -172,7 +169,7 @@ export class WalkInPage implements OnInit {
       isGuest: true,
       consentVersion: 'v1.0'
     };
-    this.store.dispatch(addPatientSuccess({ patient }));
+    this.patientState.savePatient(patient);
     this.selectedPatient = patient;
     this.currentWalkInStep = 2;
   }
@@ -224,7 +221,7 @@ export class WalkInPage implements OnInit {
       proofValue: this.paymentMode === 'Online' ? 'WALKIN-PROOF' : undefined,
       createdAt: new Date().toISOString()
     };
-    this.store.dispatch(addBooking({ booking }));
+    this.bookingService.addBooking(booking);
     void this.router.navigate(['/admin/bookings', booking.id]);
   }
 

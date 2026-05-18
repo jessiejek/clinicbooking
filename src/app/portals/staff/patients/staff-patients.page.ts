@@ -2,12 +2,10 @@ import { NgFor, NgIf } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { FormBuilder, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
-import { Store } from '@ngrx/store';
 import { IonModal } from '@ionic/angular/standalone';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
 import { Patient } from '../../../core/models';
-import { loadPatients, addPatient } from '../../../store/patients/patients.actions';
-import { selectAllPatients, selectPatientsLoading } from '../../../store/patients/patients.selectors';
+import { PatientStateService } from '../../../core/services/patient-state.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { SkeletonComponent } from '../../../shared/components/skeleton/skeleton.component';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
@@ -141,7 +139,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
   styleUrl: './staff-patients.page.scss'
 })
 export class StaffPatientsPage implements OnInit {
-  private readonly store = inject(Store);
+  private readonly patientState = inject(PatientStateService);
   private readonly router = inject(Router);
   private readonly fb = inject(FormBuilder);
 
@@ -160,12 +158,11 @@ export class StaffPatientsPage implements OnInit {
   });
 
   ngOnInit(): void {
-    this.store.dispatch(loadPatients());
-    this.store.select(selectAllPatients).subscribe((patients) => {
+    this.patientState.getPatients().subscribe((patients) => {
       this.patients = patients;
       this.filteredPatients = patients;
     });
-    this.store.select(selectPatientsLoading).subscribe((loading) => (this.isLoading = loading));
+    this.patientState.isLoading$.subscribe((loading) => (this.isLoading = loading));
     this.searchControl.valueChanges.pipe(debounceTime(300), distinctUntilChanged()).subscribe((query) => {
       const q = query.trim().toLowerCase();
       this.filteredPatients = !q
@@ -200,9 +197,7 @@ export class StaffPatientsPage implements OnInit {
       this.form.markAllAsTouched();
       return;
     }
-    this.store.dispatch(
-      addPatient({
-        patient: {
+    this.patientState.addPatient({
           firstName: this.form.value.firstName ?? '',
           lastName: this.form.value.lastName ?? '',
           sex: this.form.value.sex ?? 'Male',
@@ -211,9 +206,7 @@ export class StaffPatientsPage implements OnInit {
           email: this.form.value.email ?? '',
           isGuest: false,
           consentVersion: 'v1.0'
-        }
-      })
-    );
+        });
     this.isModalOpen = false;
   }
 }

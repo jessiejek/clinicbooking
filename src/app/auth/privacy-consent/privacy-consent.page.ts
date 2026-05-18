@@ -1,12 +1,10 @@
 import { NgFor } from '@angular/common';
 import { AfterViewInit, Component, ElementRef, inject, ViewChild } from '@angular/core';
 import { Router } from '@angular/router';
-import { Store } from '@ngrx/store';
 import { AuthLayoutComponent } from '../components/auth-layout/auth-layout.component';
 import { AuthUser } from '../../core/models';
+import { AuthStateService } from '../../core/services/auth-state.service';
 import { ClinicSettingsService } from '../../core/services/clinic-settings.service';
-import { setUser } from '../../store/auth/auth.actions';
-import { selectCurrentUser } from '../../store/auth/auth.selectors';
 
 @Component({
   standalone: true,
@@ -18,10 +16,10 @@ import { selectCurrentUser } from '../../store/auth/auth.selectors';
 export class PrivacyConsentPage implements AfterViewInit {
   @ViewChild('policyScroll') policyScroll?: ElementRef<HTMLDivElement>;
 
-  private readonly store = inject(Store);
+  private readonly authState = inject(AuthStateService);
   private readonly router = inject(Router);
   private readonly clinicSettings = inject(ClinicSettingsService);
-  private readonly currentUser = this.store.selectSignal(selectCurrentUser);
+  private readonly currentUser = this.authState.currentUser;
 
   private readonly settings = this.clinicSettings.load();
 
@@ -63,7 +61,7 @@ export class PrivacyConsentPage implements AfterViewInit {
       ...user,
       consentVersion: targetVersion
     } as AuthUser;
-    this.store.dispatch(setUser({ user: updated }));
+    this.authState.setUser(updated);
     void this.router.navigate(['/patient']);
   }
 

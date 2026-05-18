@@ -1,15 +1,8 @@
-import { inject } from '@angular/core';
 import { ResolveFn, Routes } from '@angular/router';
-import { Store } from '@ngrx/store';
 import { of } from 'rxjs';
 import { authGuard } from '../../core/guards/auth.guard';
 import { roleGuard } from '../../core/guards/role.guard';
 import { NavItem } from '../../core/models';
-import { loadBookings } from '../../store/bookings/bookings.actions';
-import { loadDoctors, loadSchedules } from '../../store/doctors/doctors.actions';
-import { loadMedicalRecords } from '../../store/medical-records/medical-records.actions';
-import { loadNotifications } from '../../store/notifications/notifications.actions';
-import { loadPatients } from '../../store/patients/patients.actions';
 import { PortalLayoutComponent } from '../../shared/components/portal-layout/portal-layout.component';
 
 export const DOCTOR_NAV_ITEMS: NavItem[] = [
@@ -21,13 +14,6 @@ export const DOCTOR_NAV_ITEMS: NavItem[] = [
 ];
 
 const preloadDoctorData: ResolveFn<boolean> = () => {
-  const store = inject(Store);
-  store.dispatch(loadBookings());
-  store.dispatch(loadDoctors());
-  store.dispatch(loadSchedules());
-  store.dispatch(loadPatients());
-  store.dispatch(loadMedicalRecords());
-  store.dispatch(loadNotifications());
   return of(true);
 };
 

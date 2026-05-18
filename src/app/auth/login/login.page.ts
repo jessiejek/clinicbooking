@@ -2,7 +2,6 @@ import { AsyncPipe, NgIf } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { Store } from '@ngrx/store';
 import {
   IonButton,
   IonIcon,
@@ -17,8 +16,7 @@ import { alertCircleOutline, eyeOffOutline, eyeOutline } from 'ionicons/icons';
 import { environment } from '../../../environments/environment';
 import { AuthLayoutComponent } from '../components/auth-layout/auth-layout.component';
 import { BannerComponent } from '../../shared/components/banner/banner.component';
-import { clearError, login } from '../../store/auth/auth.actions';
-import { selectAuthError, selectIsLoading } from '../../store/auth/auth.selectors';
+import { AuthStateService } from '../../core/services/auth-state.service';
 
 @Component({
   standalone: true,
@@ -42,12 +40,12 @@ import { selectAuthError, selectIsLoading } from '../../store/auth/auth.selector
 })
 export class LoginPage {
   private readonly fb = inject(FormBuilder);
-  private readonly store = inject(Store);
+  private readonly authState = inject(AuthStateService);
   private readonly toastController = inject(ToastController);
 
   readonly isProduction = environment.production;
-  readonly isLoading$ = this.store.select(selectIsLoading);
-  readonly error$ = this.store.select(selectAuthError);
+  readonly isLoading$ = this.authState.isLoading$;
+  readonly error$ = this.authState.error$;
 
   showPassword = false;
   devExpanded = false;
@@ -80,7 +78,7 @@ export class LoginPage {
       return;
     }
     const { email, password } = this.loginForm.getRawValue();
-    this.store.dispatch(clearError());
-    this.store.dispatch(login({ email, password }));
+    this.authState.clearError();
+    this.authState.login(email, password).subscribe({ error: () => undefined });
   }
 }

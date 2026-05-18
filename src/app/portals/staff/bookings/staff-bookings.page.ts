@@ -2,14 +2,10 @@ import { NgFor, NgIf } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { Store } from '@ngrx/store';
 import { Booking, Doctor, Patient } from '../../../core/models';
-import { loadBookings, confirmBooking, rejectBooking, markComplete, markNoShow } from '../../../store/bookings/bookings.actions';
-import { selectBookings, selectBookingsLoading } from '../../../store/bookings/bookings.selectors';
-import { loadDoctors } from '../../../store/doctors/doctors.actions';
-import { selectAllDoctors, selectDoctorsLoading } from '../../../store/doctors/doctors.selectors';
-import { loadPatients } from '../../../store/patients/patients.actions';
-import { selectAllPatients, selectPatientsLoading } from '../../../store/patients/patients.selectors';
+import { BookingService } from '../../../core/services/booking.service';
+import { DoctorStateService } from '../../../core/services/doctor-state.service';
+import { PatientStateService } from '../../../core/services/patient-state.service';
 import { QueueTableComponent } from '../components/queue-table/queue-table.component';
 
 @Component({
@@ -60,7 +56,9 @@ import { QueueTableComponent } from '../components/queue-table/queue-table.compo
   styleUrl: './staff-bookings.page.scss'
 })
 export class StaffBookingsPage implements OnInit {
-  private readonly store = inject(Store);
+  private readonly bookingService = inject(BookingService);
+  private readonly doctorState = inject(DoctorStateService);
+  private readonly patientState = inject(PatientStateService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
@@ -81,25 +79,21 @@ export class StaffBookingsPage implements OnInit {
   }
 
   ngOnInit(): void {
-    this.store.dispatch(loadBookings());
-    this.store.dispatch(loadDoctors());
-    this.store.dispatch(loadPatients());
-
     const initialStatus = this.route.snapshot.queryParamMap.get('status');
     if (initialStatus) {
       this.statusFilter = initialStatus;
     }
 
-    this.store.select(selectBookings).subscribe((bookings) => (this.bookings = bookings));
-    this.store.select(selectAllDoctors).subscribe((doctors) => (this.doctors = doctors));
-    this.store.select(selectAllPatients).subscribe((patients) => (this.patients = patients));
-    this.store.select(selectBookingsLoading).subscribe((bookingsLoading) => {
+    this.bookingService.getBookings().subscribe((bookings) => (this.bookings = bookings));
+    this.doctorState.getDoctors().subscribe((doctors) => (this.doctors = doctors));
+    this.patientState.getPatients().subscribe((patients) => (this.patients = patients));
+    this.bookingService.isLoading$.subscribe((bookingsLoading) => {
       this.bookingsLoading = bookingsLoading;
     });
-    this.store.select(selectDoctorsLoading).subscribe((doctorsLoading) => {
+    this.doctorState.isLoading$.subscribe((doctorsLoading) => {
       this.doctorsLoading = doctorsLoading;
     });
-    this.store.select(selectPatientsLoading).subscribe((patientsLoading) => {
+    this.patientState.isLoading$.subscribe((patientsLoading) => {
       this.patientsLoading = patientsLoading;
     });
   }
@@ -141,16 +135,16 @@ export class StaffBookingsPage implements OnInit {
   onQueueAction(event: { action: string; bookingId: string }): void {
     switch (event.action) {
       case 'confirm':
-        this.store.dispatch(confirmBooking({ bookingId: event.bookingId }));
+        this.bookingService.confirmBooking(event.bookingId);
         break;
       case 'reject':
-        this.store.dispatch(rejectBooking({ bookingId: event.bookingId, reason: 'Rejected by staff.' }));
+        this.bookingService.rejectBooking(event.bookingId, 'Rejected by staff.');
         break;
       case 'complete':
-        this.store.dispatch(markComplete({ bookingId: event.bookingId }));
+        this.bookingService.markComplete(event.bookingId);
         break;
       case 'noshow':
-        this.store.dispatch(markNoShow({ bookingId: event.bookingId }));
+        this.bookingService.markNoShow(event.bookingId);
         break;
     }
   }

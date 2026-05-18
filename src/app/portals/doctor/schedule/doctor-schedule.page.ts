@@ -1,6 +1,5 @@
 import { AsyncPipe, NgIf } from '@angular/common';
 import { Component, DestroyRef, OnInit, inject } from '@angular/core';
-import { Store } from '@ngrx/store';
 import { ToastController } from '@ionic/angular/standalone';
 import { of } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
@@ -10,12 +9,9 @@ import {
   DayOfWeek,
   TimeSlot
 } from '../../../core/models';
+import { AuthStateService } from '../../../core/services/auth-state.service';
+import { DoctorStateService } from '../../../core/services/doctor-state.service';
 import { MockDataService } from '../../../core/services/mock-data.service';
-import { loadBookings } from '../../../store/bookings/bookings.actions';
-import { selectCurrentUser } from '../../../store/auth/auth.selectors';
-import { selectDoctorByUserId, selectDoctorSchedules } from '../../../store/doctors/doctors.selectors';
-import { addBlockedDate, loadDoctors, loadSchedules, removeBlockedDate } from '../../../store/doctors/doctors.actions';
-import { loadPatients } from '../../../store/patients/patients.actions';
 import { DoctorService } from '../services/doctor.service';
 import {
   DoctorScheduleEditorComponent,
@@ -49,7 +45,8 @@ const DAY_NAMES: DayOfWeek[] = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thu
   styleUrl: './doctor-schedule.page.scss'
 })
 export class DoctorSchedulePage implements OnInit {
-  private readonly store = inject(Store);
+  private readonly authState = inject(AuthStateService);
+  private readonly doctorState = inject(DoctorStateService);
   private readonly doctorService = inject(DoctorService);
   private readonly mockData = inject(MockDataService);
   private readonly toastController = inject(ToastController);
@@ -64,15 +61,9 @@ export class DoctorSchedulePage implements OnInit {
   private doctorId = '';
 
   ngOnInit(): void {
-    this.store.dispatch(loadBookings());
-    this.store.dispatch(loadDoctors());
-    this.store.dispatch(loadSchedules());
-    this.store.dispatch(loadPatients());
-
-    this.store
-      .select(selectCurrentUser)
+    this.authState.currentUser$
       .pipe(
-        switchMap((user) => (user ? this.store.select(selectDoctorByUserId(user.id)) : of(undefined))),
+        switchMap((user) => (user ? this.doctorState.getDoctorByUserId(user.id) : of(undefined))),
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe((doctor) => {
@@ -84,8 +75,8 @@ export class DoctorSchedulePage implements OnInit {
         this.doctorReady = true;
         this.doctorId = doctor.id;
 
-        this.store
-          .select(selectDoctorSchedules(doctor.id))
+        this.doctorState
+          .getDoctorSchedules(doctor.id)
           .pipe(takeUntilDestroyed(this.destroyRef))
           .subscribe((schedules) => {
             this.draftSchedules = this.buildDraftSchedules(schedules);
@@ -98,13 +89,7 @@ export class DoctorSchedulePage implements OnInit {
           .subscribe((blockedDates) => {
             this.blockedDates = blockedDates;
             this.previewSlots = this.generatePreviewSlots(this.previewDate);
-            blockedDates.forEach((blockedDate) =>
-              this.store.dispatch(
-                addBlockedDate({
-                  blockedDate
-                })
-              )
-            );
+            blockedDates.forEach((blockedDate) => this.doctorState.addBlockedDate(blockedDate));
           });
       });
   }
@@ -126,14 +111,14 @@ export class DoctorSchedulePage implements OnInit {
       reason
     };
     this.blockedDates = [...this.blockedDates.filter((item) => item.blockedDate !== blockedDate), record];
-    this.store.dispatch(addBlockedDate({ blockedDate: record }));
+    this.doctorState.addBlockedDate(record);
     this.refreshPreview();
     void this.presentToast('Blocked date added.');
   }
 
   removeBlockedDate(id: string): void {
     this.blockedDates = this.blockedDates.filter((item) => item.id !== id);
-    this.store.dispatch(removeBlockedDate({ id }));
+    this.doctorState.removeBlockedDate(id);
     this.refreshPreview();
     void this.presentToast('Blocked date removed.');
   }

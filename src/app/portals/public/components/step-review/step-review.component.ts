@@ -1,12 +1,10 @@
 import { Component, inject } from '@angular/core';
 import { AsyncPipe, DatePipe, NgIf } from '@angular/common';
-import { Store } from '@ngrx/store';
 import { map } from 'rxjs';
 import { MockDataService } from '../../../../core/services/mock-data.service';
+import { BookingWizardService } from '../../../../core/services/booking-wizard.service';
 import { PesoPipe } from '../../../../shared/pipes/peso.pipe';
 import { TimeSlotPipe } from '../../../../shared/pipes/time-slot.pipe';
-import { nextStep, prevStep } from '../../../../store/bookings/bookings.actions';
-import { selectWizard } from '../../../../store/bookings/bookings.selectors';
 
 @Component({
   selector: 'app-step-review',
@@ -78,10 +76,10 @@ import { selectWizard } from '../../../../store/bookings/bookings.selectors';
   styleUrl: './step-review.component.scss'
 })
 export class StepReviewComponent {
-  private readonly store = inject(Store);
+  private readonly wizardService = inject(BookingWizardService);
   private readonly mockData = inject(MockDataService);
 
-  vm$ = this.store.select(selectWizard).pipe(
+  vm$ = this.wizardService.state$.pipe(
     map((wizard) => {
       const doctor = wizard.selectedDoctorId
         ? this.mockData.getDoctors().find((item) => item.id === wizard.selectedDoctorId)
@@ -108,10 +106,10 @@ export class StepReviewComponent {
   );
 
   goNext(): void {
-    this.store.dispatch(nextStep());
+    this.wizardService.nextStep();
   }
 
   goBack(): void {
-    this.store.dispatch(prevStep());
+    this.wizardService.prevStep();
   }
 }

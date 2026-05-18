@@ -1,26 +1,20 @@
 import { AsyncPipe, DatePipe, NgFor, NgIf } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { Store } from '@ngrx/store';
 import { combineLatest, map, of, switchMap } from 'rxjs';
 import { AuthUser, Booking, Consultation, Doctor, Patient, Prescription, Service } from '../../../core/models';
+import { AuthStateService } from '../../../core/services/auth-state.service';
+import { BookingService } from '../../../core/services/booking.service';
+import { DoctorStateService } from '../../../core/services/doctor-state.service';
+import { MedicalRecordsService } from '../../../core/services/medical-records.service';
 import { MockDataService } from '../../../core/services/mock-data.service';
-import { loadBookings } from '../../../store/bookings/bookings.actions';
-import { selectBookingsByPatientId, selectPendingProofBookingsByPatientId, selectUpcomingBookingsByPatientId } from '../../../store/bookings/bookings.selectors';
-import { loadDoctors } from '../../../store/doctors/doctors.actions';
-import { selectAllDoctors } from '../../../store/doctors/doctors.selectors';
-import { loadPatients } from '../../../store/patients/patients.actions';
-import { selectCurrentPatient } from '../../../store/patients/patients.selectors';
+import { PatientStateService } from '../../../core/services/patient-state.service';
 import { BannerComponent } from '../../../shared/components/banner/banner.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { DoctorCardComponent } from '../../public/components/doctor-card/doctor-card.component';
 import { MedicalRecordCardComponent } from '../components/medical-record-card/medical-record-card.component';
 import { PrescriptionCardComponent } from '../components/prescription-card/prescription-card.component';
 import { UpcomingAppointmentCardComponent } from '../components/upcoming-appointment-card/upcoming-appointment-card.component';
-import { selectCurrentUser } from '../../../store/auth/auth.selectors';
-import { PatientService } from '../services/patient.service';
-import { BookingTimerComponent } from '../../../shared/components/booking-timer/booking-timer.component';
-import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 
 interface DashboardVm {
   user: AuthUser | null;
@@ -190,29 +184,32 @@ interface DashboardVm {
   styleUrl: './patient-dashboard.page.scss'
 })
 export class PatientDashboardPage implements OnInit {
-  private readonly store = inject(Store);
+  private readonly authState = inject(AuthStateService);
+  private readonly bookingService = inject(BookingService);
+  private readonly doctorState = inject(DoctorStateService);
+  private readonly medicalRecords = inject(MedicalRecordsService);
+  private readonly patientState = inject(PatientStateService);
   private readonly router = inject(Router);
   private readonly mockData = inject(MockDataService);
-  private readonly patientService = inject(PatientService);
 
-  readonly currentUser$ = this.store.select(selectCurrentUser);
+  readonly currentUser$ = this.authState.currentUser$;
   readonly patient$ = this.currentUser$.pipe(
-    switchMap((user) => (user ? this.store.select(selectCurrentPatient(user.id)) : of(undefined)))
+    switchMap((user) => (user ? this.patientState.getPatientByUserId(user.id) : of(undefined)))
   );
 
   readonly upcomingBookings$ = this.patient$.pipe(
     switchMap((patient) =>
-      patient ? this.store.select(selectUpcomingBookingsByPatientId(patient.id)) : of([])
+      patient ? this.bookingService.getUpcomingBookingsByPatientId(patient.id) : of([])
     )
   );
 
   readonly pendingProofBookings$ = this.patient$.pipe(
     switchMap((patient) =>
-      patient ? this.store.select(selectPendingProofBookingsByPatientId(patient.id)) : of([])
+      patient ? this.bookingService.getPendingProofBookingsByPatientId(patient.id) : of([])
     )
   );
 
-  readonly doctors$ = this.store.select(selectAllDoctors);
+  readonly doctors$ = this.doctorState.getDoctors();
 
   vm$ = combineLatest([
     this.currentUser$,
@@ -246,8 +243,8 @@ export class PatientDashboardPage implements OnInit {
       }
 
       return combineLatest([
-        this.patientService.getPatientConsultations(patient.id),
-        this.patientService.getPatientPrescriptions(patient.id)
+        this.medicalRecords.getConsultationsByPatientId(patient.id),
+        this.medicalRecords.getPrescriptionsByPatientId(patient.id)
       ]).pipe(
         map(([consultations, prescriptions]) => {
           const latestBooking = upcomingBookings[0];
@@ -291,9 +288,9 @@ export class PatientDashboardPage implements OnInit {
   );
 
   ngOnInit(): void {
-    this.store.dispatch(loadBookings());
-    this.store.dispatch(loadDoctors());
-    this.store.dispatch(loadPatients());
+    this.bookingService.refresh();
+    this.doctorState.refresh();
+    this.patientState.refresh();
   }
 
   canSubmitProof(booking: Booking): boolean {

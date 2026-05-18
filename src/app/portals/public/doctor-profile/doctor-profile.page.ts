@@ -1,7 +1,6 @@
 import { NgClass, NgFor, NgIf } from '@angular/common';
-import { Component, OnInit, Signal, inject } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { Store } from '@ngrx/store';
 import { forkJoin } from 'rxjs';
 import { addIcons } from 'ionicons';
 import { alertCircleOutline, personOutline, warningOutline } from 'ionicons/icons';
@@ -14,7 +13,7 @@ import { PesoPipe } from '../../../shared/pipes/peso.pipe';
 import { ReviewCardComponent } from '../components/review-card/review-card.component';
 import { PublicService } from '../services/public.service';
 import { formatDoctorScheduleLines } from '../utils/time-format';
-import { selectDoctorDayStatus } from '../../../store/doctors/doctors.selectors';
+import { DoctorStateService } from '../../../core/services/doctor-state.service';
 import { DoctorDayStatus } from '../../../core/models';
 
 @Component({
@@ -140,7 +139,7 @@ import { DoctorDayStatus } from '../../../core/models';
   styleUrl: './doctor-profile.page.scss'
 })
 export class DoctorProfilePage implements OnInit {
-  private readonly store = inject(Store);
+  private readonly doctorState = inject(DoctorStateService);
   private readonly route = inject(ActivatedRoute);
   private readonly publicService = inject(PublicService);
 
@@ -149,7 +148,7 @@ export class DoctorProfilePage implements OnInit {
   reviews: Review[] = [];
   services: Service[] = [];
   scheduleLines: string[] = [];
-  private dayStatusSignal?: Signal<DoctorDayStatus | undefined>;
+  dayStatus?: DoctorDayStatus;
 
   constructor() {
     addIcons({ alertCircleOutline, personOutline, warningOutline });
@@ -166,7 +165,7 @@ export class DoctorProfilePage implements OnInit {
       this.isLoading = false;
       return;
     }
-    this.dayStatusSignal = this.store.selectSignal(selectDoctorDayStatus(id));
+    this.doctorState.getDoctorDayStatus(id).subscribe((status) => (this.dayStatus = status));
     forkJoin({
       doctor: this.publicService.getDoctorById(id),
       reviews: this.publicService.getDoctorReviews(id),
@@ -179,9 +178,5 @@ export class DoctorProfilePage implements OnInit {
       this.scheduleLines = formatDoctorScheduleLines(schedules);
       this.isLoading = false;
     });
-  }
-
-  get dayStatus(): DoctorDayStatus | undefined {
-    return this.dayStatusSignal?.();
   }
 }

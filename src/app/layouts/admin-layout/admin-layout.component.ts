@@ -1,14 +1,12 @@
 import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, NavigationEnd, Router, RouterOutlet } from '@angular/router';
-import { Store } from '@ngrx/store';
 import { filter } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavItem } from '../../core/models';
+import { AuthStateService } from '../../core/services/auth-state.service';
+import { BookingService } from '../../core/services/booking.service';
 import { ClinicSettingsService } from '../../core/services/clinic-settings.service';
-import { logout as logoutAction } from '../../store/auth/auth.actions';
-import { selectCurrentUser } from '../../store/auth/auth.selectors';
-import { selectBookingsByStatus } from '../../store/bookings/bookings.selectors';
-import { selectUnreadCount } from '../../store/notifications/notifications.selectors';
+import { NotificationService } from '../../core/services/notification.service';
 import { SidebarComponent } from '../../portals/admin/components/sidebar/sidebar.component';
 import { TopbarComponent } from '../../portals/admin/components/topbar/topbar.component';
 
@@ -55,25 +53,23 @@ import { TopbarComponent } from '../../portals/admin/components/topbar/topbar.co
   imports: [RouterOutlet, SidebarComponent, TopbarComponent]
 })
 export class AdminLayoutComponent implements OnInit {
-  private readonly store = inject(Store);
+  private readonly authState = inject(AuthStateService);
+  private readonly bookingService = inject(BookingService);
+  private readonly notificationService = inject(NotificationService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly clinicSettingsService = inject(ClinicSettingsService);
   private readonly destroyRef = inject(DestroyRef);
 
-  readonly currentUser = this.store.selectSignal(selectCurrentUser);
-  readonly unreadCount = this.store.selectSignal(selectUnreadCount);
-  readonly pendingBookings = this.store.selectSignal(selectBookingsByStatus('Pending'));
+  readonly currentUser = this.authState.currentUser;
+  readonly unreadCount = this.notificationService.unreadCount;
 
   clinicName = '';
   portalLabel = 'Admin Portal';
   portalTitle = 'Dashboard';
   pageTitle = 'Dashboard';
   isSidebarOpen = false;
-
-  get pendingCount(): number {
-    return this.pendingBookings().length;
-  }
+  pendingCount = 0;
 
   get navItems(): NavItem[] {
     return [
@@ -111,6 +107,10 @@ export class AdminLayoutComponent implements OnInit {
   ngOnInit(): void {
     this.clinicName = this.clinicSettingsService.load().clinicName;
     this.updatePageTitle();
+    this.bookingService
+      .getBookingsByStatus('Pending')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((bookings) => (this.pendingCount = bookings.length));
 
     this.router.events
       .pipe(
@@ -121,8 +121,7 @@ export class AdminLayoutComponent implements OnInit {
   }
 
   logout(): void {
-    this.store.dispatch(logoutAction());
-    void this.router.navigate(['/auth/login']);
+    this.authState.logout();
   }
 
   closeSidebar(): void {

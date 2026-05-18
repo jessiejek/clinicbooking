@@ -1,15 +1,12 @@
 import { AsyncPipe, DatePipe, NgFor, NgIf } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
-import { Store } from '@ngrx/store';
 import { combineLatest, map, of, switchMap } from 'rxjs';
 import { ToastController } from '@ionic/angular/standalone';
 import { AuthUser, Doctor, Patient, Prescription } from '../../../core/models';
+import { AuthStateService } from '../../../core/services/auth-state.service';
+import { MedicalRecordsService } from '../../../core/services/medical-records.service';
 import { MockDataService } from '../../../core/services/mock-data.service';
-import { loadPatients } from '../../../store/patients/patients.actions';
-import { selectCurrentUser } from '../../../store/auth/auth.selectors';
-import { selectCurrentPatient } from '../../../store/patients/patients.selectors';
-import { loadMedicalRecords } from '../../../store/medical-records/medical-records.actions';
-import { selectPrescriptionsByPatientId } from '../../../store/medical-records/medical-records.selectors';
+import { PatientStateService } from '../../../core/services/patient-state.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { PrescriptionCardComponent } from '../components/prescription-card/prescription-card.component';
 
@@ -53,19 +50,21 @@ interface PrescriptionVm {
   styleUrl: './patient-prescriptions.page.scss'
 })
 export class PatientPrescriptionsPage implements OnInit {
-  private readonly store = inject(Store);
+  private readonly authState = inject(AuthStateService);
+  private readonly medicalRecords = inject(MedicalRecordsService);
   private readonly mockData = inject(MockDataService);
+  private readonly patientState = inject(PatientStateService);
   private readonly toastCtrl = inject(ToastController);
 
-  readonly currentUser$ = this.store.select(selectCurrentUser);
+  readonly currentUser$ = this.authState.currentUser$;
   readonly patient$ = this.currentUser$.pipe(
-    switchMap((user) => (user ? this.store.select(selectCurrentPatient(user.id)) : of(undefined)))
+    switchMap((user) => (user ? this.patientState.getPatientByUserId(user.id) : of(undefined)))
   );
 
   vm$ = combineLatest([this.currentUser$, this.patient$]).pipe(
     switchMap(([user, patient]) =>
       patient
-        ? this.store.select(selectPrescriptionsByPatientId(patient.id)).pipe(
+        ? this.medicalRecords.getPrescriptionsByPatientId(patient.id).pipe(
             map((prescriptions) => ({
               user,
               patient,
@@ -80,8 +79,8 @@ export class PatientPrescriptionsPage implements OnInit {
   );
 
   ngOnInit(): void {
-    this.store.dispatch(loadPatients());
-    this.store.dispatch(loadMedicalRecords());
+    this.patientState.refresh();
+    this.medicalRecords.refresh();
   }
 
   async showDownloadToast(): Promise<void> {

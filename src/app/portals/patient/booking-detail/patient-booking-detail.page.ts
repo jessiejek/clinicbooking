@@ -1,17 +1,13 @@
 import { AsyncPipe, DatePipe, NgIf } from '@angular/common';
 import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { Store } from '@ngrx/store';
 import { IonModal, ToastController } from '@ionic/angular/standalone';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Booking, Doctor, Patient, ProofType, Service } from '../../../core/models';
+import { AuthStateService } from '../../../core/services/auth-state.service';
+import { BookingService } from '../../../core/services/booking.service';
 import { MockDataService } from '../../../core/services/mock-data.service';
-import { loadBookings, cancelBooking, updateBookingStatus } from '../../../store/bookings/bookings.actions';
-import { selectBookingById } from '../../../store/bookings/bookings.selectors';
-import { loadDoctors } from '../../../store/doctors/doctors.actions';
-import { loadPatients } from '../../../store/patients/patients.actions';
-import { selectCurrentUser } from '../../../store/auth/auth.selectors';
-import { selectCurrentPatient } from '../../../store/patients/patients.selectors';
+import { PatientStateService } from '../../../core/services/patient-state.service';
 import { BannerComponent } from '../../../shared/components/banner/banner.component';
 import { BookingTimelineComponent } from '../components/booking-timeline/booking-timeline.component';
 import { ProofSubmissionFormComponent } from '../components/proof-submission-form/proof-submission-form.component';
@@ -163,7 +159,9 @@ import { AvatarComponent } from '../../../shared/components/avatar/avatar.compon
   styleUrl: './patient-booking-detail.page.scss'
 })
 export class PatientBookingDetailPage implements OnInit {
-  private readonly store = inject(Store);
+  private readonly authState = inject(AuthStateService);
+  private readonly bookingService = inject(BookingService);
+  private readonly patientState = inject(PatientStateService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly mockData = inject(MockDataService);
@@ -207,24 +205,20 @@ export class PatientBookingDetailPage implements OnInit {
   }
 
   ngOnInit(): void {
-    this.store.dispatch(loadBookings());
-    this.store.dispatch(loadDoctors());
-    this.store.dispatch(loadPatients());
-
-    this.store.select(selectCurrentUser).pipe(takeUntilDestroyed(this.destroyRef)).subscribe((user) => {
+    this.authState.currentUser$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((user) => {
       if (!user) {
         this.currentPatient = null;
         return;
       }
 
-      this.store.select(selectCurrentPatient(user.id)).pipe(takeUntilDestroyed(this.destroyRef)).subscribe((patient) => {
+      this.patientState.getPatientByUserId(user.id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe((patient) => {
         this.currentPatient = patient ?? null;
       });
     });
 
     this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       const bookingId = params.get('id') ?? '';
-      this.store.select(selectBookingById(bookingId)).pipe(takeUntilDestroyed(this.destroyRef)).subscribe((booking) => {
+      this.bookingService.getBookingById$(bookingId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe((booking) => {
         if (!booking || (this.currentPatient && booking.patientId !== this.currentPatient.id)) {
           this.booking = null;
           this.doctor = undefined;
@@ -244,8 +238,7 @@ export class PatientBookingDetailPage implements OnInit {
       return;
     }
 
-    this.mockData.submitBookingProof(bookingId, proofType, proofValue);
-    this.store.dispatch(updateBookingStatus({ bookingId, status: 'ProofSubmitted' }));
+    this.bookingService.submitBookingProof(bookingId, proofType, proofValue);
     this.booking = {
       ...this.booking,
       status: 'ProofSubmitted',
@@ -268,8 +261,7 @@ export class PatientBookingDetailPage implements OnInit {
       return;
     }
 
-    this.mockData.cancelBooking(this.booking.id, 'Cancelled by patient.');
-    this.store.dispatch(cancelBooking({ bookingId: this.booking.id, reason: 'Cancelled by patient.' }));
+    this.bookingService.cancelBooking(this.booking.id, 'Cancelled by patient.');
     this.booking = {
       ...this.booking,
       status: 'Cancelled',

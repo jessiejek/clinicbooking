@@ -1,20 +1,10 @@
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { AsyncPipe, DatePipe, NgIf } from '@angular/common';
-import { Store } from '@ngrx/store';
 import { combineLatest, filter, map, Subscription, switchMap, timer } from 'rxjs';
 import { MockDataService } from '../../../../core/services/mock-data.service';
+import { BookingWizardService } from '../../../../core/services/booking-wizard.service';
 import { BookingTimerComponent } from '../../../../shared/components/booking-timer/booking-timer.component';
 import { SlotGridComponent } from '../../../../shared/components/slot-grid/slot-grid.component';
-import {
-  nextStep,
-  prevStep,
-  selectSlot
-} from '../../../../store/bookings/bookings.actions';
-import {
-  selectSelectedDate,
-  selectSelectedDoctorId,
-  selectSelectedSlot
-} from '../../../../store/bookings/bookings.selectors';
 import { TimeSlot } from '../../../../core/models';
 
 @Component({
@@ -64,12 +54,12 @@ import { TimeSlot } from '../../../../core/models';
   styleUrl: './step-slot-select.component.scss'
 })
 export class StepSlotSelectComponent implements OnInit, OnDestroy {
-  private readonly store = inject(Store);
+  private readonly wizardService = inject(BookingWizardService);
   private readonly mockData = inject(MockDataService);
 
-  selectedDoctorId$ = this.store.select(selectSelectedDoctorId);
-  selectedDate$ = this.store.select(selectSelectedDate);
-  selectedSlot$ = this.store.select(selectSelectedSlot);
+  selectedDoctorId$ = this.wizardService.selectedDoctorId$;
+  selectedDate$ = this.wizardService.selectedDate$;
+  selectedSlot$ = this.wizardService.selectedSlot$;
 
   slots: TimeSlot[] = [];
   isLoading = true;
@@ -106,7 +96,7 @@ export class StepSlotSelectComponent implements OnInit, OnDestroy {
   }
 
   onSlotSelected(event: { slot: string; slotEnd: string }): void {
-    this.store.dispatch(selectSlot({ slot: event.slot, slotEnd: event.slotEnd }));
+    this.wizardService.selectSlot(event.slot, event.slotEnd);
     this.timerStarted = true;
     this.timerVisible = false;
     window.setTimeout(() => {
@@ -115,14 +105,14 @@ export class StepSlotSelectComponent implements OnInit, OnDestroy {
   }
 
   onTimerExpired(): void {
-    this.store.dispatch(selectSlot({ slot: null, slotEnd: null }));
+    this.wizardService.selectSlot(null, null);
   }
 
   goBack(): void {
-    this.store.dispatch(prevStep());
+    this.wizardService.prevStep();
   }
 
   goNext(): void {
-    this.store.dispatch(nextStep());
+    this.wizardService.nextStep();
   }
 }

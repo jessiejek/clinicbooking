@@ -1,23 +1,14 @@
 import { AsyncPipe, NgFor, NgIf } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import { Store } from '@ngrx/store';
 import { combineLatest, of } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
 import { Allergy, Booking, Consultation, FollowUp, LabResult, Patient, Prescription, VaccinationRecord } from '../../../core/models';
-import { selectCurrentUser } from '../../../store/auth/auth.selectors';
-import { selectDoctorByUserId } from '../../../store/doctors/doctors.selectors';
-import { selectBookingsByDoctorId } from '../../../store/bookings/bookings.selectors';
-import { selectPatientById } from '../../../store/patients/patients.selectors';
-import { loadMedicalRecords } from '../../../store/medical-records/medical-records.actions';
-import {
-  selectAllergiesByPatientId,
-  selectConsultationsByPatientId,
-  selectFollowUpsByPatientId,
-  selectLabResultsByPatientId,
-  selectPrescriptionsByPatientId,
-  selectVaccinationsByPatientId
-} from '../../../store/medical-records/medical-records.selectors';
+import { AuthStateService } from '../../../core/services/auth-state.service';
+import { BookingService } from '../../../core/services/booking.service';
+import { DoctorStateService } from '../../../core/services/doctor-state.service';
+import { MedicalRecordsService } from '../../../core/services/medical-records.service';
+import { PatientStateService } from '../../../core/services/patient-state.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
@@ -150,7 +141,11 @@ import { VitalsTrendChartComponent } from '../components/vitals-trend-chart/vita
   styleUrl: './doctor-patient-detail.page.scss'
 })
 export class DoctorPatientDetailPage {
-  private readonly store = inject(Store);
+  private readonly authState = inject(AuthStateService);
+  private readonly bookingService = inject(BookingService);
+  private readonly doctorState = inject(DoctorStateService);
+  private readonly medicalRecords = inject(MedicalRecordsService);
+  private readonly patientState = inject(PatientStateService);
   private readonly route = inject(ActivatedRoute);
 
   activeTab: 'overview' | 'records' = 'overview';
@@ -161,8 +156,8 @@ export class DoctorPatientDetailPage {
   vaccinations: VaccinationRecord[] = [];
   followUps: FollowUp[] = [];
 
-  readonly currentDoctor$ = this.store.select(selectCurrentUser).pipe(
-    switchMap((user) => (user ? this.store.select(selectDoctorByUserId(user.id)) : of(undefined)))
+  readonly currentDoctor$ = this.authState.currentUser$.pipe(
+    switchMap((user) => (user ? this.doctorState.getDoctorByUserId(user.id) : of(undefined)))
   );
 
   readonly detail$ = combineLatest([
@@ -172,8 +167,8 @@ export class DoctorPatientDetailPage {
     switchMap(([patientId, doctor]) =>
       patientId && doctor
         ? combineLatest([
-            this.store.select(selectPatientById(patientId)),
-            this.store.select(selectBookingsByDoctorId(doctor.id))
+            this.patientState.getPatientById(patientId),
+            this.bookingService.getBookingsByDoctorId(doctor.id)
           ])
         : of([undefined, []] as const)
     ),
@@ -217,12 +212,12 @@ export class DoctorPatientDetailPage {
 
   ngOnInit(): void {
     const patientId = this.route.snapshot.paramMap.get('id') ?? '';
-    this.store.dispatch(loadMedicalRecords());
-    this.store.select(selectConsultationsByPatientId(patientId)).subscribe((consultations) => (this.consultations = consultations));
-    this.store.select(selectPrescriptionsByPatientId(patientId)).subscribe((prescriptions) => (this.prescriptions = prescriptions));
-    this.store.select(selectAllergiesByPatientId(patientId)).subscribe((allergies) => (this.allergies = allergies));
-    this.store.select(selectLabResultsByPatientId(patientId)).subscribe((labResults) => (this.labResults = labResults));
-    this.store.select(selectVaccinationsByPatientId(patientId)).subscribe((vaccinations) => (this.vaccinations = vaccinations));
-    this.store.select(selectFollowUpsByPatientId(patientId)).subscribe((followUps) => (this.followUps = followUps));
+    this.medicalRecords.refresh();
+    this.medicalRecords.getConsultationsByPatientId(patientId).subscribe((consultations) => (this.consultations = consultations));
+    this.medicalRecords.getPrescriptionsByPatientId(patientId).subscribe((prescriptions) => (this.prescriptions = prescriptions));
+    this.medicalRecords.getAllergiesByPatientId(patientId).subscribe((allergies) => (this.allergies = allergies));
+    this.medicalRecords.getLabResultsByPatientId(patientId).subscribe((labResults) => (this.labResults = labResults));
+    this.medicalRecords.getVaccinationsByPatientId(patientId).subscribe((vaccinations) => (this.vaccinations = vaccinations));
+    this.medicalRecords.getFollowUpsByPatientId(patientId).subscribe((followUps) => (this.followUps = followUps));
   }
 }

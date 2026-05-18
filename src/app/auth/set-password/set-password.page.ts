@@ -1,15 +1,13 @@
 import { NgIf } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
-import { Store } from '@ngrx/store';
 import { IonInput, IonItem, IonLabel, ToastController } from '@ionic/angular/standalone';
 import { timer } from 'rxjs';
 import { AuthUser } from '../../core/models';
 import { AuthService } from '../../core/services/auth.service';
+import { AuthStateService } from '../../core/services/auth-state.service';
 import { ClinicSettingsService } from '../../core/services/clinic-settings.service';
 import { passwordStrengthValidator } from '../../shared/validators/password-strength.validator';
-import { setUser } from '../../store/auth/auth.actions';
-import { selectCurrentUser } from '../../store/auth/auth.selectors';
 import { AuthLayoutComponent } from '../components/auth-layout/auth-layout.component';
 
 function passwordMatchValidator(group: AbstractControl): ValidationErrors | null {
@@ -27,11 +25,11 @@ function passwordMatchValidator(group: AbstractControl): ValidationErrors | null
 })
 export class SetPasswordPage {
   private readonly fb = inject(FormBuilder);
-  private readonly store = inject(Store);
+  private readonly authState = inject(AuthStateService);
   private readonly authService = inject(AuthService);
   private readonly clinicSettings = inject(ClinicSettingsService);
   private readonly toast = inject(ToastController);
-  private readonly currentUser = this.store.selectSignal(selectCurrentUser);
+  private readonly currentUser = this.authState.currentUser;
 
   readonly clinicName = this.clinicSettings.load().clinicName;
   saving = false;
@@ -56,7 +54,7 @@ export class SetPasswordPage {
     this.saving = true;
     timer(800).subscribe(async () => {
       const updated: AuthUser = { ...user, isFirstLogin: false };
-      this.store.dispatch(setUser({ user: updated }));
+      this.authState.setUser(updated);
       this.saving = false;
       const t = await this.toast.create({
         message: 'Password set successfully. Welcome!',

@@ -1,13 +1,11 @@
 import { NgClass, NgFor, NgIf } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
-import { Store } from '@ngrx/store';
 import { ToastController } from '@ionic/angular/standalone';
 import { timer } from 'rxjs';
 import { AuthUser } from '../../../core/models';
+import { AuthStateService } from '../../../core/services/auth-state.service';
 import { passwordStrengthValidator, getPasswordStrength } from '../../../shared/validators/password-strength.validator';
-import { setUser } from '../../../store/auth/auth.actions';
-import { selectCurrentUser } from '../../../store/auth/auth.selectors';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 
 function passwordMatchValidator(group: AbstractControl): ValidationErrors | null {
@@ -81,10 +79,10 @@ function passwordMatchValidator(group: AbstractControl): ValidationErrors | null
   styleUrl: './staff-profile.page.scss'
 })
 export class StaffProfilePage implements OnInit {
-  private readonly store = inject(Store);
+  private readonly authState = inject(AuthStateService);
   private readonly fb = inject(FormBuilder);
   private readonly toastCtrl = inject(ToastController);
-  private readonly currentUserSignal = this.store.selectSignal(selectCurrentUser);
+  private readonly currentUserSignal = this.authState.currentUser;
 
   strengthIndexes = [0, 1, 2, 3];
   passwordStrength: 0 | 1 | 2 | 3 | 4 = 0;
@@ -145,7 +143,7 @@ export class StaffProfilePage implements OnInit {
     }
 
     const { fullName } = this.personalForm.getRawValue();
-    this.store.dispatch(setUser({ user: { ...user, fullName } }));
+    this.authState.setUser({ ...user, fullName });
     void this.presentToast('Profile updated');
   }
 

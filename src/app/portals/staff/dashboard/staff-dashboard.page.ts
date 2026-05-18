@@ -1,22 +1,13 @@
 import { NgFor, NgIf } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { Store } from '@ngrx/store';
 import { IonIcon } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { alertCircleOutline } from 'ionicons/icons';
 import { Booking, Doctor, Patient } from '../../../core/models';
-import { loadBookings, confirmBooking, rejectBooking, markComplete, markNoShow } from '../../../store/bookings/bookings.actions';
-import {
-  selectBookingsLoading,
-  selectPendingVerifications,
-  selectTodaysBookings
-} from '../../../store/bookings/bookings.selectors';
-import { loadDoctors } from '../../../store/doctors/doctors.actions';
-import { selectAllDoctors, selectDoctorsLoading } from '../../../store/doctors/doctors.selectors';
-import { loadNotifications } from '../../../store/notifications/notifications.actions';
-import { loadPatients } from '../../../store/patients/patients.actions';
-import { selectAllPatients, selectPatientsLoading } from '../../../store/patients/patients.selectors';
+import { BookingService } from '../../../core/services/booking.service';
+import { DoctorStateService } from '../../../core/services/doctor-state.service';
+import { PatientStateService } from '../../../core/services/patient-state.service';
 import { QueueTableComponent } from '../components/queue-table/queue-table.component';
 
 @Component({
@@ -85,7 +76,9 @@ import { QueueTableComponent } from '../components/queue-table/queue-table.compo
   styleUrl: './staff-dashboard.page.scss'
 })
 export class StaffDashboardPage implements OnInit {
-  private readonly store = inject(Store);
+  private readonly bookingService = inject(BookingService);
+  private readonly doctorState = inject(DoctorStateService);
+  private readonly patientState = inject(PatientStateService);
   private readonly router = inject(Router);
 
   todaysBookings: Booking[] = [];
@@ -117,24 +110,19 @@ export class StaffDashboardPage implements OnInit {
   }
 
   ngOnInit(): void {
-    this.store.dispatch(loadBookings());
-    this.store.dispatch(loadDoctors());
-    this.store.dispatch(loadPatients());
-    this.store.dispatch(loadNotifications());
-
-    this.store.select(selectTodaysBookings).subscribe((bookings) => (this.todaysBookings = bookings));
-    this.store.select(selectPendingVerifications).subscribe((bookings) => {
+    this.bookingService.getTodaysBookings().subscribe((bookings) => (this.todaysBookings = bookings));
+    this.bookingService.getPendingVerifications().subscribe((bookings) => {
       this.pendingVerificationCount = bookings.length;
     });
-    this.store.select(selectAllDoctors).subscribe((doctors) => (this.doctors = doctors));
-    this.store.select(selectAllPatients).subscribe((patients) => (this.patients = patients));
-    this.store.select(selectBookingsLoading).subscribe((bookingsLoading) => {
+    this.doctorState.getDoctors().subscribe((doctors) => (this.doctors = doctors));
+    this.patientState.getPatients().subscribe((patients) => (this.patients = patients));
+    this.bookingService.isLoading$.subscribe((bookingsLoading) => {
       this.bookingsLoading = bookingsLoading;
     });
-    this.store.select(selectDoctorsLoading).subscribe((doctorsLoading) => {
+    this.doctorState.isLoading$.subscribe((doctorsLoading) => {
       this.doctorsLoading = doctorsLoading;
     });
-    this.store.select(selectPatientsLoading).subscribe((patientsLoading) => {
+    this.patientState.isLoading$.subscribe((patientsLoading) => {
       this.patientsLoading = patientsLoading;
     });
   }
@@ -150,16 +138,16 @@ export class StaffDashboardPage implements OnInit {
   onQueueAction(event: { action: string; bookingId: string }): void {
     switch (event.action) {
       case 'confirm':
-        this.store.dispatch(confirmBooking({ bookingId: event.bookingId }));
+        this.bookingService.confirmBooking(event.bookingId);
         break;
       case 'reject':
-        this.store.dispatch(rejectBooking({ bookingId: event.bookingId, reason: 'Rejected by staff.' }));
+        this.bookingService.rejectBooking(event.bookingId, 'Rejected by staff.');
         break;
       case 'complete':
-        this.store.dispatch(markComplete({ bookingId: event.bookingId }));
+        this.bookingService.markComplete(event.bookingId);
         break;
       case 'noshow':
-        this.store.dispatch(markNoShow({ bookingId: event.bookingId }));
+        this.bookingService.markNoShow(event.bookingId);
         break;
     }
   }

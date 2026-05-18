@@ -1,17 +1,13 @@
 import { AsyncPipe, NgFor, NgIf } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { Store } from '@ngrx/store';
 import { BehaviorSubject, combineLatest, of } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
 import { Booking, Patient } from '../../../core/models';
-import { loadBookings } from '../../../store/bookings/bookings.actions';
-import { selectBookingsByDoctorId } from '../../../store/bookings/bookings.selectors';
-import { selectCurrentUser } from '../../../store/auth/auth.selectors';
-import { selectDoctorByUserId } from '../../../store/doctors/doctors.selectors';
-import { loadDoctors, loadSchedules } from '../../../store/doctors/doctors.actions';
-import { loadPatients } from '../../../store/patients/patients.actions';
-import { selectAllPatients } from '../../../store/patients/patients.selectors';
+import { AuthStateService } from '../../../core/services/auth-state.service';
+import { BookingService } from '../../../core/services/booking.service';
+import { DoctorStateService } from '../../../core/services/doctor-state.service';
+import { PatientStateService } from '../../../core/services/patient-state.service';
 import { DoctorPatientCardComponent } from '../components/doctor-patient-card/doctor-patient-card.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
@@ -63,14 +59,17 @@ interface PatientListItem {
   styleUrl: './doctor-patients.page.scss'
 })
 export class DoctorPatientsPage implements OnInit {
-  private readonly store = inject(Store);
+  private readonly authState = inject(AuthStateService);
+  private readonly bookingService = inject(BookingService);
+  private readonly doctorState = inject(DoctorStateService);
+  private readonly patientState = inject(PatientStateService);
   private readonly router = inject(Router);
 
   search = '';
   private readonly search$ = new BehaviorSubject<string>('');
 
-  readonly currentDoctor$ = this.store.select(selectCurrentUser).pipe(
-    switchMap((user) => (user ? this.store.select(selectDoctorByUserId(user.id)) : of(undefined)))
+  readonly currentDoctor$ = this.authState.currentUser$.pipe(
+    switchMap((user) => (user ? this.doctorState.getDoctorByUserId(user.id) : of(undefined)))
   );
 
   readonly patients$ = this.currentDoctor$.pipe(
@@ -79,8 +78,8 @@ export class DoctorPatientsPage implements OnInit {
         return of([] as PatientListItem[]);
       }
       return combineLatest([
-        this.store.select(selectBookingsByDoctorId(doctor.id)),
-        this.store.select(selectAllPatients),
+        this.bookingService.getBookingsByDoctorId(doctor.id),
+        this.patientState.getPatients(),
         this.search$
       ]).pipe(
         map(([bookings, allPatients, search]) => {
@@ -113,10 +112,9 @@ export class DoctorPatientsPage implements OnInit {
   );
 
   ngOnInit(): void {
-    this.store.dispatch(loadBookings());
-    this.store.dispatch(loadDoctors());
-    this.store.dispatch(loadSchedules());
-    this.store.dispatch(loadPatients());
+    this.bookingService.refresh();
+    this.doctorState.refresh();
+    this.patientState.refresh();
   }
 
   setSearch(value: string): void {

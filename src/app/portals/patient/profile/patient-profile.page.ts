@@ -1,18 +1,13 @@
 import { NgClass, NgFor, NgIf } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
-import { Store } from '@ngrx/store';
 import { IonButton, IonCheckbox, IonInput, IonItem, IonLabel, IonSelect, IonSelectOption, ToastController } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { lockClosedOutline } from 'ionicons/icons';
 import { AuthUser, Patient } from '../../../core/models';
-import { MockDataService } from '../../../core/services/mock-data.service';
+import { AuthStateService } from '../../../core/services/auth-state.service';
+import { PatientStateService } from '../../../core/services/patient-state.service';
 import { passwordStrengthValidator, getPasswordStrength } from '../../../shared/validators/password-strength.validator';
-import { setUser } from '../../../store/auth/auth.actions';
-import { selectCurrentUser } from '../../../store/auth/auth.selectors';
-import { loadPatients, updatePatient } from '../../../store/patients/patients.actions';
-import { selectCurrentPatient } from '../../../store/patients/patients.selectors';
 
 function passwordMatchValidator(group: AbstractControl): ValidationErrors | null {
   const password = group.get('newPassword')?.value;
@@ -207,9 +202,9 @@ interface PatientProfileDraft {
   styleUrl: './patient-profile.page.scss'
 })
 export class PatientProfilePage implements OnInit {
-  private readonly store = inject(Store);
+  private readonly authState = inject(AuthStateService);
+  private readonly patientState = inject(PatientStateService);
   private readonly fb = inject(FormBuilder);
-  private readonly mockData = inject(MockDataService);
   private readonly toastCtrl = inject(ToastController);
 
   currentUser: AuthUser | null = null;
@@ -255,12 +250,10 @@ export class PatientProfilePage implements OnInit {
   }
 
   ngOnInit(): void {
-    this.store.dispatch(loadPatients());
-
-    this.store.select(selectCurrentUser).subscribe((user) => {
+    this.authState.currentUser$.subscribe((user) => {
       this.currentUser = user;
       if (user) {
-        this.store.select(selectCurrentPatient(user.id)).subscribe((patient) => {
+        this.patientState.getPatientByUserId(user.id).subscribe((patient) => {
           this.currentPatient = patient ?? null;
           if (patient) {
             const [street = '', barangay = '', province = ''] = (patient.address || '').split(',').map((part) => part.trim());
@@ -334,18 +327,13 @@ export class PatientProfilePage implements OnInit {
       philHealthNumber: value.philHealthNumber
     };
 
-    this.mockData.updatePatient(updated);
-    this.store.dispatch(updatePatient({ patient: updated }));
+    this.patientState.savePatient(updated);
 
     if (this.currentUser) {
-      this.store.dispatch(
-        setUser({
-          user: {
+      this.authState.setUser({
             ...this.currentUser,
             fullName: `${updated.firstName} ${updated.middleName ? `${updated.middleName} ` : ''}${updated.lastName}`.trim()
-          }
-        })
-      );
+          });
     }
 
     void this.presentToast('Profile updated successfully.');

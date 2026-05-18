@@ -1,16 +1,14 @@
 import { AsyncPipe, CurrencyPipe, NgFor, NgIf } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { Store } from '@ngrx/store';
 import { combineLatest, of } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
 import { Booking, Patient, Service } from '../../../core/models';
+import { AuthStateService } from '../../../core/services/auth-state.service';
+import { BookingService } from '../../../core/services/booking.service';
+import { DoctorStateService } from '../../../core/services/doctor-state.service';
 import { MockDataService } from '../../../core/services/mock-data.service';
-import { markComplete, markNoShow } from '../../../store/bookings/bookings.actions';
-import { selectBookingById } from '../../../store/bookings/bookings.selectors';
-import { selectCurrentUser } from '../../../store/auth/auth.selectors';
-import { selectDoctorByUserId } from '../../../store/doctors/doctors.selectors';
-import { selectAllPatients } from '../../../store/patients/patients.selectors';
+import { PatientStateService } from '../../../core/services/patient-state.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
@@ -122,21 +120,24 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
   styleUrl: './doctor-appointment-detail.page.scss'
 })
 export class DoctorAppointmentDetailPage implements OnInit {
-  private readonly store = inject(Store);
+  private readonly authState = inject(AuthStateService);
+  private readonly bookingService = inject(BookingService);
+  private readonly doctorState = inject(DoctorStateService);
+  private readonly patientState = inject(PatientStateService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly mockData = inject(MockDataService);
 
   readonly detail$ = combineLatest([
     this.route.paramMap.pipe(map((paramMap) => paramMap.get('id') ?? '')),
-    this.store.select(selectCurrentUser)
+    this.authState.currentUser$
   ]).pipe(
     switchMap(([bookingId, user]) =>
       bookingId && user
         ? combineLatest([
-            this.store.select(selectBookingById(bookingId)),
-            this.store.select(selectDoctorByUserId(user.id)),
-            this.store.select(selectAllPatients)
+            this.bookingService.getBookingById$(bookingId),
+            this.doctorState.getDoctorByUserId(user.id),
+            this.patientState.getPatients()
           ])
         : of([undefined, undefined, []] as const)
     ),
@@ -162,11 +163,11 @@ export class DoctorAppointmentDetailPage implements OnInit {
   }
 
   complete(bookingId: string): void {
-    this.store.dispatch(markComplete({ bookingId }));
+    this.bookingService.markComplete(bookingId);
   }
 
   noShow(bookingId: string): void {
-    this.store.dispatch(markNoShow({ bookingId }));
+    this.bookingService.markNoShow(bookingId);
   }
 
   back(): void {

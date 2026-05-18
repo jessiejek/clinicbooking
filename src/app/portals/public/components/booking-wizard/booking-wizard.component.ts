@@ -1,13 +1,9 @@
-import { Component, OnDestroy, OnInit, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { AsyncPipe, NgFor, NgIf, NgSwitch, NgSwitchCase } from '@angular/common';
-import { Store } from '@ngrx/store';
 import { IonIcon } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { checkmark } from 'ionicons/icons';
-import { Subscription, combineLatest } from 'rxjs';
-import { nextStep } from '../../../../store/bookings/bookings.actions';
-import { selectIsAuthenticated } from '../../../../store/auth/auth.selectors';
-import { selectCurrentStep, selectWizard } from '../../../../store/bookings/bookings.selectors';
+import { BookingWizardService } from '../../../../core/services/booking-wizard.service';
 import { BookingSummaryBarComponent } from '../booking-summary-bar/booking-summary-bar.component';
 import { StepAuthCheckComponent } from '../step-auth-check/step-auth-check.component';
 import { StepDatePickerComponent } from '../step-date-picker/step-date-picker.component';
@@ -82,27 +78,10 @@ export class BookingWizardComponent {
     { step: 7, label: 'Submit Proof' }
   ];
 
-  private readonly store = inject(Store);
-  private readonly authSubscriptions = new Subscription();
+  private readonly wizardService = inject(BookingWizardService);
 
-  wizard$ = this.store.select(selectWizard);
-  currentStep$ = this.store.select(selectCurrentStep);
-
-  ngOnInit(): void {
-    this.authSubscriptions.add(
-        combineLatest([this.currentStep$, this.store.select(selectIsAuthenticated)]).subscribe(
-          ([currentStep, isAuthenticated]) => {
-            if (currentStep === 5 && isAuthenticated) {
-              this.store.dispatch(nextStep());
-            }
-          }
-        )
-      );
-  }
-
-  ngOnDestroy(): void {
-    this.authSubscriptions.unsubscribe();
-  }
+  wizard$ = this.wizardService.state$;
+  currentStep$ = this.wizardService.currentStep$;
 
   constructor() {
     addIcons({ checkmark });

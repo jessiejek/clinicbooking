@@ -1,12 +1,9 @@
 import { AsyncPipe, NgFor, NgIf } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
-import { Store } from '@ngrx/store';
 import { Booking, Doctor } from '../../../core/models';
+import { BookingService } from '../../../core/services/booking.service';
+import { DoctorStateService } from '../../../core/services/doctor-state.service';
 import { MockDataService } from '../../../core/services/mock-data.service';
-import { loadBookings } from '../../../store/bookings/bookings.actions';
-import { selectBookings, selectBookingsLoading } from '../../../store/bookings/bookings.selectors';
-import { loadDoctors } from '../../../store/doctors/doctors.actions';
-import { selectAllDoctors } from '../../../store/doctors/doctors.selectors';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { SkeletonComponent } from '../../../shared/components/skeleton/skeleton.component';
 
@@ -57,7 +54,8 @@ import { SkeletonComponent } from '../../../shared/components/skeleton/skeleton.
   styleUrl: './calendar.page.scss'
 })
 export class CalendarPage implements OnInit {
-  private readonly store = inject(Store);
+  private readonly bookingService = inject(BookingService);
+  private readonly doctorState = inject(DoctorStateService);
   private readonly mockData = inject(MockDataService);
 
   bookings: Booking[] = [];
@@ -66,12 +64,9 @@ export class CalendarPage implements OnInit {
   currentWeekStart = this.startOfWeek(new Date());
 
   ngOnInit(): void {
-    this.store.dispatch(loadBookings());
-    this.store.dispatch(loadDoctors());
-
-    this.store.select(selectBookings).subscribe((bookings) => (this.bookings = bookings));
-    this.store.select(selectBookingsLoading).subscribe((loading) => (this.isLoading = loading));
-    this.store.select(selectAllDoctors).subscribe((doctors) => (this.doctors = doctors.length ? doctors : this.mockData.getDoctors()));
+    this.bookingService.getBookings().subscribe((bookings) => (this.bookings = bookings));
+    this.bookingService.isLoading$.subscribe((loading) => (this.isLoading = loading));
+    this.doctorState.getDoctors().subscribe((doctors) => (this.doctors = doctors.length ? doctors : this.mockData.getDoctors()));
   }
 
   get weekDays(): Array<{ label: string; date: string }> {

@@ -2,20 +2,10 @@ import { AsyncPipe, CommonModule, NgFor, NgIf, DatePipe } from '@angular/common'
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { Store } from '@ngrx/store';
 import { Allergy, Booking, Consultation, FollowUp, LabResult, Patient, Prescription, VaccinationRecord } from '../../../core/models';
-import { updatePatient } from '../../../store/patients/patients.actions';
-import { selectBookingsByPatient } from '../../../store/bookings/bookings.selectors';
-import { selectPatientById } from '../../../store/patients/patients.selectors';
-import { loadMedicalRecords } from '../../../store/medical-records/medical-records.actions';
-import {
-  selectAllergiesByPatientId,
-  selectConsultationsByPatientId,
-  selectFollowUpsByPatientId,
-  selectLabResultsByPatientId,
-  selectPrescriptionsByPatientId,
-  selectVaccinationsByPatientId
-} from '../../../store/medical-records/medical-records.selectors';
+import { BookingService } from '../../../core/services/booking.service';
+import { MedicalRecordsService } from '../../../core/services/medical-records.service';
+import { PatientStateService } from '../../../core/services/patient-state.service';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
@@ -144,7 +134,9 @@ import { IonLabel, IonModal, IonSegment, IonSegmentButton } from '@ionic/angular
   styleUrl: './patient-detail.page.scss'
 })
 export class PatientDetailPage implements OnInit {
-  private readonly store = inject(Store);
+  private readonly bookingService = inject(BookingService);
+  private readonly medicalRecords = inject(MedicalRecordsService);
+  private readonly patientState = inject(PatientStateService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly fb = inject(FormBuilder);
@@ -174,20 +166,19 @@ export class PatientDetailPage implements OnInit {
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id') ?? '';
-    this.store.select(selectPatientById(id)).subscribe((patient) => {
+    this.patientState.getPatientById(id).subscribe((patient) => {
       this.patient = patient ?? null;
       if (patient) {
         this.form.patchValue(patient);
-        this.store.select(selectConsultationsByPatientId(patient.id)).subscribe((consultations) => (this.consultations = consultations));
-        this.store.select(selectPrescriptionsByPatientId(patient.id)).subscribe((prescriptions) => (this.prescriptions = prescriptions));
-        this.store.select(selectAllergiesByPatientId(patient.id)).subscribe((allergies) => (this.allergies = allergies));
-        this.store.select(selectLabResultsByPatientId(patient.id)).subscribe((labResults) => (this.labResults = labResults));
-        this.store.select(selectVaccinationsByPatientId(patient.id)).subscribe((vaccinations) => (this.vaccinations = vaccinations));
-        this.store.select(selectFollowUpsByPatientId(patient.id)).subscribe((followUps) => (this.followUps = followUps));
+        this.medicalRecords.getConsultationsByPatientId(patient.id).subscribe((consultations) => (this.consultations = consultations));
+        this.medicalRecords.getPrescriptionsByPatientId(patient.id).subscribe((prescriptions) => (this.prescriptions = prescriptions));
+        this.medicalRecords.getAllergiesByPatientId(patient.id).subscribe((allergies) => (this.allergies = allergies));
+        this.medicalRecords.getLabResultsByPatientId(patient.id).subscribe((labResults) => (this.labResults = labResults));
+        this.medicalRecords.getVaccinationsByPatientId(patient.id).subscribe((vaccinations) => (this.vaccinations = vaccinations));
+        this.medicalRecords.getFollowUpsByPatientId(patient.id).subscribe((followUps) => (this.followUps = followUps));
       }
     });
-    this.store.select(selectBookingsByPatient(id)).subscribe((bookings) => (this.bookings = bookings));
-    this.store.dispatch(loadMedicalRecords());
+    this.bookingService.getBookingsByPatientId(id).subscribe((bookings) => (this.bookings = bookings));
   }
 
   back(): void {
@@ -216,7 +207,7 @@ export class PatientDetailPage implements OnInit {
       hmoProvider: value.hmoProvider ?? this.patient.hmoProvider,
       hmoCardNumber: value.hmoCardNumber ?? this.patient.hmoCardNumber
     };
-    this.store.dispatch(updatePatient({ patient: updated }));
+    this.patientState.savePatient(updated);
     this.editOpen = false;
   }
 }

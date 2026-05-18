@@ -3,7 +3,6 @@ import { AsyncPipe, NgFor, NgIf } from '@angular/common';
 import { Component, inject, OnInit } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { Store } from '@ngrx/store';
 import {
   IonCheckbox,
   IonInput,
@@ -14,8 +13,7 @@ import {
 import { AuthLayoutComponent } from '../components/auth-layout/auth-layout.component';
 import { BannerComponent } from '../../shared/components/banner/banner.component';
 import { getPasswordStrength, passwordStrengthValidator } from '../../shared/validators/password-strength.validator';
-import { clearError, register as registerAction } from '../../store/auth/auth.actions';
-import { selectAuthError, selectIsLoading } from '../../store/auth/auth.selectors';
+import { AuthStateService } from '../../core/services/auth-state.service';
 
 function passwordMatchValidator(group: AbstractControl): ValidationErrors | null {
   const pw = group.get('password')?.value;
@@ -45,10 +43,10 @@ function passwordMatchValidator(group: AbstractControl): ValidationErrors | null
 })
 export class RegisterPage implements OnInit {
   private readonly fb = inject(FormBuilder);
-  private readonly store = inject(Store);
+  private readonly authState = inject(AuthStateService);
 
-  readonly isLoading$ = this.store.select(selectIsLoading);
-  readonly error$ = this.store.select(selectAuthError);
+  readonly isLoading$ = this.authState.isLoading$;
+  readonly error$ = this.authState.error$;
 
   readonly strengthIndexes = [0, 1, 2, 3];
 
@@ -94,7 +92,7 @@ export class RegisterPage implements OnInit {
       return;
     }
     const { fullName, email, password } = this.registerForm.getRawValue();
-    this.store.dispatch(clearError());
-    this.store.dispatch(registerAction({ fullName, email, password }));
+    this.authState.clearError();
+    this.authState.register(fullName, email, password).subscribe({ error: () => undefined });
   }
 }

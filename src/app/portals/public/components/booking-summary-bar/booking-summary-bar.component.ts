@@ -1,11 +1,10 @@
 import { Component, inject } from '@angular/core';
 import { AsyncPipe, DatePipe, NgIf } from '@angular/common';
-import { Store } from '@ngrx/store';
 import { map } from 'rxjs';
 import { MockDataService } from '../../../../core/services/mock-data.service';
+import { BookingWizardService } from '../../../../core/services/booking-wizard.service';
 import { PesoPipe } from '../../../../shared/pipes/peso.pipe';
 import { TimeSlotPipe } from '../../../../shared/pipes/time-slot.pipe';
-import { selectCurrentStep, selectWizard } from '../../../../store/bookings/bookings.selectors';
 
 @Component({
   selector: 'app-booking-summary-bar',
@@ -41,11 +40,11 @@ import { selectCurrentStep, selectWizard } from '../../../../store/bookings/book
   styleUrl: './booking-summary-bar.component.scss'
 })
 export class BookingSummaryBarComponent {
-  private readonly store = inject(Store);
+  private readonly wizardService = inject(BookingWizardService);
   private readonly mockData = inject(MockDataService);
 
-  wizard$ = this.store.select(selectWizard);
-  currentStep$ = this.store.select(selectCurrentStep);
+  wizard$ = this.wizardService.state$;
+  currentStep$ = this.wizardService.currentStep$;
 
   summary$ = this.wizard$.pipe(
     map((wizard) => {

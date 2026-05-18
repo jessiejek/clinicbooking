@@ -2,12 +2,10 @@ import { AsyncPipe, NgIf } from '@angular/common';
 import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { Store } from '@ngrx/store';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Doctor } from '../../../core/models';
+import { DoctorStateService } from '../../../core/services/doctor-state.service';
 import { MockDataService } from '../../../core/services/mock-data.service';
-import { addDoctor, updateDoctor } from '../../../store/doctors/doctors.actions';
-import { selectDoctorById } from '../../../store/doctors/doctors.selectors';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { DoctorScheduleFormComponent, DoctorScheduleDraft } from '../components/doctor-schedule-form/doctor-schedule-form.component';
 
@@ -100,7 +98,7 @@ import { DoctorScheduleFormComponent, DoctorScheduleDraft } from '../components/
 })
 export class DoctorFormPage implements OnInit {
   private readonly fb = inject(FormBuilder);
-  private readonly store = inject(Store);
+  private readonly doctorState = inject(DoctorStateService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly mockData = inject(MockDataService);
@@ -135,8 +133,8 @@ export class DoctorFormPage implements OnInit {
           startTime: schedule.startTime,
           endTime: schedule.endTime
         }));
-      this.store
-        .select(selectDoctorById(this.doctorId))
+      this.doctorState
+        .getDoctorById(this.doctorId)
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe((doctor) => {
           if (doctor) {
@@ -180,9 +178,9 @@ export class DoctorFormPage implements OnInit {
     };
 
     if (this.isEditMode && this.doctorId) {
-      this.store.dispatch(updateDoctor({ doctor: { ...doctor, id: this.doctorId } }));
+      this.doctorState.updateDoctor({ ...doctor, id: this.doctorId });
     } else {
-      this.store.dispatch(addDoctor({ doctor }));
+      this.doctorState.addDoctor(doctor);
     }
     void this.router.navigate(['/admin/doctors']);
   }

@@ -1,13 +1,12 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
-import { Store } from '@ngrx/store';
 import { map, take } from 'rxjs';
-import { selectCurrentUser } from '../../store/auth/auth.selectors';
+import { AuthStateService } from '../services/auth-state.service';
 
 export const firstLoginGuard: CanActivateFn = () => {
-  const store = inject(Store);
+  const authState = inject(AuthStateService);
   const router = inject(Router);
-  return store.select(selectCurrentUser).pipe(
+  return authState.currentUser$.pipe(
     take(1),
     map((user) => {
       if (!user) {
