@@ -2,8 +2,6 @@ import { NgIf } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { IonInput, IonItem, IonLabel, ToastController } from '@ionic/angular/standalone';
-import { timer } from 'rxjs';
-import { AuthUser } from '../../core/models';
 import { AuthService } from '../../core/services/auth.service';
 import { AuthStateService } from '../../core/services/auth-state.service';
 import { ClinicSettingsService } from '../../core/services/clinic-settings.service';
@@ -52,17 +50,21 @@ export class SetPasswordPage {
       return;
     }
     this.saving = true;
-    timer(800).subscribe(async () => {
-      const updated: AuthUser = { ...user, isFirstLogin: false };
-      this.authState.setUser(updated);
-      this.saving = false;
-      const t = await this.toast.create({
-        message: 'Password set successfully. Welcome!',
-        duration: 2500,
-        color: 'success'
-      });
-      await t.present();
-      this.authService.navigateByRole(updated);
+    const { newPassword, confirmPassword } = this.form.getRawValue();
+    this.authState.setPassword(newPassword, confirmPassword).subscribe({
+      next: async (user) => {
+        this.saving = false;
+        const t = await this.toast.create({
+          message: 'Password set successfully. Welcome!',
+          duration: 2500,
+          color: 'success'
+        });
+        await t.present();
+        this.authService.navigateByRole(user);
+      },
+      error: () => {
+        this.saving = false;
+      }
     });
   }
 }

@@ -33,7 +33,7 @@ export const routes: Routes = [
   },
   {
     path: 'patient',
-    canActivate: [authGuard, roleGuard],
+    canActivate: [authGuard, roleGuard, firstLoginGuard],
     data: { roles: ['Patient'] },
     loadChildren: () => import('./portals/patient/patient.routes').then((m) => m.PATIENT_ROUTES)
   },

@@ -1,8 +1,9 @@
 import { NgClass, NgFor, NgIf } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
-import { IonButton, IonCheckbox, IonInput, IonItem, IonLabel, IonSelect, IonSelectOption, ToastController } from '@ionic/angular/standalone';
+import { IonButton, IonCheckbox, IonIcon, IonInput, IonItem, IonLabel, IonSelect, IonSelectOption, ToastController } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
+import { alertCircleOutline } from 'ionicons/icons';
 import { lockClosedOutline } from 'ionicons/icons';
 import { AuthUser, Patient } from '../../../core/models';
 import { AuthStateService } from '../../../core/services/auth-state.service';
@@ -45,6 +46,7 @@ interface PatientProfileDraft {
     ReactiveFormsModule,
     IonItem,
     IonLabel,
+    IonIcon,
     IonInput,
     IonSelect,
     IonSelectOption,
@@ -52,12 +54,20 @@ interface PatientProfileDraft {
     IonCheckbox
   ],
   template: `
-    <section class="page-shell" *ngIf="currentPatient">
+    <section class="page-shell">
       <div class="page-shell__header">
         <div>
           <h2 class="page-title">My Profile</h2>
           <p class="page-subtitle">Keep your patient details up to date.</p>
         </div>
+      </div>
+
+      <div class="banner banner--warning" *ngIf="!currentPatient">
+        <ion-icon name="alert-circle-outline"></ion-icon>
+        <span>
+          We could not match this account to a patient record yet. Your profile fields are still
+          available, but saving requires a linked patient record.
+        </span>
       </div>
 
       <div class="profile-grid">
@@ -243,7 +253,7 @@ export class PatientProfilePage implements OnInit {
   );
 
   constructor() {
-    addIcons({ lockClosedOutline });
+    addIcons({ lockClosedOutline, alertCircleOutline });
     this.passwordForm.controls.newPassword.valueChanges.subscribe((value) => {
       this.passwordStrength = getPasswordStrength(String(value ?? ''));
     });
@@ -252,6 +262,13 @@ export class PatientProfilePage implements OnInit {
   ngOnInit(): void {
     this.authState.currentUser$.subscribe((user) => {
       this.currentUser = user;
+      if (user) {
+        this.profileForm.patchValue({
+          email: user.email,
+          firstName: user.fullName.split(' ')[0] ?? user.fullName,
+          lastName: user.fullName.split(' ').slice(1).join(' ')
+        });
+      }
       if (user) {
         this.patientState.getPatientByUserId(user.id).subscribe((patient) => {
           this.currentPatient = patient ?? null;
@@ -298,8 +315,13 @@ export class PatientProfilePage implements OnInit {
   }
 
   saveProfile(): void {
-    if (!this.currentPatient || this.profileForm.invalid) {
+    if (this.profileForm.invalid) {
       this.profileForm.markAllAsTouched();
+      return;
+    }
+
+    if (!this.currentPatient) {
+      void this.presentToast('No linked patient record found for this account.');
       return;
     }
 

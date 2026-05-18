@@ -8,3 +8,23 @@ export interface AuthUser {
   avatarUrl?: string;
   isFirstLogin: boolean;
 }
+
+export interface AuthUserDto {
+  id: string;
+  fullName: string;
+  email: string;
+  role: string;
+  avatarUrl?: string | null;
+  isFirstLogin: boolean;
+}
+
+export interface AuthSessionDto {
+  accessToken: string;
+  refreshToken: string;
+  user: AuthUserDto;
+}
+
+export interface RefreshTokenDto {
+  accessToken: string;
+  refreshToken: string;
+}
