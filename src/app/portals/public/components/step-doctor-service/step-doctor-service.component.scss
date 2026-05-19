@@ -7,6 +7,16 @@
   gap: var(--space-6);
 }
 
+.wizard-loading {
+  min-height: 180px;
+  display: grid;
+  place-items: center;
+}
+
+.wizard-loading--compact {
+  min-height: 120px;
+}
+
 .wizard-panel__header {
   display: flex;
   justify-content: space-between;

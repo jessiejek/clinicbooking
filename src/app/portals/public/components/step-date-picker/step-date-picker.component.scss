@@ -23,6 +23,12 @@
   padding: var(--space-6);
 }
 
+.calendar-loading {
+  min-height: 180px;
+  display: grid;
+  place-items: center;
+}
+
 .calendar-header {
   display: flex;
   align-items: center;

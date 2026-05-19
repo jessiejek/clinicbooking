@@ -29,7 +29,9 @@ import { ClinicSettingsService } from '../../../../core/services/clinic-settings
         <a routerLink="/public/services" routerLinkActive="active">Services</a>
         <a routerLink="/public/announcements" routerLinkActive="active">Announcements</a>
         <ng-container *ngIf="currentUser$ | async as currentUser; else signInLink">
-          <a routerLink="/patient/dashboard" routerLinkActive="active">{{ currentUser.role === 'Patient' ? 'My Account' : 'Portal' }}</a>
+          <a [routerLink]="portalDashboardRoute(currentUser.role)" routerLinkActive="active">{{
+            currentUser.role === 'Patient' ? 'My Account' : 'Portal'
+          }}</a>
         </ng-container>
         <ng-template #signInLink>
           <a routerLink="/auth/login" routerLinkActive="active">Login</a>
@@ -64,7 +66,7 @@ import { ClinicSettingsService } from '../../../../core/services/clinic-settings
         >Announcements</a
       >
       <ng-container *ngIf="currentUser$ | async as currentUser; else signInMobile">
-        <a routerLink="/patient/dashboard" routerLinkActive="active" (click)="closeMobile()">{{
+        <a [routerLink]="portalDashboardRoute(currentUser.role)" routerLinkActive="active" (click)="closeMobile()">{{
           currentUser.role === 'Patient' ? 'My Account' : 'Portal'
         }}</a>
       </ng-container>
@@ -95,6 +97,19 @@ export class PublicNavbarComponent {
 
   constructor() {
     addIcons({ menuOutline, closeOutline });
+  }
+
+  portalDashboardRoute(role: string): string {
+    switch (role) {
+      case 'Admin':
+        return '/admin/dashboard';
+      case 'Staff':
+        return '/staff/dashboard';
+      case 'Doctor':
+        return '/doctor/dashboard';
+      default:
+        return '/patient/dashboard';
+    }
   }
 
   closeMobile(): void {

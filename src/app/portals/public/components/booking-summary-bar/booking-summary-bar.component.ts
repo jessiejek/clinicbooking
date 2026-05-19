@@ -1,8 +1,8 @@
 import { Component, inject } from '@angular/core';
 import { AsyncPipe, DatePipe, NgIf } from '@angular/common';
-import { map } from 'rxjs';
-import { MockDataService } from '../../../../core/services/mock-data.service';
+import { catchError, combineLatest, map, of } from 'rxjs';
 import { BookingWizardService } from '../../../../core/services/booking-wizard.service';
+import { PublicService } from '../../services/public.service';
 import { PesoPipe } from '../../../../shared/pipes/peso.pipe';
 import { TimeSlotPipe } from '../../../../shared/pipes/time-slot.pipe';
 
@@ -41,18 +41,22 @@ import { TimeSlotPipe } from '../../../../shared/pipes/time-slot.pipe';
 })
 export class BookingSummaryBarComponent {
   private readonly wizardService = inject(BookingWizardService);
-  private readonly mockData = inject(MockDataService);
+  private readonly publicService = inject(PublicService);
 
   wizard$ = this.wizardService.state$;
   currentStep$ = this.wizardService.currentStep$;
 
-  summary$ = this.wizard$.pipe(
-    map((wizard) => {
+  summary$ = combineLatest([
+    this.wizard$,
+    this.publicService.getDoctors().pipe(catchError(() => of([]))),
+    this.publicService.getServices().pipe(catchError(() => of([])))
+  ]).pipe(
+    map(([wizard, doctors, services]) => {
       const doctor = wizard.selectedDoctorId
-        ? this.mockData.getDoctors().find((item) => item.id === wizard.selectedDoctorId)
+        ? doctors.find((item) => item.id === wizard.selectedDoctorId)
         : null;
       const service = wizard.selectedServiceId
-        ? this.mockData.getServices().find((item) => item.id === wizard.selectedServiceId)
+        ? services.find((item) => item.id === wizard.selectedServiceId)
         : null;
 
       return {

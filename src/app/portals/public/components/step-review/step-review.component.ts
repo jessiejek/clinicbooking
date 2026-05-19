@@ -1,10 +1,13 @@
-import { Component, inject } from '@angular/core';
 import { AsyncPipe, DatePipe, NgIf } from '@angular/common';
-import { map } from 'rxjs';
-import { MockDataService } from '../../../../core/services/mock-data.service';
+import { Component, inject } from '@angular/core';
+import { Router } from '@angular/router';
+import { AlertController } from '@ionic/angular/standalone';
+import { catchError, combineLatest, map, of } from 'rxjs';
+import { AuthStateService } from '../../../../core/services/auth-state.service';
 import { BookingWizardService } from '../../../../core/services/booking-wizard.service';
 import { PesoPipe } from '../../../../shared/pipes/peso.pipe';
 import { TimeSlotPipe } from '../../../../shared/pipes/time-slot.pipe';
+import { PublicService } from '../../services/public.service';
 
 @Component({
   selector: 'app-step-review',
@@ -68,7 +71,7 @@ import { TimeSlotPipe } from '../../../../shared/pipes/time-slot.pipe';
 
         <div class="wizard-actions wizard-actions--split">
           <button type="button" class="btn-outline" (click)="goBack()">Back</button>
-          <button type="button" class="btn-primary" (click)="goNext()">Confirm and Proceed</button>
+          <button type="button" class="btn-primary" (click)="onConfirmAndProceed()">Confirm and Proceed</button>
         </div>
       </ng-container>
     </section>
@@ -77,15 +80,22 @@ import { TimeSlotPipe } from '../../../../shared/pipes/time-slot.pipe';
 })
 export class StepReviewComponent {
   private readonly wizardService = inject(BookingWizardService);
-  private readonly mockData = inject(MockDataService);
+  private readonly publicService = inject(PublicService);
+  private readonly authState = inject(AuthStateService);
+  private readonly router = inject(Router);
+  private readonly alertCtrl = inject(AlertController);
 
-  vm$ = this.wizardService.state$.pipe(
-    map((wizard) => {
+  vm$ = combineLatest([
+    this.wizardService.state$,
+    this.publicService.getDoctors().pipe(catchError(() => of([]))),
+    this.publicService.getServices().pipe(catchError(() => of([])))
+  ]).pipe(
+    map(([wizard, doctors, services]) => {
       const doctor = wizard.selectedDoctorId
-        ? this.mockData.getDoctors().find((item) => item.id === wizard.selectedDoctorId)
+        ? doctors.find((item) => item.id === wizard.selectedDoctorId)
         : null;
       const service = wizard.selectedServiceId
-        ? this.mockData.getServices().find((item) => item.id === wizard.selectedServiceId)
+        ? services.find((item) => item.id === wizard.selectedServiceId)
         : null;
       const consultationFee = doctor?.consultationFee ?? 0;
       const serviceFee = service?.price ?? 0;
@@ -105,11 +115,41 @@ export class StepReviewComponent {
     })
   );
 
-  goNext(): void {
+  async onConfirmAndProceed(): Promise<void> {
+    if (!this.authState.snapshot) {
+      const alert = await this.alertCtrl.create({
+        header: 'Login or register to continue',
+        message: 'Please login or create an account to book an appointment.',
+        backdropDismiss: false,
+        buttons: [
+          {
+            text: 'Login',
+            handler: () => {
+              void this.router.navigate(['/auth/login']);
+            }
+          },
+          {
+            text: 'Register',
+            handler: () => {
+              void this.router.navigate(['/auth/register']);
+            }
+          },
+          {
+            text: 'Cancel',
+            role: 'cancel'
+          }
+        ]
+      });
+
+      await alert.present();
+      return;
+    }
+
     this.wizardService.nextStep();
   }
 
   goBack(): void {
     this.wizardService.prevStep();
   }
+
 }

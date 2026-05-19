@@ -3,6 +3,12 @@
   gap: var(--space-6);
 }
 
+.page-loading {
+  min-height: 260px;
+  display: grid;
+  place-items: center;
+}
+
 .page-shell__header {
   display: flex;
   align-items: flex-end;
@@ -35,6 +41,10 @@ select {
 
 .table-mobile {
   display: none;
+}
+
+.empty-state-wrap {
+  padding: var(--space-12) 0;
 }
 
 @media (max-width: 768px) {

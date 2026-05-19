@@ -3,6 +3,12 @@
   gap: var(--space-6);
 }
 
+.page-loading {
+  min-height: 260px;
+  display: grid;
+  place-items: center;
+}
+
 .page-shell__header {
   margin-bottom: var(--space-8);
 }

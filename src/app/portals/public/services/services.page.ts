@@ -1,15 +1,19 @@
 import { NgClass, NgFor, NgIf } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
+import { IonSpinner, ToastController } from '@ionic/angular/standalone';
+import { catchError, finalize, of } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Service, ServiceCategory } from '../../../core/models';
 import { PublicService } from '../services/public.service';
 import { ServiceCategoryCardComponent } from '../components/service-category-card/service-category-card.component';
+import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { PesoPipe } from '../../../shared/pipes/peso.pipe';
 
 @Component({
   selector: 'app-services-page',
   standalone: true,
-  imports: [NgIf, NgFor, NgClass, ServiceCategoryCardComponent, PesoPipe],
+  imports: [NgIf, NgFor, NgClass, IonSpinner, ServiceCategoryCardComponent, EmptyStateComponent, PesoPipe],
   template: `
     <div class="page-wrap">
       <div class="content-container">
@@ -30,33 +34,47 @@ import { PesoPipe } from '../../../shared/pipes/peso.pipe';
           </button>
         </div>
 
-        <ng-container *ngIf="services.length">
-          <section *ngFor="let block of categoryBlocks" class="category-block">
-            <app-service-category-card
-              [category]="block.key"
-              [count]="block.services.length"
-              [description]="categoryDescription(block.key)"
-              (selected)="selectedCategory = $event"
-            />
-            <div class="service-items">
-              <div
-                class="service-item clinic-card clinic-card--accent-green"
-                *ngFor="let service of block.services"
-              >
-                <div class="service-item__header">
-                  <h4 class="service-item__name">{{ service.name }}</h4>
-                  <span class="badge" [ngClass]="badgeClass(service.category)">{{ service.category }}</span>
-                </div>
-                <p class="service-item__desc">{{ service.description || '—' }}</p>
-                <div class="service-item__meta">
-                  <span>⏱ {{ service.estimatedDurationMinutes }} min</span>
-                  <span class="service-item__fee">{{
-                    service.price === 0 ? 'Included in consultation' : (service.price | peso)
-                  }}</span>
+        <div class="page-loading" *ngIf="isLoading">
+          <ion-spinner name="crescent"></ion-spinner>
+        </div>
+
+        <ng-container *ngIf="!isLoading">
+          <div class="page-empty" *ngIf="!filteredServices.length">
+            <app-empty-state
+              icon="folder-open-outline"
+              title="No data found"
+              description="There are no services available for the selected filter."
+            ></app-empty-state>
+          </div>
+
+          <ng-container *ngIf="filteredServices.length">
+            <section *ngFor="let block of categoryBlocks" class="category-block">
+              <app-service-category-card
+                [category]="block.key"
+                [count]="block.services.length"
+                [description]="categoryDescription(block.key)"
+                (selected)="selectedCategory = $event"
+              />
+              <div class="service-items">
+                <div
+                  class="service-item clinic-card clinic-card--accent-green"
+                  *ngFor="let service of block.services"
+                >
+                  <div class="service-item__header">
+                    <h4 class="service-item__name">{{ service.name }}</h4>
+                    <span class="badge" [ngClass]="badgeClass(service.category)">{{ service.category }}</span>
+                  </div>
+                  <p class="service-item__desc">{{ service.description || '-' }}</p>
+                  <div class="service-item__meta">
+                    <span>Time: {{ service.estimatedDurationMinutes }} min</span>
+                    <span class="service-item__fee">{{
+                      service.price === 0 ? 'Included in consultation' : (service.price | peso)
+                    }}</span>
+                  </div>
                 </div>
               </div>
-            </div>
-          </section>
+            </section>
+          </ng-container>
         </ng-container>
       </div>
     </div>
@@ -66,8 +84,11 @@ import { PesoPipe } from '../../../shared/pipes/peso.pipe';
 export class ServicesPage implements OnInit {
   private readonly publicService = inject(PublicService);
   private readonly route = inject(ActivatedRoute);
+  private readonly toastCtrl = inject(ToastController);
+  private readonly destroyRef = inject(DestroyRef);
 
   services: Service[] = [];
+  isLoading = true;
   selectedCategory: ServiceCategory | 'All' = 'All';
 
   readonly allOrder: ServiceCategory[] = ['Consultation', 'Procedure', 'Laboratory', 'Diagnostic'];
@@ -110,12 +131,56 @@ export class ServicesPage implements OnInit {
   }
 
   ngOnInit(): void {
-    this.publicService.getServices().subscribe((list) => {
-      this.services = list;
-    });
     const qp = this.route.snapshot.queryParamMap.get('category');
     if (qp && this.allOrder.includes(qp as ServiceCategory)) {
       this.selectedCategory = qp as ServiceCategory;
     }
+
+    this.publicService
+      .getServices()
+      .pipe(
+        catchError((error: unknown) => {
+          void this.presentToast(extractApiErrorMessage(error, 'Failed to load services.'));
+          return of([] as Service[]);
+        }),
+        finalize(() => {
+          this.isLoading = false;
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe((list) => {
+        this.services = list;
+      });
   }
+
+  private async presentToast(message: string): Promise<void> {
+    const toast = await this.toastCtrl.create({
+      message,
+      duration: 2400,
+      color: 'danger',
+      position: 'top'
+    });
+    await toast.present();
+  }
+}
+
+function extractApiErrorMessage(error: unknown, fallback: string): string {
+  if (typeof error === 'object' && error !== null && 'error' in error) {
+    const body = (error as { error?: unknown }).error;
+    if (typeof body === 'string' && body.trim()) {
+      return body;
+    }
+    if (typeof body === 'object' && body !== null && 'message' in body) {
+      const message = (body as { message?: unknown }).message;
+      if (typeof message === 'string' && message.trim()) {
+        return message;
+      }
+    }
+  }
+
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+
+  return fallback;
 }

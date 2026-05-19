@@ -1,54 +1,189 @@
-import { Injectable } from '@angular/core';
-import { Observable, delay, of } from 'rxjs';
+import { Injectable, inject } from '@angular/core';
+import { Observable, catchError, map, of, switchMap } from 'rxjs';
+import { ApiService } from '../../../core/services/api.service';
 import {
-  Booking,
+  AvailabilityStatus,
+  DayOfWeek,
   Doctor,
   DoctorBlockedDate,
+  DoctorDayStatus,
   DoctorSchedule,
-  Patient
+  DoctorStatus
 } from '../../../core/models';
-import { MockDataService } from '../../../core/services/mock-data.service';
+
+type NullableString = string | null | undefined;
+
+interface DoctorDto {
+  id: string;
+  userId?: NullableString;
+  fullName?: NullableString;
+  firstName?: NullableString;
+  middleName?: NullableString;
+  lastName?: NullableString;
+  specialization?: NullableString;
+  bio?: NullableString;
+  profilePhotoUrl?: NullableString;
+  avatarUrl?: NullableString;
+  licenseNumber?: NullableString;
+  ptrNumber?: NullableString;
+  s2Number?: NullableString;
+  consultationFee?: number | null;
+  slotDurationMinutes?: number | null;
+  slotCapacity?: number | null;
+  dailyPatientLimit?: number | null;
+  status?: DoctorStatus | string | null;
+  averageRating?: number | null;
+  reviewCount?: number | null;
+}
+
+interface DoctorScheduleDto {
+  id: string;
+  doctorId?: NullableString;
+  dayOfWeek?: DayOfWeek | string | null;
+  startTime?: NullableString;
+  endTime?: NullableString;
+}
+
+interface DoctorBlockedDateDto {
+  id: string;
+  doctorId?: NullableString;
+  blockedDate?: NullableString;
+  reason?: NullableString;
+}
+
+interface DoctorDayStatusDto {
+  id: string;
+  doctorId?: NullableString;
+  date?: NullableString;
+  status?: AvailabilityStatus | string | null;
+  runningLateMinutes?: number | null;
+}
+
+export type DoctorDetail = Doctor | undefined;
+
+export interface UpdateDoctorDto extends Partial<Omit<Doctor, 'id'>> {}
+
+export interface SetDayStatusDto {
+  status: AvailabilityStatus;
+  runningLateMinutes?: number;
+}
 
 @Injectable({ providedIn: 'root' })
 export class DoctorService {
-  constructor(private readonly mockData: MockDataService) {}
+  private readonly apiService = inject(ApiService);
+
+  getMyProfile(): Observable<DoctorDetail> {
+    return this.apiService.get<DoctorDto>('/doctors/me').pipe(
+      map((doctor) => mapDoctorDto(doctor)),
+      catchError(() => of(undefined))
+    );
+  }
+
+  updateMyProfile(dto: UpdateDoctorDto): Observable<DoctorDetail> {
+    return this.apiService.put<DoctorDto>('/doctors/me', dto).pipe(map((doctor) => mapDoctorDto(doctor)));
+  }
+
+  getMySchedule(): Observable<DoctorSchedule[]> {
+    return this.getMyProfile().pipe(
+      switchMap((doctor) => (doctor ? this.getDoctorSchedules(doctor.id) : of([]))),
+      catchError(() => of([]))
+    );
+  }
+
+  getDayStatus(id: string): Observable<DoctorDayStatus> {
+    return this.apiService.get<DoctorDayStatusDto>(`/doctors/${id}/day-status`).pipe(
+      map((status) => mapDoctorDayStatusDto(status))
+    );
+  }
+
+  setDayStatus(id: string, dto: SetDayStatusDto): Observable<DoctorDayStatus> {
+    return this.apiService.post<DoctorDayStatusDto>(`/doctors/${id}/day-status`, dto).pipe(
+      map((status) => mapDoctorDayStatusDto(status))
+    );
+  }
 
   getCurrentDoctor(userId: string): Observable<Doctor | undefined> {
-    return of(this.mockData.getDoctors().find((doctor) => doctor.userId === userId)).pipe(delay(200));
-  }
-
-  getDoctorBookings(doctorId: string): Observable<Booking[]> {
-    return of(this.mockData.getBookings().filter((booking) => booking.doctorId === doctorId)).pipe(delay(300));
-  }
-
-  getTodaysDoctorBookings(doctorId: string): Observable<Booking[]> {
-    const today = new Date().toDateString();
-
-    return of(
-      this.mockData
-        .getBookings()
-        .filter(
-          (booking) =>
-            booking.doctorId === doctorId && new Date(booking.appointmentDate).toDateString() === today
-        )
-        .sort((a, b) => (a.queueNumber ?? 0) - (b.queueNumber ?? 0))
-    ).pipe(delay(300));
-  }
-
-  getDoctorPatients(doctorId: string): Observable<Patient[]> {
-    const doctorBookings = this.mockData.getBookings().filter((booking) => booking.doctorId === doctorId);
-    const patientIds = [...new Set(doctorBookings.map((booking) => booking.patientId))];
-
-    return of(this.mockData.getPatients().filter((patient) => patientIds.includes(patient.id))).pipe(delay(300));
+    return this.getMyProfile().pipe(map((doctor) => (doctor && doctor.userId === userId ? doctor : undefined)));
   }
 
   getDoctorSchedules(doctorId: string): Observable<DoctorSchedule[]> {
-    return of(this.mockData.getDoctorSchedules().filter((schedule) => schedule.doctorId === doctorId)).pipe(
-      delay(200)
+    return this.apiService.get<DoctorScheduleDto[]>(`/doctors/${doctorId}/schedule`).pipe(
+      map((schedules) => schedules.map((schedule) => mapDoctorScheduleDto(schedule)))
     );
   }
 
   getDoctorBlockedDates(doctorId: string): Observable<DoctorBlockedDate[]> {
-    return of(this.mockData.getDoctorBlockedDates(doctorId)).pipe(delay(200));
+    return this.apiService.get<DoctorBlockedDateDto[]>(`/doctors/${doctorId}/blocked-dates`).pipe(
+      map((dates) => dates.map((date) => mapDoctorBlockedDateDto(date)))
+    );
   }
+}
+
+function mapDoctorDto(dto: DoctorDto): Doctor {
+  const fullName = resolveDoctorName(dto);
+  return {
+    id: dto.id,
+    userId: normalizeString(dto.userId) || dto.id,
+    fullName,
+    specialization: normalizeString(dto.specialization) || '',
+    bio: normalizeString(dto.bio),
+    profilePhotoUrl: normalizeString(dto.profilePhotoUrl ?? dto.avatarUrl),
+    licenseNumber: normalizeString(dto.licenseNumber),
+    ptrNumber: normalizeString(dto.ptrNumber),
+    s2Number: normalizeString(dto.s2Number),
+    consultationFee: dto.consultationFee ?? 0,
+    slotDurationMinutes: dto.slotDurationMinutes ?? 30,
+    slotCapacity: dto.slotCapacity ?? 1,
+    dailyPatientLimit: dto.dailyPatientLimit ?? null,
+    status: (dto.status as DoctorStatus) ?? 'Active',
+    averageRating: dto.averageRating ?? undefined,
+    reviewCount: dto.reviewCount ?? undefined
+  };
+}
+
+function mapDoctorScheduleDto(dto: DoctorScheduleDto): DoctorSchedule {
+  return {
+    id: dto.id,
+    doctorId: normalizeString(dto.doctorId) || '',
+    dayOfWeek: (dto.dayOfWeek as DayOfWeek) ?? 'Monday',
+    startTime: normalizeString(dto.startTime) || '00:00',
+    endTime: normalizeString(dto.endTime) || '00:00'
+  };
+}
+
+function mapDoctorBlockedDateDto(dto: DoctorBlockedDateDto): DoctorBlockedDate {
+  return {
+    id: dto.id,
+    doctorId: normalizeString(dto.doctorId) || '',
+    blockedDate: normalizeString(dto.blockedDate) || '',
+    reason: normalizeString(dto.reason)
+  };
+}
+
+function mapDoctorDayStatusDto(dto: DoctorDayStatusDto): DoctorDayStatus {
+  return {
+    id: dto.id,
+    doctorId: normalizeString(dto.doctorId) || '',
+    date: normalizeString(dto.date) || '',
+    status: (dto.status as AvailabilityStatus) ?? 'Available',
+    runningLateMinutes: dto.runningLateMinutes ?? undefined
+  };
+}
+
+function resolveDoctorName(dto: DoctorDto): string {
+  const explicitName = normalizeString(dto.fullName);
+  if (explicitName) {
+    return explicitName;
+  }
+
+  const parts = [dto.firstName, dto.middleName, dto.lastName]
+    .map((value) => normalizeString(value))
+    .filter((value): value is string => Boolean(value));
+
+  return parts.length ? parts.join(' ') : 'Doctor';
+}
+
+function normalizeString(value: NullableString): string | undefined {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : undefined;
 }

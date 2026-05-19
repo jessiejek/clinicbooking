@@ -4,14 +4,14 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { addIcons } from 'ionicons';
 import { alertCircleOutline, personOutline, warningOutline } from 'ionicons/icons';
-import { Doctor, Review, Service, ServiceCategory } from '../../../core/models';
+import { Review, Service, ServiceCategory } from '../../../core/models';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { BannerComponent } from '../../../shared/components/banner/banner.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 import { PesoPipe } from '../../../shared/pipes/peso.pipe';
 import { ReviewCardComponent } from '../components/review-card/review-card.component';
-import { PublicService } from '../services/public.service';
+import { DoctorDetail, PublicService } from '../services/public.service';
 import { formatDoctorScheduleLines } from '../utils/time-format';
 import { DoctorStateService } from '../../../core/services/doctor-state.service';
 import { DoctorDayStatus } from '../../../core/models';
@@ -107,8 +107,12 @@ import { DoctorDayStatus } from '../../../core/models';
               <div>
                 <strong>{{ svc.name }}</strong>
                 <span class="badge" [ngClass]="badgeClass(svc.category)">{{ svc.category }}</span>
+                <p class="service-row__desc" *ngIf="svc.description">{{ svc.description }}</p>
               </div>
-              <span class="svc-fee">{{ svc.price | peso }}</span>
+              <div class="service-row__meta">
+                <span *ngIf="svc.estimatedDurationMinutes != null">Duration: {{ svc.estimatedDurationMinutes }} min</span>
+                <span class="svc-fee" *ngIf="svc.price != null">{{ svc.price | peso }}</span>
+              </div>
             </li>
           </ul>
           <p *ngIf="!services.length" class="muted">No services listed.</p>
@@ -144,7 +148,7 @@ export class DoctorProfilePage implements OnInit {
   private readonly publicService = inject(PublicService);
 
   isLoading = true;
-  doctor?: Doctor;
+  doctor?: DoctorDetail;
   reviews: Review[] = [];
   services: Service[] = [];
   scheduleLines: string[] = [];
@@ -169,12 +173,11 @@ export class DoctorProfilePage implements OnInit {
     forkJoin({
       doctor: this.publicService.getDoctorById(id),
       reviews: this.publicService.getDoctorReviews(id),
-      services: this.publicService.getDoctorServices(id),
       schedules: this.publicService.getDoctorSchedules(id)
-    }).subscribe(({ doctor, reviews, services, schedules }) => {
+    }).subscribe(({ doctor, reviews, schedules }) => {
       this.doctor = doctor;
       this.reviews = reviews;
-      this.services = services;
+      this.services = doctor?.services ?? [];
       this.scheduleLines = formatDoctorScheduleLines(schedules);
       this.isLoading = false;
     });

@@ -26,6 +26,12 @@
   margin-bottom: var(--space-8);
 }
 
+.page-loading {
+  min-height: 240px;
+  display: grid;
+  place-items: center;
+}
+
 .page-title {
   font-size: var(--text-3xl);
   font-weight: var(--font-bold);
@@ -110,6 +116,5 @@
 
 .empty-hint {
   text-align: center;
-  padding: var(--space-12);
-  color: var(--clinic-text-muted);
+  padding: var(--space-12) 0;
 }

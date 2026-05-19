@@ -2,6 +2,12 @@
   padding-bottom: var(--space-16);
 }
 
+.page-loading {
+  min-height: 240px;
+  display: grid;
+  place-items: center;
+}
+
 .page-header {
   margin-bottom: var(--space-8);
 }
@@ -118,4 +124,8 @@
 .badge--diagnostic.badge--category {
   background: rgba(220, 38, 38, 0.12);
   color: #be123c;
+}
+
+.page-empty {
+  padding: var(--space-12) 0;
 }

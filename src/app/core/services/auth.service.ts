@@ -15,6 +15,15 @@ import {
 import { SKIP_AUTH_INTERCEPTOR } from '../interceptors/auth-http.tokens';
 import { TokenService } from './token.service';
 
+const KNOWN_ROLES: Role[] = ['Admin', 'Staff', 'Doctor', 'Patient'];
+const ROLE_CLAIM_KEYS = [
+  'role',
+  'Role',
+  'roles',
+  'http://schemas.microsoft.com/ws/2008/06/identity/claims/role',
+  'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/role'
+];
+
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly userStorageKey = 'clinic.auth.user';
@@ -28,7 +37,7 @@ export class AuthService {
       password
     }).pipe(
       tap((response) => this.storeTokens(response.accessToken, response.refreshToken)),
-      map((response) => this.toAuthUser(response.user))
+      map((response) => this.toAuthUser(response.user, response.accessToken))
     );
   }
 
@@ -41,7 +50,7 @@ export class AuthService {
 
     return this.apiService.post<AuthSessionDto>('/auth/google', payload).pipe(
       tap((response) => this.storeTokens(response.accessToken, response.refreshToken)),
-      map((response) => this.toAuthUser(response.user))
+      map((response) => this.toAuthUser(response.user, response.accessToken))
     );
   }
 
@@ -53,7 +62,7 @@ export class AuthService {
 
     return this.apiService.post<AuthSessionDto>('/auth/facebook', payload).pipe(
       tap((response) => this.storeTokens(response.accessToken, response.refreshToken)),
-      map((response) => this.toAuthUser(response.user))
+      map((response) => this.toAuthUser(response.user, response.accessToken))
     );
   }
 
@@ -72,7 +81,7 @@ export class AuthService {
       password
     }).pipe(
       tap((response) => this.storeTokens(response.accessToken, response.refreshToken)),
-      map((response) => this.toAuthUser(response.user))
+      map((response) => this.toAuthUser(response.user, response.accessToken))
     );
   }
 
@@ -106,7 +115,7 @@ export class AuthService {
     }
 
     return this.apiService.get<AuthUserDto>('/auth/me').pipe(
-      map((user) => this.toAuthUser(user)),
+      map((user) => this.toAuthUser(user, this.tokenService.getAccessToken() ?? undefined)),
       catchError((error: unknown) => {
         this.clearSession();
         return throwError(() => error);
@@ -118,7 +127,7 @@ export class AuthService {
     return this.apiService.post<AuthUserDto>('/auth/set-password', {
       newPassword,
       confirmPassword
-    }).pipe(map((user) => this.toAuthUser(user)));
+    }).pipe(map((user) => this.toAuthUser(user, this.tokenService.getAccessToken() ?? undefined)));
   }
 
   logout(): void {
@@ -154,16 +163,16 @@ export class AuthService {
 
     switch (user.role) {
       case 'Admin':
-        void this.router.navigate(['/admin']);
+        void this.router.navigate(['/admin/dashboard']);
         break;
       case 'Staff':
-        void this.router.navigate(['/staff']);
+        void this.router.navigate(['/staff/dashboard']);
         break;
       case 'Doctor':
-        void this.router.navigate(['/doctor']);
+        void this.router.navigate(['/doctor/dashboard']);
         break;
       case 'Patient':
-        void this.router.navigate(['/patient']);
+        void this.router.navigate(['/patient/dashboard']);
         break;
       default:
         void this.router.navigate(['/auth/login']);
@@ -174,14 +183,83 @@ export class AuthService {
     this.tokenService.setTokens(accessToken, refreshToken);
   }
 
-  private toAuthUser(user: AuthUserDto): AuthUser {
+  private toAuthUser(user: AuthUserDto, accessToken?: string): AuthUser {
+    const resolvedRole = this.resolveRole(user.role, accessToken);
     return {
       id: user.id,
       fullName: user.fullName,
       email: user.email,
-      role: user.role as Role,
+      role: resolvedRole,
       avatarUrl: user.avatarUrl ?? undefined,
       isFirstLogin: user.isFirstLogin
     };
+  }
+
+  private resolveRole(roleValue: unknown, accessToken?: string): Role {
+    const resolvedFromDto = normalizeRole(roleValue);
+    if (resolvedFromDto) {
+      return resolvedFromDto;
+    }
+
+    if (accessToken) {
+      const resolvedFromToken = this.resolveRoleFromToken(accessToken);
+      if (resolvedFromToken) {
+        return resolvedFromToken;
+      }
+    }
+
+    throw new Error('Unable to determine authenticated user role.');
+  }
+
+  private resolveRoleFromToken(accessToken: string): Role | undefined {
+    const payload = decodeJwtPayload(accessToken);
+    if (!payload) {
+      return undefined;
+    }
+
+    for (const key of ROLE_CLAIM_KEYS) {
+      const candidate = payload[key];
+      const resolved = normalizeRole(candidate);
+      if (resolved) {
+        return resolved;
+      }
+
+      if (Array.isArray(candidate)) {
+        for (const value of candidate) {
+          const arrayResolved = normalizeRole(value);
+          if (arrayResolved) {
+            return arrayResolved;
+          }
+        }
+      }
+    }
+
+    return undefined;
+  }
+}
+
+function normalizeRole(value: unknown): Role | undefined {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  return KNOWN_ROLES.find((role) => role.toLowerCase() === normalized);
+}
+
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  const parts = token.split('.');
+  if (parts.length < 2) {
+    return null;
+  }
+
+  try {
+    const payloadBase64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = payloadBase64.padEnd(payloadBase64.length + ((4 - (payloadBase64.length % 4)) % 4), '=');
+    const json = atob(padded);
+    const payload = JSON.parse(json) as Record<string, unknown>;
+    return payload;
+  } catch {
+    return null;
   }
 }

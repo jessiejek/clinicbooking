@@ -61,3 +61,31 @@
 .wizard-actions--split {
   gap: var(--space-3);
 }
+
+.auth-modal {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-6);
+}
+
+.auth-modal h3 {
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+  color: var(--clinic-text-primary);
+}
+
+.auth-modal p {
+  color: var(--clinic-text-secondary);
+  margin: 0;
+}
+
+.auth-modal__actions {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.auth-modal__footer {
+  display: flex;
+  justify-content: flex-end;
+}
