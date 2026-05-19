@@ -34,3 +34,8 @@ export interface GoogleAuthRequest {
   idToken: string;
   accessToken: string | null;
 }
+
+export interface FacebookAuthRequest {
+  accessToken: string;
+  userId: string;
+}

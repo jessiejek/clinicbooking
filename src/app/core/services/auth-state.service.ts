@@ -69,6 +69,20 @@ export class AuthStateService {
     );
   }
 
+  loginWithFacebook(accessToken: string, userId: string): Observable<AuthUser> {
+    this.loadingSubject.next(true);
+    this.errorSubject.next(null);
+
+    return this.authService.loginWithFacebook(accessToken, userId).pipe(
+      tap((user) => {
+        this.setUser(user);
+        this.authService.navigateByRole(user);
+      }),
+      catchError((err: unknown) => this.handleAuthError(err, 'Facebook login failed.')),
+      finalize(() => this.loadingSubject.next(false))
+    );
+  }
+
   register(fullName: string, email: string, password: string): Observable<AuthUser> {
     this.loadingSubject.next(true);
     this.errorSubject.next(null);

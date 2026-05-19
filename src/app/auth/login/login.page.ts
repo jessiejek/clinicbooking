@@ -59,9 +59,44 @@ interface GoogleWindow extends Window {
   };
 }
 
+interface FacebookAuthResponse {
+  accessToken: string;
+  userID: string;
+  expiresIn?: number;
+  signedRequest?: string;
+}
+
+interface FacebookLoginResponse {
+  status?: 'connected' | 'not_authorized' | 'unknown';
+  authResponse?: FacebookAuthResponse;
+}
+
+interface FacebookSdk {
+  init(config: {
+    appId: string;
+    cookie?: boolean;
+    xfbml?: boolean;
+    version: string;
+  }): void;
+  login(
+    callback: (response: FacebookLoginResponse) => void,
+    options?: { scope?: string }
+  ): void;
+}
+
+interface FacebookWindow extends Window {
+  FB?: FacebookSdk;
+  fbAsyncInit?: () => void;
+}
+
 const googleIdentityScriptId = 'google-identity-services-sdk';
 const googleIdentityScriptSrc = 'https://accounts.google.com/gsi/client';
 let googleIdentityLoadPromise: Promise<GoogleAccountsId> | null = null;
+
+const facebookSdkScriptId = 'facebook-jssdk';
+const facebookSdkScriptSrc = 'https://connect.facebook.net/en_US/sdk.js';
+let facebookSdkLoadPromise: Promise<FacebookSdk> | null = null;
+let facebookSdkInitialized = false;
 
 function getGoogleIdentity(): GoogleAccountsId | undefined {
   return (window as GoogleWindow).google?.accounts?.id;
@@ -158,6 +193,129 @@ function loadGoogleIdentityScript(timeoutMs = 15000): Promise<GoogleAccountsId> 
   return googleIdentityLoadPromise;
 }
 
+function getFacebookSdk(): FacebookSdk | undefined {
+  return (window as FacebookWindow).FB;
+}
+
+function waitForFacebookSdkApi(timeoutMs = 15000): Promise<FacebookSdk> {
+  const existing = getFacebookSdk();
+  if (existing) {
+    return Promise.resolve(existing);
+  }
+
+  return new Promise((resolve, reject) => {
+    const startedAt = Date.now();
+
+    const poll = () => {
+      const facebookSdk = getFacebookSdk();
+      if (facebookSdk) {
+        resolve(facebookSdk);
+        return;
+      }
+
+      if (Date.now() - startedAt >= timeoutMs) {
+        reject(new Error('Facebook sign-in failed to initialize.'));
+        return;
+      }
+
+      window.setTimeout(poll, 50);
+    };
+
+    poll();
+  });
+}
+
+function initializeFacebookSdk(appId: string, version: string): FacebookSdk {
+  const facebookSdk = getFacebookSdk();
+  if (!facebookSdk) {
+    throw new Error('Facebook sign-in failed to initialize.');
+  }
+
+  if (!facebookSdkInitialized) {
+    facebookSdk.init({
+      appId,
+      cookie: true,
+      xfbml: false,
+      version
+    });
+    facebookSdkInitialized = true;
+  }
+
+  return facebookSdk;
+}
+
+function loadFacebookSdk(appId: string, version: string, timeoutMs = 15000): Promise<FacebookSdk> {
+  const existing = getFacebookSdk();
+  if (existing) {
+    return Promise.resolve(initializeFacebookSdk(appId, version));
+  }
+
+  if (facebookSdkLoadPromise) {
+    return facebookSdkLoadPromise;
+  }
+
+  facebookSdkLoadPromise = new Promise((resolve, reject) => {
+    let script = document.getElementById(facebookSdkScriptId) as HTMLScriptElement | null;
+    const timeout = window.setTimeout(() => {
+      facebookSdkLoadPromise = null;
+      reject(new Error('Facebook sign-in script was blocked or failed to load.'));
+    }, timeoutMs);
+
+    const finish = () => {
+      window.clearTimeout(timeout);
+
+      if (!script) {
+        facebookSdkLoadPromise = null;
+        reject(new Error('Facebook sign-in script element was not available.'));
+        return;
+      }
+
+      script.setAttribute('data-loaded', 'true');
+      waitForFacebookSdkApi(timeoutMs)
+        .then(() => {
+          try {
+            resolve(initializeFacebookSdk(appId, version));
+          } catch (error) {
+            facebookSdkLoadPromise = null;
+            reject(error instanceof Error ? error : new Error('Facebook sign-in failed to initialize.'));
+          }
+        })
+        .catch((error) => {
+          facebookSdkLoadPromise = null;
+          reject(error);
+        });
+    };
+
+    const fail = () => {
+      window.clearTimeout(timeout);
+      facebookSdkLoadPromise = null;
+      reject(new Error('Facebook sign-in script was blocked or failed to load.'));
+    };
+
+    if (!script) {
+      script = document.createElement('script');
+      script.id = facebookSdkScriptId;
+      script.src = facebookSdkScriptSrc;
+      script.async = true;
+      script.defer = true;
+      script.addEventListener('load', finish, { once: true });
+      script.addEventListener('error', fail, { once: true });
+      document.head.appendChild(script);
+      return;
+    }
+
+    if (script.getAttribute('data-loaded') === 'true') {
+      finish();
+      return;
+    }
+
+    script.addEventListener('load', finish, { once: true });
+    script.addEventListener('error', fail, { once: true });
+  });
+
+  return facebookSdkLoadPromise;
+}
+
 @Component({
   standalone: true,
   selector: 'app-login-page',
@@ -189,6 +347,8 @@ export class LoginPage implements AfterViewInit {
 
   readonly isProduction = environment.production;
   readonly googleClientId = environment.googleClientId;
+  readonly facebookAppId = environment.facebookAppId;
+  readonly facebookSdkVersion = environment.facebookSdkVersion;
   readonly isLoading$ = this.authState.isLoading$;
   readonly error$ = this.authState.error$;
 
@@ -196,6 +356,8 @@ export class LoginPage implements AfterViewInit {
   devExpanded = false;
   googleLoading = false;
   googleSdkError: string | null = null;
+  facebookLoading = false;
+  facebookSdkError: string | null = null;
   private destroyed = false;
 
   loginForm = this.fb.nonNullable.group({
@@ -222,6 +384,10 @@ export class LoginPage implements AfterViewInit {
     return this.googleClientId.trim().length > 0;
   }
 
+  get canUseFacebookLogin(): boolean {
+    return this.facebookAppId.trim().length > 0;
+  }
+
   async onGoogleFallbackClick(): Promise<void> {
     if (!this.canUseGoogleLogin) {
       await this.presentErrorToast('Google sign-in is not configured yet.');
@@ -241,6 +407,54 @@ export class LoginPage implements AfterViewInit {
       this.googleSdkError ??
         'Google sign-in is still loading. If this keeps happening, check that the browser can open accounts.google.com.'
     );
+  }
+
+  async onFacebookLoginClick(): Promise<void> {
+    if (!this.canUseFacebookLogin) {
+      this.facebookSdkError = 'Facebook sign-in is not configured yet.';
+      console.warn(this.facebookSdkError);
+      await this.presentErrorToast(this.facebookSdkError);
+      return;
+    }
+
+    this.facebookSdkError = null;
+    this.facebookLoading = true;
+
+    try {
+      const facebookSdk = await loadFacebookSdk(
+        this.facebookAppId.trim(),
+        this.facebookSdkVersion || 'v25.0'
+      );
+
+      if (this.destroyed) {
+        this.facebookLoading = false;
+        return;
+      }
+
+      facebookSdk.login(
+        (response) => {
+          this.ngZone.run(() => {
+            if (this.destroyed) {
+              return;
+            }
+
+            void this.handleFacebookLoginResponse(response);
+          });
+        },
+        { scope: 'public_profile,email' }
+      );
+    } catch (error) {
+      if (this.destroyed) {
+        this.facebookLoading = false;
+        return;
+      }
+
+      this.facebookSdkError =
+        error instanceof Error ? error.message : 'Facebook sign-in failed to initialize.';
+      console.error(error);
+      await this.presentErrorToast(this.facebookSdkError);
+      this.facebookLoading = false;
+    }
   }
 
   onLogin(): void {
@@ -312,6 +526,34 @@ export class LoginPage implements AfterViewInit {
     this.authState.loginWithGoogle(response.credential).pipe(
       finalize(() => {
         this.googleLoading = false;
+      })
+    ).subscribe({ error: () => undefined });
+  }
+
+  private async handleFacebookLoginResponse(response: FacebookLoginResponse): Promise<void> {
+    if (this.destroyed) {
+      return;
+    }
+
+    if (!response.authResponse) {
+      this.facebookLoading = false;
+      await this.presentErrorToast('Facebook sign-in was cancelled.');
+      return;
+    }
+
+    const { accessToken, userID } = response.authResponse;
+    if (!accessToken || !userID) {
+      const message = 'Facebook sign-in did not return an access token or user ID.';
+      this.facebookSdkError = message;
+      console.error(message, response);
+      this.facebookLoading = false;
+      await this.presentErrorToast(message);
+      return;
+    }
+
+    this.authState.loginWithFacebook(accessToken, userID).pipe(
+      finalize(() => {
+        this.facebookLoading = false;
       })
     ).subscribe({ error: () => undefined });
   }

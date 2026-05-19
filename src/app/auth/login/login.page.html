@@ -89,6 +89,22 @@
       </p>
     </div>
 
+    <div class="facebook-signin">
+      <button
+        type="button"
+        class="btn-social btn-social--facebook"
+        (click)="onFacebookLoginClick()"
+        [disabled]="facebookLoading || (isLoading$ | async) === true"
+      >
+        <span class="btn-social__icon" aria-hidden="true">f</span>
+        {{ facebookLoading ? 'Finishing Facebook sign-in...' : 'Continue with Facebook' }}
+      </button>
+
+      <p class="google-status google-status--error" *ngIf="facebookSdkError">
+        {{ facebookSdkError }}
+      </p>
+    </div>
+
     <p class="register-hint">
       Don't have an account?
       <a routerLink="/auth/register">Create one</a>

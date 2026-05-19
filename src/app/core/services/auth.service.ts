@@ -7,6 +7,7 @@ import {
   AuthSessionDto,
   AuthUser,
   AuthUserDto,
+  FacebookAuthRequest,
   GoogleAuthRequest,
   RefreshTokenDto,
   Role
@@ -39,6 +40,18 @@ export class AuthService {
     };
 
     return this.apiService.post<AuthSessionDto>('/auth/google', payload).pipe(
+      tap((response) => this.storeTokens(response.accessToken, response.refreshToken)),
+      map((response) => this.toAuthUser(response.user))
+    );
+  }
+
+  loginWithFacebook(accessToken: string, userId: string): Observable<AuthUser> {
+    const payload: FacebookAuthRequest = {
+      accessToken,
+      userId
+    };
+
+    return this.apiService.post<AuthSessionDto>('/auth/facebook', payload).pipe(
       tap((response) => this.storeTokens(response.accessToken, response.refreshToken)),
       map((response) => this.toAuthUser(response.user))
     );
