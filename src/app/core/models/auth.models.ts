@@ -30,5 +30,7 @@ export interface RefreshTokenDto {
 }
 
 export interface GoogleAuthRequest {
-  idToken: string | null;
+  provider: 'Google';
+  idToken: string;
+  accessToken: string | null;
 }

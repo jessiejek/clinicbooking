@@ -32,7 +32,11 @@ export class AuthService {
   }
 
   loginWithGoogle(idToken: string): Observable<AuthUser> {
-    const payload: GoogleAuthRequest = { idToken };
+    const payload: GoogleAuthRequest = {
+      provider: 'Google',
+      idToken,
+      accessToken: null
+    };
 
     return this.apiService.post<AuthSessionDto>('/auth/google', payload).pipe(
       tap((response) => this.storeTokens(response.accessToken, response.refreshToken)),
