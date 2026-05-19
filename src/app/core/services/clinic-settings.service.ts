@@ -1,10 +1,41 @@
 import { Injectable, inject } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
-import { ClinicSettings } from '../models';
+import { BehaviorSubject, Observable, finalize, map, shareReplay, tap } from 'rxjs';
+import { ClinicSettings, PaymentSettings } from '../models';
+import { ApiService } from './api.service';
 import { MockDataService } from './mock-data.service';
+
+type NullableString = string | null | undefined;
+
+interface PaymentSettingsDto {
+  gcashQrImageUrl?: NullableString;
+  gcashAccountName?: NullableString;
+  gcashNumber?: NullableString;
+  mayaQrImageUrl?: NullableString;
+  mayaAccountName?: NullableString;
+  mayaNumber?: NullableString;
+  bankName?: NullableString;
+  bankAccountName?: NullableString;
+  bankAccountNumber?: NullableString;
+}
+
+interface ClinicSettingsDto
+  extends Omit<
+    ClinicSettings,
+    'logoUrl' | 'address' | 'phone' | 'email' | 'facebookUrl' | 'instagramUrl' | 'privacyPolicyText' | 'paymentSettings'
+  > {
+  logoUrl?: NullableString;
+  address?: NullableString;
+  phone?: NullableString;
+  email?: NullableString;
+  facebookUrl?: NullableString;
+  instagramUrl?: NullableString;
+  privacyPolicyText?: NullableString;
+  paymentSettings: PaymentSettingsDto;
+}
 
 @Injectable({ providedIn: 'root' })
 export class ClinicSettingsService {
+  private readonly apiService = inject(ApiService);
   private readonly mockData = inject(MockDataService);
   private readonly settingsSubject = new BehaviorSubject<ClinicSettings>(
     this.mockData.getClinicSettings()
@@ -14,21 +45,33 @@ export class ClinicSettingsService {
   readonly settings$ = this.settingsSubject.asObservable();
   readonly isLoading$ = this.loadingSubject.asObservable();
 
-  /** Loads clinic configuration from seed data (Phase 1 - no HTTP). */
+  /** Returns the latest cached clinic configuration. */
   load(): ClinicSettings {
-    const settings = this.mockData.getClinicSettings();
-    this.settingsSubject.next(settings);
-    return settings;
+    return this.settingsSubject.value;
   }
 
   getSettings(): Observable<ClinicSettings> {
-    return this.settings$;
+    this.loadingSubject.next(true);
+
+    return this.apiService.get<ClinicSettingsDto>('/settings').pipe(
+      map((dto) => mapToClinicSettings(dto)),
+      tap((settings) => this.settingsSubject.next(settings)),
+      finalize(() => this.loadingSubject.next(false))
+    );
   }
 
-  updateSettings(settings: ClinicSettings): ClinicSettings {
-    const updated = this.mockData.updateClinicSettings(settings);
-    this.settingsSubject.next(updated);
-    return updated;
+  updateSettings(data: Partial<ClinicSettings>): Observable<ClinicSettings> {
+    this.loadingSubject.next(true);
+
+    const request$ = this.apiService.put<ClinicSettingsDto>('/settings', data).pipe(
+      map((dto) => mapToClinicSettings(dto)),
+      tap((settings) => this.settingsSubject.next(settings)),
+      finalize(() => this.loadingSubject.next(false)),
+      shareReplay(1)
+    );
+
+    void request$.subscribe({ error: () => undefined });
+    return request$;
   }
 
   bumpConsentVersion(): ClinicSettings {
@@ -36,4 +79,48 @@ export class ClinicSettingsService {
     this.settingsSubject.next(updated);
     return updated;
   }
+}
+
+function mapToClinicSettings(dto: ClinicSettingsDto): ClinicSettings {
+  return {
+    id: dto.id,
+    clinicName: dto.clinicName,
+    logoUrl: normalizeOptionalString(dto.logoUrl),
+    primaryColor: dto.primaryColor,
+    secondaryColor: dto.secondaryColor,
+    address: normalizeOptionalString(dto.address),
+    phone: normalizeOptionalString(dto.phone),
+    email: normalizeOptionalString(dto.email),
+    facebookUrl: normalizeOptionalString(dto.facebookUrl),
+    instagramUrl: normalizeOptionalString(dto.instagramUrl),
+    operatingHours: dto.operatingHours,
+    cancellationDeadlineHours: dto.cancellationDeadlineHours,
+    patientPortalEnabled: dto.patientPortalEnabled,
+    vaccinationReminderEnabled: dto.vaccinationReminderEnabled,
+    followUpReminderEnabled: dto.followUpReminderEnabled,
+    isPayAtClinicMode: dto.isPayAtClinicMode,
+    payAtClinicNoShowWindowMinutes: dto.payAtClinicNoShowWindowMinutes,
+    privacyPolicyText: normalizeOptionalString(dto.privacyPolicyText),
+    consentVersion: dto.consentVersion,
+    paymentSettings: mapToPaymentSettings(dto.paymentSettings)
+  };
+}
+
+function mapToPaymentSettings(dto: PaymentSettingsDto): PaymentSettings {
+  return {
+    gcashQrImageUrl: normalizeOptionalString(dto.gcashQrImageUrl),
+    gcashAccountName: normalizeOptionalString(dto.gcashAccountName),
+    gcashNumber: normalizeOptionalString(dto.gcashNumber),
+    mayaQrImageUrl: normalizeOptionalString(dto.mayaQrImageUrl),
+    mayaAccountName: normalizeOptionalString(dto.mayaAccountName),
+    mayaNumber: normalizeOptionalString(dto.mayaNumber),
+    bankName: normalizeOptionalString(dto.bankName),
+    bankAccountName: normalizeOptionalString(dto.bankAccountName),
+    bankAccountNumber: normalizeOptionalString(dto.bankAccountNumber)
+  };
+}
+
+function normalizeOptionalString(value: NullableString): string | undefined {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : undefined;
 }

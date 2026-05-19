@@ -8,6 +8,7 @@ import {
   IonInput,
   IonItem,
   IonLabel,
+  IonNote,
   IonSpinner
 } from '@ionic/angular/standalone';
 import { AuthLayoutComponent } from '../components/auth-layout/auth-layout.component';
@@ -35,6 +36,7 @@ function passwordMatchValidator(group: AbstractControl): ValidationErrors | null
     IonItem,
     IonLabel,
     IonInput,
+    IonNote,
     IonCheckbox,
     IonSpinner
   ],
@@ -54,7 +56,9 @@ export class RegisterPage implements OnInit {
 
   registerForm = this.fb.nonNullable.group(
     {
-      fullName: ['', [Validators.required, Validators.minLength(2)]],
+      firstName: ['', [Validators.required, Validators.maxLength(100)]],
+      middleName: ['', [Validators.maxLength(100)]],
+      lastName: ['', [Validators.required, Validators.maxLength(100)]],
       email: ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required, passwordStrengthValidator]],
       confirmPassword: ['', Validators.required],
@@ -91,8 +95,8 @@ export class RegisterPage implements OnInit {
       this.registerForm.markAllAsTouched();
       return;
     }
-    const { fullName, email, password } = this.registerForm.getRawValue();
+    const { firstName, middleName, lastName, email, password } = this.registerForm.getRawValue();
     this.authState.clearError();
-    this.authState.register(fullName, email, password).subscribe({ error: () => undefined });
+    this.authState.register(firstName, middleName || undefined, lastName, email, password).subscribe({ error: () => undefined });
   }
 }

@@ -83,11 +83,17 @@ export class AuthStateService {
     );
   }
 
-  register(fullName: string, email: string, password: string): Observable<AuthUser> {
+  register(
+    firstName: string,
+    middleName: string | undefined,
+    lastName: string,
+    email: string,
+    password: string
+  ): Observable<AuthUser> {
     this.loadingSubject.next(true);
     this.errorSubject.next(null);
 
-    return this.authService.registerPatient(fullName, email, password).pipe(
+    return this.authService.registerPatient(firstName, middleName, lastName, email, password).pipe(
       tap((user) => {
         this.setUser(user);
         this.authService.navigateByRole(user);

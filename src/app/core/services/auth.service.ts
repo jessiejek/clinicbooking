@@ -57,12 +57,19 @@ export class AuthService {
     );
   }
 
-  registerPatient(fullName: string, email: string, password: string): Observable<AuthUser> {
+  registerPatient(
+    firstName: string,
+    middleName: string | undefined,
+    lastName: string,
+    email: string,
+    password: string
+  ): Observable<AuthUser> {
     return this.apiService.post<AuthSessionDto>('/auth/register', {
-      fullName: fullName.trim(),
+      firstName: firstName.trim(),
+      middleName: middleName?.trim() || undefined,
+      lastName: lastName.trim(),
       email: email.trim(),
-      password,
-      confirmPassword: password
+      password
     }).pipe(
       tap((response) => this.storeTokens(response.accessToken, response.refreshToken)),
       map((response) => this.toAuthUser(response.user))

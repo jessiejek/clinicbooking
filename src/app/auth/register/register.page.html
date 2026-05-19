@@ -12,15 +12,30 @@
 
     <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" novalidate>
       <ion-item class="clinic-input" lines="full">
-        <ion-label position="floating">Full name</ion-label>
-        <ion-input formControlName="fullName" autocomplete="name"></ion-input>
+        <ion-label position="floating">First Name *</ion-label>
+        <ion-input formControlName="firstName" type="text" autocomplete="given-name"></ion-input>
       </ion-item>
       <div
         class="form-error-message"
-        *ngIf="registerForm.get('fullName')?.touched && registerForm.get('fullName')?.invalid"
+        *ngIf="registerForm.get('firstName')?.touched && registerForm.get('firstName')?.invalid"
       >
-        <span *ngIf="registerForm.get('fullName')?.errors?.['required']">Name is required</span>
-        <span *ngIf="registerForm.get('fullName')?.errors?.['minlength']">At least 2 characters</span>
+        <ion-note color="danger">First name is required.</ion-note>
+      </div>
+
+      <ion-item class="clinic-input" lines="full">
+        <ion-label position="floating">Middle Name</ion-label>
+        <ion-input formControlName="middleName" type="text" autocomplete="additional-name"></ion-input>
+      </ion-item>
+
+      <ion-item class="clinic-input" lines="full">
+        <ion-label position="floating">Last Name *</ion-label>
+        <ion-input formControlName="lastName" type="text" autocomplete="family-name"></ion-input>
+      </ion-item>
+      <div
+        class="form-error-message"
+        *ngIf="registerForm.get('lastName')?.touched && registerForm.get('lastName')?.invalid"
+      >
+        <ion-note color="danger">Last name is required.</ion-note>
       </div>
 
       <ion-item class="clinic-input" lines="full">
