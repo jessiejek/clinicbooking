@@ -8,10 +8,11 @@ import { AUTH_RETRY_ATTEMPTED, SKIP_AUTH_INTERCEPTOR } from './auth-http.tokens'
 
 function isPublicAuthEndpoint(url: string): boolean {
   const normalizedUrl = url.toLowerCase();
-  return ![
+  return [
     '/auth/login',
     '/auth/register',
     '/auth/register-patient',
+    '/auth/google',
     '/auth/refresh',
     '/auth/logout'
   ].some((path) => normalizedUrl.includes(path));

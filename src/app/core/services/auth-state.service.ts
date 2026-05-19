@@ -55,6 +55,20 @@ export class AuthStateService {
     );
   }
 
+  loginWithGoogle(idToken: string): Observable<AuthUser> {
+    this.loadingSubject.next(true);
+    this.errorSubject.next(null);
+
+    return this.authService.loginWithGoogle(idToken).pipe(
+      tap((user) => {
+        this.setUser(user);
+        this.authService.navigateByRole(user);
+      }),
+      catchError((err: unknown) => this.handleAuthError(err, 'Google login failed.')),
+      finalize(() => this.loadingSubject.next(false))
+    );
+  }
+
   register(fullName: string, email: string, password: string): Observable<AuthUser> {
     this.loadingSubject.next(true);
     this.errorSubject.next(null);

@@ -3,7 +3,14 @@ import { Injectable, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { Observable, catchError, map, of, tap, throwError } from 'rxjs';
 import { ApiService } from './api.service';
-import { AuthSessionDto, AuthUser, AuthUserDto, RefreshTokenDto, Role } from '../models';
+import {
+  AuthSessionDto,
+  AuthUser,
+  AuthUserDto,
+  GoogleAuthRequest,
+  RefreshTokenDto,
+  Role
+} from '../models';
 import { SKIP_AUTH_INTERCEPTOR } from '../interceptors/auth-http.tokens';
 import { TokenService } from './token.service';
 
@@ -19,6 +26,15 @@ export class AuthService {
       email: email.trim(),
       password
     }).pipe(
+      tap((response) => this.storeTokens(response.accessToken, response.refreshToken)),
+      map((response) => this.toAuthUser(response.user))
+    );
+  }
+
+  loginWithGoogle(idToken: string): Observable<AuthUser> {
+    const payload: GoogleAuthRequest = { idToken };
+
+    return this.apiService.post<AuthSessionDto>('/auth/google', payload).pipe(
       tap((response) => this.storeTokens(response.accessToken, response.refreshToken)),
       map((response) => this.toAuthUser(response.user))
     );

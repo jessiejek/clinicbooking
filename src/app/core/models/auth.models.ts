@@ -28,3 +28,7 @@ export interface RefreshTokenDto {
   accessToken: string;
   refreshToken: string;
 }
+
+export interface GoogleAuthRequest {
+  idToken: string | null;
+}
