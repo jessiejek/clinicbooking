@@ -1,213 +1,268 @@
-import { AsyncPipe, NgFor, NgIf } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
-import { FormBuilder, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
+import { NgFor, NgIf } from '@angular/common';
+import { Component, DestroyRef, OnInit, inject } from '@angular/core';
+import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { IonModal } from '@ionic/angular/standalone';
-import { debounceTime, distinctUntilChanged } from 'rxjs';
-import { Patient } from '../../../core/models';
-import { PatientStateService } from '../../../core/services/patient-state.service';
+import { IonIcon, ModalController, ToastController } from '@ionic/angular/standalone';
+import { addIcons } from 'ionicons';
+import { addOutline, searchOutline } from 'ionicons/icons';
+import { debounceTime, distinctUntilChanged, finalize } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { PatientSummary } from '../../../core/models';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { SkeletonComponent } from '../../../shared/components/skeleton/skeleton.component';
-import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
+import { AdminPatientCreateModalComponent } from './admin-patient-create-modal.component';
+import { AdminPatientsService } from '../services/admin-patients.service';
 
 @Component({
   selector: 'app-admin-patients-page',
   standalone: true,
-  imports: [AsyncPipe, NgFor, NgIf, ReactiveFormsModule, EmptyStateComponent, SkeletonComponent, StatusBadgeComponent, IonModal],
+  imports: [NgFor, NgIf, ReactiveFormsModule, EmptyStateComponent, SkeletonComponent, IonIcon],
   template: `
-    <section class="page-shell">
-      <div class="page-shell__header">
-        <div>
+    <section class="page-shell patients-page">
+      <div class="page-shell__header patients-header">
+        <div class="patients-header__copy">
           <h2 class="page-title">Patients</h2>
           <p class="page-subtitle">Search records and register new patients.</p>
         </div>
-        <button class="btn-primary" type="button" (click)="openModal()">Add Patient</button>
       </div>
 
-      <input class="filter-input" [formControl]="searchControl" placeholder="Search by name, code, contact, or email" />
+      <div class="patients-toolbar">
+        <label class="patients-search" aria-label="Search patients">
+          <ion-icon name="search-outline" aria-hidden="true" class="patients-search__icon"></ion-icon>
+          <input
+            class="filter-input patients-search__input"
+            [formControl]="searchControl"
+            placeholder="Search by name, code, contact, or email"
+          />
+        </label>
 
-      <div class="clinic-card" *ngIf="!isLoading && filteredPatients.length > 0">
-        <div class="table-desktop">
-          <table class="clinic-table">
+        <button class="btn-primary patients-toolbar__add" type="button" (click)="openAddPatientModal()">
+          <ion-icon name="add-outline" aria-hidden="true"></ion-icon>
+          <span>Add Patient</span>
+        </button>
+      </div>
+
+      <div class="patients-meta" *ngIf="!isLoading">
+        <span>{{ countLabel }}</span>
+        <div class="patients-pagination" *ngIf="totalPages > 1">
+          <button
+            class="btn-ghost patients-pagination__button"
+            type="button"
+            (click)="previousPage()"
+            [disabled]="!canPreviousPage"
+          >
+            Previous
+          </button>
+          <span class="patients-pagination__page">
+            Page {{ currentPage }} of {{ totalPages }}
+          </span>
+          <button
+            class="btn-ghost patients-pagination__button"
+            type="button"
+            (click)="nextPage()"
+            [disabled]="!canNextPage"
+          >
+            Next
+          </button>
+        </div>
+      </div>
+
+      <div class="clinic-card" *ngIf="!isLoading && patients.length > 0">
+        <div class="table-scroll-wrap">
+          <table class="clinic-table patients-table">
             <thead>
               <tr>
                 <th>Code</th>
-                <th>Name</th>
-                <th>Sex</th>
-                <th>DOB</th>
+                <th>Full Name</th>
                 <th>Contact</th>
-                <th>Email</th>
-                <th>Registered</th>
+                <th>DOB</th>
               </tr>
             </thead>
             <tbody>
               <tr
-                *ngFor="let patient of filteredPatients"
+                *ngFor="let patient of patients"
                 tabindex="0"
                 role="button"
-                [attr.aria-label]="'Open patient record for ' + patient.firstName + ' ' + patient.lastName"
+                [attr.aria-label]="'Open patient record for ' + patientDisplayName(patient)"
                 (click)="openDetail(patient.id)"
                 (keydown.enter)="openDetail(patient.id)"
               >
-                <td class="data-mono">{{ patient.patientCode }}</td>
-                <td>{{ patient.firstName }} {{ patient.lastName }}</td>
-                <td>{{ patient.sex }}</td>
-                <td>{{ patient.dateOfBirth }}</td>
-                <td>{{ patient.contactNumber }}</td>
-                <td>{{ patient.email }}</td>
-                <td><app-status-badge status="Active"></app-status-badge></td>
+                <td>
+                  <span class="patient-code-chip">{{ patient.patientCode }}</span>
+                </td>
+                <td>
+                  <strong>{{ patientDisplayName(patient) }}</strong>
+                </td>
+                <td>{{ patient.contactNumber || 'No phone provided' }}</td>
+                <td class="data-mono">{{ patient.dateOfBirth }}</td>
               </tr>
             </tbody>
           </table>
         </div>
-
-        <div class="table-mobile">
-          <article
-            *ngFor="let patient of filteredPatients"
-            class="mobile-card"
-            tabindex="0"
-            role="button"
-            [attr.aria-label]="'Open patient record for ' + patient.firstName + ' ' + patient.lastName"
-            (click)="openDetail(patient.id)"
-            (keydown.enter)="openDetail(patient.id)"
-          >
-            <div class="mobile-card__header">
-              <div>
-                <div class="mobile-card__name">{{ patient.firstName }} {{ patient.lastName }}</div>
-                <div class="mobile-card__code">Patient Code {{ patient.patientCode }}</div>
-              </div>
-              <app-status-badge status="Active"></app-status-badge>
-            </div>
-
-            <div class="mobile-card__row">
-              <span class="mobile-card__label">Sex</span>
-              <span>{{ patient.sex }}</span>
-            </div>
-
-            <div class="mobile-card__row">
-              <span class="mobile-card__label">DOB</span>
-              <span class="data-mono">{{ patient.dateOfBirth }}</span>
-            </div>
-
-            <div class="mobile-card__row">
-              <span class="mobile-card__label">Contact</span>
-              <span>{{ patient.contactNumber }}</span>
-            </div>
-
-            <div class="mobile-card__row">
-              <span class="mobile-card__label">Email</span>
-              <span>{{ patient.email }}</span>
-            </div>
-          </article>
-        </div>
       </div>
 
-        <app-skeleton *ngIf="isLoading" variant="row" [count]="5"></app-skeleton>
+      <div class="patients-loading" *ngIf="isLoading">
+        <app-skeleton variant="row" [count]="5"></app-skeleton>
+      </div>
 
+      <div class="patients-empty" *ngIf="!isLoading && patients.length === 0">
         <app-empty-state
-          *ngIf="!isLoading && filteredPatients.length === 0"
           icon="people-outline"
           title="No patients found"
-          description="Try a different search or add a new patient."
+          description="Try adjusting your search or add a new patient."
           ctaLabel="Add Patient"
-          (ctaClick)="openModal()"
+          (ctaClick)="openAddPatientModal()"
         ></app-empty-state>
+      </div>
     </section>
-
-    <ion-modal [isOpen]="isModalOpen" (didDismiss)="isModalOpen = false">
-      <ng-template>
-        <div class="modal-shell">
-          <h3>Add Patient</h3>
-          <form class="modal-form" [formGroup]="form" (ngSubmit)="submit()">
-            <input class="filter-input" formControlName="firstName" placeholder="First Name" />
-            <input class="filter-input" formControlName="lastName" placeholder="Last Name" />
-            <select class="filter-input" formControlName="sex">
-              <option value="Male">Male</option>
-              <option value="Female">Female</option>
-            </select>
-            <input class="filter-input" type="date" formControlName="dateOfBirth" />
-            <input class="filter-input" formControlName="contactNumber" placeholder="Contact Number" />
-            <input class="filter-input" formControlName="email" placeholder="Email" />
-            <div class="modal-actions">
-              <button type="button" class="btn-ghost" (click)="isModalOpen = false">Cancel</button>
-              <button type="submit" class="btn-primary">Save Patient</button>
-            </div>
-          </form>
-        </div>
-      </ng-template>
-    </ion-modal>
   `,
   styleUrl: './patients.page.scss'
 })
 export class PatientsPage implements OnInit {
-  private readonly patientState = inject(PatientStateService);
+  private readonly adminPatientsService = inject(AdminPatientsService);
+  private readonly modalCtrl = inject(ModalController);
   private readonly router = inject(Router);
-  private readonly fb = inject(FormBuilder);
+  private readonly toastCtrl = inject(ToastController);
+  private readonly destroyRef = inject(DestroyRef);
 
+  constructor() {
+    addIcons({ addOutline, searchOutline });
+  }
+
+  readonly pageSize = 20;
   searchControl = new FormControl('', { nonNullable: true });
-  patients: Patient[] = [];
-  filteredPatients: Patient[] = [];
+  patients: PatientSummary[] = [];
+  total = 0;
+  currentPage = 1;
+  totalPages = 1;
   isLoading = false;
-  isModalOpen = false;
-  form = this.fb.group({
-    firstName: ['', Validators.required],
-    lastName: ['', Validators.required],
-    sex: ['Male', Validators.required],
-    dateOfBirth: ['1990-01-01', Validators.required],
-    contactNumber: ['', Validators.required],
-    email: ['', Validators.email]
-  });
+  private searchTerm = '';
+  private loadToken = 0;
 
   ngOnInit(): void {
-    this.patientState.getPatients().subscribe((patients) => {
-      this.patients = patients;
-      this.filteredPatients = patients;
-    });
-    this.patientState.isLoading$.subscribe((loading) => (this.isLoading = loading));
-    this.searchControl.valueChanges.pipe(debounceTime(300), distinctUntilChanged()).subscribe((query) => {
-      const q = query.trim().toLowerCase();
-      this.filteredPatients = !q
-        ? this.patients
-        : this.patients.filter((patient) =>
-            [patient.firstName, patient.lastName, patient.patientCode, patient.contactNumber ?? '', patient.email ?? '']
-              .join(' ')
-              .toLowerCase()
-              .includes(q)
-          );
-    });
+    this.searchControl.valueChanges
+      .pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
+      .subscribe((query) => {
+        this.searchTerm = query.trim();
+        this.loadPatients(1);
+      });
+
+    this.loadPatients(1);
+  }
+
+  get canPreviousPage(): boolean {
+    return this.currentPage > 1 && !this.isLoading;
+  }
+
+  get canNextPage(): boolean {
+    return this.currentPage < this.totalPages && !this.isLoading;
+  }
+
+  get rangeStart(): number {
+    if (this.total === 0) {
+      return 0;
+    }
+
+    return (this.currentPage - 1) * this.pageSize + 1;
+  }
+
+  get rangeEnd(): number {
+    if (this.total === 0) {
+      return 0;
+    }
+
+    return Math.min(this.total, this.rangeStart + this.patients.length - 1);
+  }
+
+  get countLabel(): string {
+    if (this.total === 0) {
+      return 'Showing 0 of 0 patients';
+    }
+
+    return `Showing ${this.rangeStart}-${this.rangeEnd} of ${this.total} patients`;
   }
 
   openDetail(id: string): void {
     void this.router.navigate(['/admin/patients', id]);
   }
 
-  openModal(): void {
-    this.isModalOpen = true;
-    this.form.reset({
-      firstName: '',
-      lastName: '',
-      sex: 'Male',
-      dateOfBirth: '1990-01-01',
-      contactNumber: '',
-      email: ''
+  async openAddPatientModal(): Promise<void> {
+    const modal = await this.modalCtrl.create({
+      component: AdminPatientCreateModalComponent,
+      cssClass: 'admin-patient-create-modal'
     });
+
+    await modal.present();
+
+    const result = await modal.onDidDismiss<{ created?: boolean }>();
+    if (result.role === 'saved' || result.data?.created) {
+      this.loadPatients(1);
+    }
   }
 
-  submit(): void {
-    if (this.form.invalid) {
-      this.form.markAllAsTouched();
-      return;
+  previousPage(): void {
+    if (this.canPreviousPage) {
+      this.loadPatients(this.currentPage - 1);
     }
-    this.patientState.addPatient({
-          firstName: this.form.value.firstName ?? '',
-          lastName: this.form.value.lastName ?? '',
-          sex: this.form.value.sex ?? 'Male',
-          dateOfBirth: this.form.value.dateOfBirth ?? '1990-01-01',
-          contactNumber: this.form.value.contactNumber ?? '',
-          email: this.form.value.email ?? '',
-          isGuest: false,
-          consentVersion: 'v1.0'
-        });
-    this.isModalOpen = false;
+  }
+
+  nextPage(): void {
+    if (this.canNextPage) {
+      this.loadPatients(this.currentPage + 1);
+    }
+  }
+
+  private loadPatients(page: number): void {
+    const nextPage = Math.max(1, page);
+    const token = ++this.loadToken;
+    this.isLoading = true;
+
+    this.adminPatientsService
+      .getPatients(nextPage, this.pageSize, this.searchTerm)
+      .pipe(
+        finalize(() => {
+          if (token === this.loadToken) {
+            this.isLoading = false;
+          }
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        next: (result) => {
+          if (token !== this.loadToken) {
+            return;
+          }
+
+          this.patients = result.items;
+          this.total = result.total;
+          this.currentPage = Math.max(1, result.page || nextPage);
+          this.totalPages = Math.max(1, result.totalPages || 1);
+        },
+        error: async () => {
+          if (token !== this.loadToken) {
+            return;
+          }
+
+          this.patients = [];
+          this.total = 0;
+          this.currentPage = 1;
+          this.totalPages = 1;
+          await this.presentToast('Failed to load patients.', 'danger');
+        }
+      });
+  }
+
+  private async presentToast(message: string, color: 'success' | 'danger' = 'success'): Promise<void> {
+    const toast = await this.toastCtrl.create({
+      message,
+      duration: 2000,
+      color,
+      position: 'top'
+    });
+    await toast.present();
+  }
+
+  patientDisplayName(patient: PatientSummary): string {
+    return patient.fullName || [patient.firstName, patient.middleName, patient.lastName].filter(Boolean).join(' ');
   }
 }

@@ -1,82 +1,92 @@
 import { NgFor, NgIf } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
-import { FormBuilder, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Component, DestroyRef, OnInit, inject } from '@angular/core';
+import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { IonModal } from '@ionic/angular/standalone';
-import { debounceTime, distinctUntilChanged } from 'rxjs';
-import { Patient } from '../../../core/models';
-import { PatientStateService } from '../../../core/services/patient-state.service';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { debounceTime, distinctUntilChanged, finalize } from 'rxjs';
+import { PatientSummary } from '../../../core/models';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { SkeletonComponent } from '../../../shared/components/skeleton/skeleton.component';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
+import { StaffService } from '../services/staff.service';
 
 @Component({
   selector: 'app-staff-patients-page',
   standalone: true,
-  imports: [NgFor, NgIf, ReactiveFormsModule, EmptyStateComponent, SkeletonComponent, StatusBadgeComponent, IonModal],
+  imports: [NgFor, NgIf, ReactiveFormsModule, EmptyStateComponent, SkeletonComponent, StatusBadgeComponent],
   template: `
     <section class="page-shell">
       <div class="page-shell__header">
         <div>
           <h2 class="page-title">Patients</h2>
-          <p class="page-subtitle">Search records and register new patients.</p>
+          <p class="page-subtitle">Search records and review patient profiles.</p>
         </div>
-        <button class="btn-primary" type="button" (click)="openModal()">Add Patient</button>
       </div>
 
-      <input class="filter-input" [formControl]="searchControl" placeholder="Search by name, code, contact, or email" />
+      <input
+        class="filter-input"
+        [formControl]="searchControl"
+        placeholder="Search by name, code, contact, or email"
+        aria-label="Search patients"
+      />
 
-      <div class="clinic-card patients-card">
-        <div class="patients-table-wrap" *ngIf="!isLoading && filteredPatients.length > 0">
+      <div class="patients-meta" *ngIf="!isLoading">
+        <span>{{ countLabel }}</span>
+      </div>
+
+      <div class="clinic-card patients-card" *ngIf="!isLoading && patients.length > 0">
+        <div class="patients-table-wrap">
           <table class="clinic-table patients-table">
             <thead>
               <tr>
                 <th>Code</th>
-                <th>Name</th>
+                <th>Full Name</th>
                 <th>Sex</th>
                 <th>DOB</th>
                 <th>Contact</th>
                 <th>Email</th>
-                <th>Registered</th>
+                <th>Status</th>
               </tr>
             </thead>
             <tbody>
               <tr
-                *ngFor="let patient of filteredPatients"
+                *ngFor="let patient of patients"
                 tabindex="0"
                 role="button"
-                [attr.aria-label]="'Open patient record for ' + patient.firstName + ' ' + patient.lastName"
+                [attr.aria-label]="'Open patient record for ' + patientDisplayName(patient)"
                 (click)="openDetail(patient.id)"
                 (keydown.enter)="openDetail(patient.id)"
               >
                 <td class="data-mono">{{ patient.patientCode }}</td>
-                <td>{{ patient.firstName }} {{ patient.lastName }}</td>
+                <td>{{ patientDisplayName(patient) }}</td>
                 <td>{{ patient.sex }}</td>
                 <td>{{ patient.dateOfBirth }}</td>
-                <td>{{ patient.contactNumber }}</td>
-                <td>{{ patient.email }}</td>
-                <td><app-status-badge status="Active"></app-status-badge></td>
+                <td>{{ patient.contactNumber || 'No phone provided' }}</td>
+                <td>{{ patient.email || 'No email provided' }}</td>
+                <td>
+                  <app-status-badge [status]="patient.isGuest ? 'Guest' : 'Registered'"></app-status-badge>
+                </td>
               </tr>
             </tbody>
           </table>
         </div>
 
-        <div class="patients-mobile-list" *ngIf="!isLoading && filteredPatients.length > 0">
+        <div class="patients-mobile-list">
           <article
             class="patient-mobile-card"
-              *ngFor="let patient of filteredPatients"
-              tabindex="0"
-              role="button"
-              [attr.aria-label]="'Open patient record for ' + patient.firstName + ' ' + patient.lastName"
-              (click)="openDetail(patient.id)"
-              (keydown.enter)="openDetail(patient.id)"
-            >
+            *ngFor="let patient of patients"
+            tabindex="0"
+            role="button"
+            [attr.aria-label]="'Open patient record for ' + patientDisplayName(patient)"
+            (click)="openDetail(patient.id)"
+            (keydown.enter)="openDetail(patient.id)"
+          >
             <div class="patient-mobile-card__header">
               <div>
-                <strong>{{ patient.firstName }} {{ patient.lastName }}</strong>
+                <strong>{{ patientDisplayName(patient) }}</strong>
                 <span class="data-mono">{{ patient.patientCode }}</span>
               </div>
-              <app-status-badge status="Active"></app-status-badge>
+              <app-status-badge [status]="patient.isGuest ? 'Guest' : 'Registered'"></app-status-badge>
             </div>
 
             <dl class="patient-mobile-card__details">
@@ -99,114 +109,115 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
             </dl>
           </article>
         </div>
-
-        <app-skeleton *ngIf="isLoading" variant="row" [count]="5"></app-skeleton>
-
-        <app-empty-state
-          *ngIf="!isLoading && filteredPatients.length === 0"
-          icon="people-outline"
-          title="No patients found"
-          description="Try a different search or add a new patient."
-          ctaLabel="Add Patient"
-          (ctaClick)="openModal()"
-        ></app-empty-state>
       </div>
-    </section>
 
-    <ion-modal [isOpen]="isModalOpen" (didDismiss)="isModalOpen = false">
-      <ng-template>
-        <div class="modal-shell">
-          <h3>Add Patient</h3>
-          <form class="modal-form" [formGroup]="form" (ngSubmit)="submit()">
-            <input class="filter-input" formControlName="firstName" placeholder="First Name" />
-            <input class="filter-input" formControlName="lastName" placeholder="Last Name" />
-            <select class="filter-input" formControlName="sex">
-              <option value="Male">Male</option>
-              <option value="Female">Female</option>
-            </select>
-            <input class="filter-input" type="date" formControlName="dateOfBirth" />
-            <input class="filter-input" formControlName="contactNumber" placeholder="Contact Number" />
-            <input class="filter-input" formControlName="email" placeholder="Email" />
-            <div class="modal-actions">
-              <button type="button" class="btn-ghost" (click)="isModalOpen = false">Cancel</button>
-              <button type="submit" class="btn-primary">Save Patient</button>
-            </div>
-          </form>
-        </div>
-      </ng-template>
-    </ion-modal>
+      <app-skeleton *ngIf="isLoading" variant="row" [count]="5"></app-skeleton>
+
+      <app-empty-state
+        *ngIf="!isLoading && patients.length === 0"
+        icon="people-outline"
+        title="No patients found"
+        description="Try a different search term."
+      ></app-empty-state>
+    </section>
   `,
   styleUrl: './staff-patients.page.scss'
 })
 export class StaffPatientsPage implements OnInit {
-  private readonly patientState = inject(PatientStateService);
+  private readonly staffService = inject(StaffService);
   private readonly router = inject(Router);
-  private readonly fb = inject(FormBuilder);
+  private readonly destroyRef = inject(DestroyRef);
 
+  readonly pageSize = 20;
   searchControl = new FormControl('', { nonNullable: true });
-  patients: Patient[] = [];
-  filteredPatients: Patient[] = [];
+  patients: PatientSummary[] = [];
+  total = 0;
+  currentPage = 1;
+  totalPages = 1;
   isLoading = false;
-  isModalOpen = false;
-  form = this.fb.group({
-    firstName: ['', Validators.required],
-    lastName: ['', Validators.required],
-    sex: ['Male', Validators.required],
-    dateOfBirth: ['1990-01-01', Validators.required],
-    contactNumber: ['', Validators.required],
-    email: ['', Validators.email]
-  });
+
+  private searchTerm = '';
+  private loadToken = 0;
 
   ngOnInit(): void {
-    this.patientState.getPatients().subscribe((patients) => {
-      this.patients = patients;
-      this.filteredPatients = patients;
-    });
-    this.patientState.isLoading$.subscribe((loading) => (this.isLoading = loading));
-    this.searchControl.valueChanges.pipe(debounceTime(300), distinctUntilChanged()).subscribe((query) => {
-      const q = query.trim().toLowerCase();
-      this.filteredPatients = !q
-        ? this.patients
-        : this.patients.filter((patient) =>
-            [patient.firstName, patient.lastName, patient.patientCode, patient.contactNumber ?? '', patient.email ?? '']
-              .join(' ')
-              .toLowerCase()
-              .includes(q)
-          );
-    });
+    this.searchControl.valueChanges
+      .pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
+      .subscribe((query) => {
+        this.searchTerm = query.trim();
+        this.loadPatients(1);
+      });
+
+    this.loadPatients(1);
+  }
+
+  get rangeStart(): number {
+    if (this.total === 0) {
+      return 0;
+    }
+
+    return (this.currentPage - 1) * this.pageSize + 1;
+  }
+
+  get rangeEnd(): number {
+    if (this.total === 0) {
+      return 0;
+    }
+
+    return Math.min(this.total, this.rangeStart + this.patients.length - 1);
+  }
+
+  get countLabel(): string {
+    if (this.total === 0) {
+      return 'Showing 0 of 0 patients';
+    }
+
+    return `Showing ${this.rangeStart}-${this.rangeEnd} of ${this.total} patients`;
   }
 
   openDetail(id: string): void {
     void this.router.navigate(['/staff/patients', id]);
   }
 
-  openModal(): void {
-    this.isModalOpen = true;
-    this.form.reset({
-      firstName: '',
-      lastName: '',
-      sex: 'Male',
-      dateOfBirth: '1990-01-01',
-      contactNumber: '',
-      email: ''
-    });
+  patientDisplayName(patient: PatientSummary): string {
+    return patient.fullName || [patient.firstName, patient.middleName, patient.lastName].filter(Boolean).join(' ') || 'Patient';
   }
 
-  submit(): void {
-    if (this.form.invalid) {
-      this.form.markAllAsTouched();
-      return;
-    }
-    this.patientState.addPatient({
-          firstName: this.form.value.firstName ?? '',
-          lastName: this.form.value.lastName ?? '',
-          sex: this.form.value.sex ?? 'Male',
-          dateOfBirth: this.form.value.dateOfBirth ?? '1990-01-01',
-          contactNumber: this.form.value.contactNumber ?? '',
-          email: this.form.value.email ?? '',
-          isGuest: false,
-          consentVersion: 'v1.0'
-        });
-    this.isModalOpen = false;
+  private loadPatients(page: number): void {
+    const nextPage = Math.max(1, page);
+    const token = ++this.loadToken;
+    this.isLoading = true;
+
+    this.staffService
+      .getPatients(nextPage, this.pageSize, this.searchTerm)
+      .pipe(
+        finalize(() => {
+          if (token === this.loadToken) {
+            this.isLoading = false;
+          }
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        next: (result) => {
+          if (token !== this.loadToken) {
+            return;
+          }
+
+          this.patients = result.items;
+          this.total = result.total;
+          this.currentPage = Math.max(1, result.page || nextPage);
+          this.totalPages = Math.max(1, result.totalPages || 1);
+        },
+        error: () => {
+          if (token !== this.loadToken) {
+            return;
+          }
+
+          this.patients = [];
+          this.total = 0;
+          this.currentPage = 1;
+          this.totalPages = 1;
+        }
+      });
   }
 }

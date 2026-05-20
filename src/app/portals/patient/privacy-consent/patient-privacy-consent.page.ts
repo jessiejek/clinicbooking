@@ -1,12 +1,14 @@
 import { DatePipe, NgIf } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { IonButton, IonCheckbox, IonItem, IonLabel, ToastController } from '@ionic/angular/standalone';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { catchError, of } from 'rxjs';
 import { AuthUser, ClinicSettings, Patient } from '../../../core/models';
 import { AuthStateService } from '../../../core/services/auth-state.service';
 import { ClinicSettingsService } from '../../../core/services/clinic-settings.service';
-import { PatientStateService } from '../../../core/services/patient-state.service';
+import { PatientService } from '../services/patient.service';
 
 @Component({
   selector: 'app-patient-privacy-consent-page',
@@ -46,9 +48,10 @@ import { PatientStateService } from '../../../core/services/patient-state.servic
 export class PatientPrivacyConsentPage implements OnInit {
   private readonly authState = inject(AuthStateService);
   private readonly router = inject(Router);
-  private readonly patientState = inject(PatientStateService);
+  private readonly patientService = inject(PatientService);
   private readonly clinicSettingsService = inject(ClinicSettingsService);
   private readonly toastCtrl = inject(ToastController);
+  private readonly destroyRef = inject(DestroyRef);
 
   currentUser: AuthUser | null = null;
   currentPatient: Patient | null = null;
@@ -58,12 +61,17 @@ export class PatientPrivacyConsentPage implements OnInit {
   ngOnInit(): void {
     this.settings = this.clinicSettingsService.load();
 
-    this.authState.currentUser$.subscribe((user) => {
+    this.authState.currentUser$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((user) => {
       this.currentUser = user;
       if (user) {
-        this.patientState.getPatientByUserId(user.id).subscribe((patient) => {
-          this.currentPatient = patient ?? null;
-        });
+        this.patientService
+          .getMyProfile()
+          .pipe(catchError(() => of(null)), takeUntilDestroyed(this.destroyRef))
+          .subscribe((patient) => {
+            this.currentPatient = patient ?? null;
+          });
       }
     });
   }
@@ -73,19 +81,30 @@ export class PatientPrivacyConsentPage implements OnInit {
       return;
     }
 
-    const updated: Patient = {
-      ...this.currentPatient,
-      consentVersion: this.settings.consentVersion,
-      consentedAt: new Date().toISOString()
-    };
-    this.patientState.savePatient(updated);
-    const toast = await this.toastCtrl.create({
-      message: 'Privacy consent accepted.',
-      duration: 2200,
-      color: 'success',
-      position: 'top'
-    });
-    await toast.present();
-    void this.router.navigate(['/patient/dashboard']);
+    this.patientService
+      .submitConsent(this.settings.consentVersion)
+      .pipe(catchError(() => of(null)), takeUntilDestroyed(this.destroyRef))
+      .subscribe(async (updated) => {
+        if (!updated) {
+          const errorToast = await this.toastCtrl.create({
+            message: 'Unable to submit privacy consent.',
+            duration: 2200,
+            color: 'danger',
+            position: 'top'
+          });
+          await errorToast.present();
+          return;
+        }
+
+        this.currentPatient = updated;
+        const toast = await this.toastCtrl.create({
+          message: 'Privacy consent accepted.',
+          duration: 2200,
+          color: 'success',
+          position: 'top'
+        });
+        await toast.present();
+        void this.router.navigate(['/patient/dashboard']);
+      });
   }
 }

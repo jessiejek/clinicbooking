@@ -1,14 +1,50 @@
-import { Injectable } from '@angular/core';
-import { delay, of } from 'rxjs';
+import { Injectable, inject } from '@angular/core';
+import { Observable, delay, map, of } from 'rxjs';
+import { ApiService } from '../../../core/services/api.service';
 import { MockDataService } from '../../../core/services/mock-data.service';
+import { PagedResult, PatientDetail, PatientSummary } from '../../../core/models';
+
+type NullableString = string | null | undefined;
+
+interface PatientDto {
+  id: string;
+  patientCode?: NullableString;
+  firstName?: NullableString;
+  middleName?: NullableString;
+  lastName?: NullableString;
+  fullName?: NullableString;
+  dateOfBirth?: NullableString;
+  sex?: NullableString;
+  contactNumber?: NullableString;
+  email?: NullableString;
+  isGuest?: boolean | null;
+}
+
+interface PagedResultDto<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
 
 @Injectable({ providedIn: 'root' })
 export class StaffService {
-  constructor(private readonly mockData: MockDataService) {}
+  private readonly apiService = inject(ApiService);
+  private readonly mockData = inject(MockDataService);
 
   getDoctors = () => of(this.mockData.getDoctors()).pipe(delay(300));
 
-  getPatients = () => of(this.mockData.getPatients()).pipe(delay(300));
+  getPatients = (page = 1, pageSize = 20, search?: string) =>
+    this.apiService
+      .get<PagedResultDto<PatientDto>>('/patients', {
+        params: buildPatientsParams(page, pageSize, search)
+      })
+      .pipe(map((result) => mapPagedPatientSummaries(result)));
+
+  getPatientById(id: string): Observable<PatientDetail> {
+    return this.apiService.get<PatientDetail>(`/patients/${encodeURIComponent(id)}`);
+  }
 
   getBookings = () => of(this.mockData.getBookings()).pipe(delay(400));
 
@@ -19,4 +55,70 @@ export class StaffService {
         return new Date(booking.appointmentDate).toDateString() === today;
       })
     ).pipe(delay(300));
+}
+
+function mapPagedPatientSummaries(result: PagedResultDto<PatientDto>): PagedResult<PatientSummary> {
+  return {
+    items: result.items.map((item) => mapPatientSummary(item)),
+    total: normalizeNumber(result.total),
+    page: normalizeNumber(result.page) || 1,
+    pageSize: normalizeNumber(result.pageSize) || result.items.length || 20,
+    totalPages: normalizeNumber(result.totalPages)
+  };
+}
+
+function mapPatientSummary(dto: PatientDto): PatientSummary {
+  const firstName = normalizeString(dto.firstName) || '';
+  const middleName = normalizeString(dto.middleName);
+  const lastName = normalizeString(dto.lastName) || '';
+
+  return {
+    id: dto.id,
+    patientCode: normalizeString(dto.patientCode) || dto.id,
+    firstName,
+    middleName,
+    lastName,
+    fullName: resolvePatientFullName(dto),
+    dateOfBirth: normalizeString(dto.dateOfBirth) || '',
+    sex: normalizeString(dto.sex) || '',
+    contactNumber: normalizeString(dto.contactNumber),
+    email: normalizeString(dto.email),
+    isGuest: Boolean(dto.isGuest)
+  };
+}
+
+function resolvePatientFullName(dto: PatientDto): string {
+  const explicitName = normalizeString(dto.fullName);
+  if (explicitName) {
+    return explicitName;
+  }
+
+  const parts = [dto.firstName, dto.middleName, dto.lastName]
+    .map((value) => normalizeString(value))
+    .filter((value): value is string => Boolean(value));
+
+  return parts.length ? parts.join(' ') : 'Patient';
+}
+
+function buildPatientsParams(page: number, pageSize: number, search?: string) {
+  const params: Record<string, string> = {
+    page: String(Math.max(1, page)),
+    pageSize: String(Math.max(1, pageSize))
+  };
+
+  const trimmedSearch = search?.trim();
+  if (trimmedSearch) {
+    params['search'] = trimmedSearch;
+  }
+
+  return params;
+}
+
+function normalizeString(value: NullableString): string | undefined {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+function normalizeNumber(value: number | null | undefined): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
 }

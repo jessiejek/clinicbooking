@@ -8,33 +8,212 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-4);
-  margin-bottom: var(--space-8);
+  margin-bottom: var(--space-2);
+}
+
+.page-shell__heading {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.page-kicker {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.72rem;
+  font-weight: var(--font-semibold);
+  color: var(--color-text-muted);
 }
 
 .page-title {
-  margin: var(--space-2) 0 0;
+  margin: 0;
   font-size: var(--text-2xl);
   font-weight: var(--font-bold);
+  line-height: 1.1;
 }
 
 .page-subtitle {
-  margin-top: var(--space-2);
+  margin: 0;
 }
 
-.overview-grid {
+.page-subtitle--muted {
+  color: var(--color-text-muted);
+}
+
+.detail-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+ion-segment {
+  width: 100%;
+  max-width: 46rem;
+}
+
+.loading-panel,
+.detail-grid {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.loading-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-4);
+  margin-top: var(--space-3);
 }
 
-.profile-card {
+.loading-card {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.error-card {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: start;
+}
+
+.error-card__eyebrow {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: var(--font-semibold);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.error-card__title {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: var(--font-semibold);
+}
+
+.error-card__description {
+  margin: 0;
+  color: var(--color-text-muted);
+  max-width: 48rem;
+}
+
+.error-card__actions {
   display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.detail-card {
+  display: grid;
   gap: var(--space-4);
+  min-width: 0;
+}
+
+.detail-card--full {
+  grid-column: 1 / -1;
+}
+
+.patient-hero {
+  display: flex;
   align-items: center;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.patient-hero__content {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.patient-hero__name {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: var(--font-semibold);
+}
+
+.patient-code {
+  font-size: 0.75rem;
+  font-weight: var(--font-semibold);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.detail-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4) var(--space-5);
+  margin: 0;
+}
+
+.detail-list--insurance {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.detail-item {
+  min-width: 0;
+}
+
+.detail-item--full {
+  grid-column: 1 / -1;
+}
+
+.detail-item dt {
+  margin-bottom: 0.35rem;
+  font-size: 0.72rem;
+  font-weight: var(--font-semibold);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.detail-item dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-weight: var(--font-medium);
+}
+
+.clinic-table {
+  width: 100%;
+}
+
+.clinic-table-wrap {
+  width: 100%;
+  overflow-x: auto;
 }
 
 @media (max-width: 900px) {
-  .overview-grid {
+  .page-shell__header {
+    flex-direction: column;
+  }
+
+  .detail-list,
+  .loading-grid {
     grid-template-columns: 1fr;
+  }
+
+  .detail-list--insurance {
+    grid-template-columns: 1fr;
+  }
+
+  .detail-card--full {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .patient-hero {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .error-card__actions {
+    width: 100%;
+  }
+
+  .error-card__actions .btn-primary,
+  .error-card__actions .btn-ghost {
+    width: 100%;
   }
 }

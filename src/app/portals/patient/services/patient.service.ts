@@ -1,15 +1,77 @@
-import { Injectable } from '@angular/core';
-import { delay, Observable, of } from 'rxjs';
-import { Booking, Consultation, Patient, Prescription } from '../../../core/models';
+import { Injectable, inject } from '@angular/core';
+import { Observable, catchError, delay, map, of, switchMap } from 'rxjs';
+import { ApiService } from '../../../core/services/api.service';
+import {
+  Booking,
+  Consultation,
+  Patient,
+  Prescription,
+  UpdatePatientRequest
+} from '../../../core/models';
 import { MockDataService } from '../../../core/services/mock-data.service';
+
+type NullableString = string | null | undefined;
+
+interface PatientDto {
+  id: string;
+  patientCode?: NullableString;
+  firstName?: NullableString;
+  middleName?: NullableString;
+  lastName?: NullableString;
+  fullName?: NullableString;
+  dateOfBirth?: NullableString;
+  sex?: NullableString;
+  civilStatus?: NullableString;
+  address?: NullableString;
+  city?: NullableString;
+  zipCode?: NullableString;
+  contactNumber?: NullableString;
+  email?: NullableString;
+  emergencyContactName?: NullableString;
+  emergencyContactNumber?: NullableString;
+  emergencyContactRelationship?: NullableString;
+  bloodType?: NullableString;
+  philHealthNumber?: NullableString;
+  hmoProvider?: NullableString;
+  hmoCardNumber?: NullableString;
+  userId?: NullableString;
+  isEmailVerified?: boolean | null;
+  isGuest?: boolean | null;
+  consentedAt?: NullableString;
+  consentVersion?: NullableString;
+}
 
 @Injectable({ providedIn: 'root' })
 export class PatientService {
-  constructor(private readonly mockData: MockDataService) {}
+  private readonly apiService = inject(ApiService);
+  private readonly mockData = inject(MockDataService);
+
+  getMyProfile(): Observable<Patient> {
+    return this.apiService.get<PatientDto>('/patients/me').pipe(map((patient) => mapPatientDetail(patient)));
+  }
+
+  updateMyProfile(dto: UpdatePatientRequest): Observable<Patient> {
+    return this.apiService.put<PatientDto>('/patients/me', dto).pipe(map((patient) => mapPatientDetail(patient)));
+  }
+
+  submitConsent(version: string): Observable<Patient> {
+    return this.apiService
+      .post<PatientDto | void>('/patients/me/consent', { consentVersion: version })
+      .pipe(
+        switchMap((patient) => {
+          if (isPatientDto(patient)) {
+            return of(mapPatientDetail(patient));
+          }
+
+          return this.getMyProfile();
+        })
+      );
+  }
 
   getCurrentPatient(userId: string): Observable<Patient | undefined> {
-    return of(this.mockData.getPatients().find((patient) => patient.userId === userId)).pipe(
-      delay(200)
+    return this.getMyProfile().pipe(
+      map((patient) => (patient.userId === userId ? patient : undefined)),
+      catchError(() => of(undefined))
     );
   }
 
@@ -69,4 +131,43 @@ export class PatientService {
         )
     ).pipe(delay(300));
   }
+}
+
+function mapPatientDetail(dto: PatientDto): Patient {
+  return {
+    id: dto.id,
+    patientCode: normalizeString(dto.patientCode) || dto.id,
+    firstName: normalizeString(dto.firstName) || '',
+    middleName: normalizeString(dto.middleName),
+    lastName: normalizeString(dto.lastName) || '',
+    dateOfBirth: normalizeString(dto.dateOfBirth) || '',
+    sex: normalizeString(dto.sex) || '',
+    civilStatus: normalizeString(dto.civilStatus),
+    address: normalizeString(dto.address),
+    city: normalizeString(dto.city),
+    zipCode: normalizeString(dto.zipCode),
+    contactNumber: normalizeString(dto.contactNumber),
+    email: normalizeString(dto.email),
+    emergencyContactName: normalizeString(dto.emergencyContactName),
+    emergencyContactNumber: normalizeString(dto.emergencyContactNumber),
+    emergencyContactRelationship: normalizeString(dto.emergencyContactRelationship),
+    bloodType: normalizeString(dto.bloodType),
+    philHealthNumber: normalizeString(dto.philHealthNumber),
+    hmoProvider: normalizeString(dto.hmoProvider),
+    hmoCardNumber: normalizeString(dto.hmoCardNumber),
+    userId: normalizeString(dto.userId),
+    isEmailVerified: dto.isEmailVerified ?? undefined,
+    isGuest: Boolean(dto.isGuest),
+    consentedAt: normalizeString(dto.consentedAt),
+    consentVersion: normalizeString(dto.consentVersion)
+  };
+}
+
+function normalizeString(value: NullableString): string | undefined {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+function isPatientDto(value: unknown): value is PatientDto {
+  return typeof value === 'object' && value !== null && 'id' in value;
 }

@@ -1,14 +1,16 @@
-import { NgFor, NgIf, DatePipe, CommonModule } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
-import { FormsModule, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { NgFor, NgIf } from '@angular/common';
+import { Component, DestroyRef, OnInit, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
-import { IonLabel, IonModal, IonSegment, IonSegmentButton } from '@ionic/angular/standalone';
-import { Booking, Patient } from '../../../core/models';
+import { finalize } from 'rxjs';
+import { Booking, PatientDetail } from '../../../core/models';
 import { BookingService } from '../../../core/services/booking.service';
-import { PatientStateService } from '../../../core/services/patient-state.service';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { SkeletonComponent } from '../../../shared/components/skeleton/skeleton.component';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
+import { IonLabel, IonSegment, IonSegmentButton } from '@ionic/angular/standalone';
+import { StaffService } from '../services/staff.service';
 
 @Component({
   selector: 'app-staff-patient-detail-page',
@@ -16,183 +18,139 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
   imports: [
     NgFor,
     NgIf,
-    FormsModule,
-    ReactiveFormsModule,
-    CommonModule,
-    DatePipe,
     AvatarComponent,
     EmptyStateComponent,
+    SkeletonComponent,
     StatusBadgeComponent,
     IonSegment,
     IonSegmentButton,
-    IonLabel,
-    IonModal
+    IonLabel
   ],
-  template: `
-    <section class="page-shell" *ngIf="patient">
-      <div class="page-shell__header">
-        <div>
-          <button type="button" class="btn-ghost" (click)="back()">Back to Patients</button>
-          <h2 class="page-title">{{ patient.firstName }} {{ patient.lastName }}</h2>
-          <div class="page-subtitle data-mono">{{ patient.patientCode }}</div>
-        </div>
-        <button class="btn-primary" type="button" (click)="openEdit()">Edit Profile</button>
-      </div>
-
-      <ion-segment [(ngModel)]="selectedTab">
-        <ion-segment-button value="overview"><ion-label>Overview</ion-label></ion-segment-button>
-        <ion-segment-button value="bookings"><ion-label>Bookings</ion-label></ion-segment-button>
-        <ion-segment-button value="records"><ion-label>Medical Records</ion-label></ion-segment-button>
-      </ion-segment>
-
-      <div *ngIf="selectedTab === 'overview'" class="overview-grid">
-        <div class="clinic-card">
-          <div class="section-heading">Personal Info</div>
-          <div class="profile-card">
-            <app-avatar [name]="patient.firstName + ' ' + patient.lastName" size="lg"></app-avatar>
-            <div>
-              <p>{{ patient.dateOfBirth }}</p>
-              <p>{{ patient.sex }}</p>
-              <p>{{ patient.civilStatus || 'N/A' }}</p>
-              <p>{{ patient.bloodType || 'N/A' }}</p>
-            </div>
-          </div>
-        </div>
-        <div class="clinic-card">
-          <div class="section-heading">Contact Info</div>
-          <p>{{ patient.address || 'No address provided' }}</p>
-          <p>{{ patient.contactNumber || 'No phone provided' }}</p>
-          <p>{{ patient.email || 'No email provided' }}</p>
-        </div>
-        <div class="clinic-card">
-          <div class="section-heading">Emergency Contact</div>
-          <p>{{ patient.emergencyContactName || 'N/A' }}</p>
-          <p>{{ patient.emergencyContactNumber || 'N/A' }}</p>
-          <p>{{ patient.emergencyContactRelationship || 'N/A' }}</p>
-        </div>
-      </div>
-
-      <div *ngIf="selectedTab === 'bookings'" class="clinic-card">
-        <table class="clinic-table" *ngIf="bookings.length > 0">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Date</th>
-              <th>Time</th>
-              <th>Status</th>
-              <th>Payment</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let booking of bookings">
-              <td class="data-mono">{{ booking.id }}</td>
-              <td>{{ booking.appointmentDate }}</td>
-              <td>{{ booking.slotStartTime }}</td>
-              <td><app-status-badge [status]="booking.status"></app-status-badge></td>
-              <td><app-status-badge [status]="booking.paymentStatus"></app-status-badge></td>
-            </tr>
-          </tbody>
-        </table>
-        <app-empty-state
-          *ngIf="bookings.length === 0"
-          icon="calendar-outline"
-          title="No bookings"
-          description="This patient has no bookings yet."
-        ></app-empty-state>
-      </div>
-
-      <div *ngIf="selectedTab === 'records'" class="clinic-card">
-        <app-empty-state
-          icon="document-text-outline"
-          title="Medical Records"
-          description="Medical records module coming in Phase 9."
-        ></app-empty-state>
-      </div>
-    </section>
-
-    <ion-modal [isOpen]="editOpen" (didDismiss)="editOpen = false">
-      <ng-template>
-        <div class="modal-shell">
-          <h3>Edit Patient</h3>
-          <form class="modal-form" [formGroup]="form" (ngSubmit)="save()">
-            <input class="filter-input" formControlName="firstName" placeholder="First name" />
-            <input class="filter-input" formControlName="lastName" placeholder="Last name" />
-            <input class="filter-input" formControlName="contactNumber" placeholder="Contact number" />
-            <input class="filter-input" formControlName="email" placeholder="Email" />
-            <input class="filter-input" formControlName="address" placeholder="Address" />
-            <input class="filter-input" formControlName="emergencyContactName" placeholder="Emergency contact name" />
-            <input class="filter-input" formControlName="emergencyContactNumber" placeholder="Emergency contact number" />
-            <input class="filter-input" formControlName="emergencyContactRelationship" placeholder="Relationship" />
-            <div class="modal-actions">
-              <button type="button" class="btn-ghost" (click)="editOpen = false">Cancel</button>
-              <button type="submit" class="btn-primary">Save</button>
-            </div>
-          </form>
-        </div>
-      </ng-template>
-    </ion-modal>
-  `,
+  templateUrl: './staff-patient-detail.page.html',
   styleUrl: './staff-patient-detail.page.scss'
 })
 export class StaffPatientDetailPage implements OnInit {
   private readonly bookingService = inject(BookingService);
-  private readonly patientState = inject(PatientStateService);
+  private readonly staffService = inject(StaffService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
-  private readonly fb = inject(FormBuilder);
+  private readonly destroyRef = inject(DestroyRef);
 
-  patient: Patient | null = null;
+  patient: PatientDetail | null = null;
   bookings: Booking[] = [];
   selectedTab: 'overview' | 'bookings' | 'records' = 'overview';
-  editOpen = false;
-  form = this.fb.group({
-    firstName: ['', Validators.required],
-    lastName: ['', Validators.required],
-    contactNumber: [''],
-    email: [''],
-    address: [''],
-    emergencyContactName: [''],
-    emergencyContactNumber: [''],
-    emergencyContactRelationship: ['']
-  });
+  isLoading = true;
+  errorMessage = '';
+
+  private patientId = '';
+  private requestVersion = 0;
 
   ngOnInit(): void {
-    const id = this.route.snapshot.paramMap.get('id') ?? '';
-    this.patientState.getPatientById(id).subscribe((patient) => {
-      this.patient = patient ?? null;
-      if (patient) {
-        this.form.patchValue(patient);
-      }
-    });
-    this.bookingService.getBookingsByPatientId(id).subscribe((bookings) => (this.bookings = bookings));
+    this.patientId = this.route.snapshot.paramMap.get('id') ?? '';
+
+    if (!this.patientId) {
+      this.isLoading = false;
+      this.errorMessage = 'Missing patient ID.';
+      return;
+    }
+
+    this.loadPatient();
   }
 
   back(): void {
     void this.router.navigate(['/staff/patients']);
   }
 
-  openEdit(): void {
-    this.editOpen = true;
-  }
-
-  save(): void {
-    if (!this.patient) {
+  retry(): void {
+    if (!this.patientId) {
       return;
     }
 
-    const value = this.form.getRawValue();
-    const updated: Patient = {
-      ...this.patient,
-      firstName: value.firstName ?? this.patient.firstName,
-      lastName: value.lastName ?? this.patient.lastName,
-      contactNumber: value.contactNumber ?? this.patient.contactNumber,
-      email: value.email ?? this.patient.email,
-      address: value.address ?? this.patient.address,
-      emergencyContactName: value.emergencyContactName ?? this.patient.emergencyContactName,
-      emergencyContactNumber: value.emergencyContactNumber ?? this.patient.emergencyContactNumber,
-      emergencyContactRelationship: value.emergencyContactRelationship ?? this.patient.emergencyContactRelationship
-    };
-    this.patientState.savePatient(updated);
-    this.editOpen = false;
+    this.loadPatient();
+  }
+
+  setSelectedTab(value: string | number | null | undefined): void {
+    if (value === 'overview' || value === 'bookings' || value === 'records') {
+      this.selectedTab = value;
+    }
+  }
+
+  patientDisplayName(): string {
+    if (!this.patient) {
+      return 'Patient';
+    }
+
+    const parts = [this.patient.firstName, this.patient.middleName, this.patient.lastName]
+      .map((part) => part?.trim())
+      .filter((part): part is string => Boolean(part));
+
+    return parts.length > 0 ? parts.join(' ') : 'Patient';
+  }
+
+  get patientStatusLabel(): string {
+    return this.patient?.isGuest ? 'Guest' : 'Registered';
+  }
+
+  private loadPatient(): void {
+    const version = ++this.requestVersion;
+    this.isLoading = true;
+    this.errorMessage = '';
+    this.patient = null;
+    this.bookings = [];
+    this.selectedTab = 'overview';
+
+    this.staffService
+      .getPatientById(this.patientId)
+      .pipe(
+        finalize(() => {
+          if (version === this.requestVersion) {
+            this.isLoading = false;
+          }
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        next: (patient) => {
+          if (version !== this.requestVersion) {
+            return;
+          }
+
+          if (!patient) {
+            this.patient = null;
+            this.errorMessage = 'No patient data was returned.';
+            return;
+          }
+
+          this.patient = patient;
+          this.loadBookings();
+        },
+        error: () => {
+          if (version !== this.requestVersion) {
+            return;
+          }
+
+          this.patient = null;
+          this.bookings = [];
+          this.errorMessage = 'We could not load this patient record.';
+        }
+      });
+  }
+
+  private loadBookings(): void {
+    if (!this.patientId) {
+      return;
+    }
+
+    this.bookingService
+      .getBookingsByPatientId(this.patientId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (bookings) => {
+          this.bookings = bookings;
+        },
+        error: () => {
+          this.bookings = [];
+        }
+      });
   }
 }
