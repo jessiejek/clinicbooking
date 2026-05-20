@@ -1,14 +1,14 @@
 import { AsyncPipe, DatePipe, NgFor, NgIf } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
-import { combineLatest, map, of, switchMap } from 'rxjs';
+import { catchError, combineLatest, map, of, switchMap } from 'rxjs';
 import { ToastController } from '@ionic/angular/standalone';
 import { AuthUser, Doctor, Patient, Prescription } from '../../../core/models';
 import { AuthStateService } from '../../../core/services/auth-state.service';
 import { MedicalRecordsService } from '../../../core/services/medical-records.service';
 import { MockDataService } from '../../../core/services/mock-data.service';
-import { PatientStateService } from '../../../core/services/patient-state.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { PrescriptionCardComponent } from '../components/prescription-card/prescription-card.component';
+import { PatientService } from '../services/patient.service';
 
 interface PrescriptionVm {
   user: AuthUser | null;
@@ -53,12 +53,14 @@ export class PatientPrescriptionsPage implements OnInit {
   private readonly authState = inject(AuthStateService);
   private readonly medicalRecords = inject(MedicalRecordsService);
   private readonly mockData = inject(MockDataService);
-  private readonly patientState = inject(PatientStateService);
+  private readonly patientService = inject(PatientService);
   private readonly toastCtrl = inject(ToastController);
 
   readonly currentUser$ = this.authState.currentUser$;
   readonly patient$ = this.currentUser$.pipe(
-    switchMap((user) => (user ? this.patientState.getPatientByUserId(user.id) : of(undefined)))
+    switchMap((user) =>
+      user ? this.patientService.getMyProfile().pipe(catchError(() => of(undefined))) : of(undefined)
+    )
   );
 
   vm$ = combineLatest([this.currentUser$, this.patient$]).pipe(
@@ -79,7 +81,6 @@ export class PatientPrescriptionsPage implements OnInit {
   );
 
   ngOnInit(): void {
-    this.patientState.refresh();
     this.medicalRecords.refresh();
   }
 

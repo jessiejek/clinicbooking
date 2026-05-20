@@ -9,6 +9,7 @@ import { debounceTime, distinctUntilChanged, finalize } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { PatientSummary } from '../../../core/models';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 import { SkeletonComponent } from '../../../shared/components/skeleton/skeleton.component';
 import { AdminPatientCreateModalComponent } from './admin-patient-create-modal.component';
 import { AdminPatientsService } from '../services/admin-patients.service';
@@ -16,7 +17,7 @@ import { AdminPatientsService } from '../services/admin-patients.service';
 @Component({
   selector: 'app-admin-patients-page',
   standalone: true,
-  imports: [NgFor, NgIf, ReactiveFormsModule, EmptyStateComponent, SkeletonComponent, IonIcon],
+  imports: [NgFor, NgIf, ReactiveFormsModule, EmptyStateComponent, SkeletonComponent, StatusBadgeComponent, IonIcon],
   template: `
     <section class="page-shell patients-page">
       <div class="page-shell__header patients-header">
@@ -76,6 +77,7 @@ import { AdminPatientsService } from '../services/admin-patients.service';
                 <th>Full Name</th>
                 <th>Contact</th>
                 <th>DOB</th>
+                <th>Account</th>
               </tr>
             </thead>
             <tbody>
@@ -95,6 +97,9 @@ import { AdminPatientsService } from '../services/admin-patients.service';
                 </td>
                 <td>{{ patient.contactNumber || 'No phone provided' }}</td>
                 <td class="data-mono">{{ patient.dateOfBirth }}</td>
+                <td>
+                  <app-status-badge [status]="patientAccountStatus(patient)"></app-status-badge>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -264,5 +269,17 @@ export class PatientsPage implements OnInit {
 
   patientDisplayName(patient: PatientSummary): string {
     return patient.fullName || [patient.firstName, patient.middleName, patient.lastName].filter(Boolean).join(' ');
+  }
+
+  patientAccountStatus(patient: PatientSummary): 'LinkedAccount' | 'Guest' | 'NoAccount' {
+    if (patient.userId) {
+      return 'LinkedAccount';
+    }
+
+    if (patient.isGuest) {
+      return 'Guest';
+    }
+
+    return 'NoAccount';
   }
 }

@@ -41,7 +41,10 @@ import { Booking } from '../../../../core/models';
           </ion-toolbar>
         </ion-header>
         <ion-content class="ion-padding">
-          <p class="helper-text">Booking {{ booking?.id }}</p>
+          <p class="helper-text">
+            Booking {{ booking.id }}
+            <span *ngIf="paymentId"> · Payment {{ paymentId }}</span>
+          </p>
           <ion-textarea
             [(ngModel)]="reason"
             label="Reason"
@@ -63,8 +66,9 @@ import { Booking } from '../../../../core/models';
 })
 export class RefundPaymentModalComponent {
   @Input() booking!: Booking;
+  @Input() paymentId: string | null = null;
   @Input() isOpen = false;
-  @Output() confirmed = new EventEmitter<{ bookingId: string; reason: string }>();
+  @Output() confirmed = new EventEmitter<{ bookingId: string; paymentId?: string | null; reason: string }>();
   @Output() cancelled = new EventEmitter<void>();
 
   reason = '';
@@ -77,7 +81,7 @@ export class RefundPaymentModalComponent {
     if (!this.booking || this.reasonTrimmed.length < 5) {
       return;
     }
-    this.confirmed.emit({ bookingId: this.booking.id, reason: this.reasonTrimmed });
+    this.confirmed.emit({ bookingId: this.booking.id, paymentId: this.paymentId, reason: this.reasonTrimmed });
     this.reason = '';
   }
 }

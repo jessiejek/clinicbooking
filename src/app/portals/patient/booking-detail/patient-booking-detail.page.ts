@@ -3,11 +3,11 @@ import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { IonModal, ToastController } from '@ionic/angular/standalone';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { catchError, combineLatest, of, switchMap } from 'rxjs';
 import { Booking, Doctor, Patient, ProofType, Service, ReceiptData } from '../../../core/models';
 import { AuthStateService } from '../../../core/services/auth-state.service';
 import { BookingService } from '../../../core/services/booking.service';
 import { MockDataService } from '../../../core/services/mock-data.service';
-import { PatientStateService } from '../../../core/services/patient-state.service';
 import { ClinicSettingsService } from '../../../core/services/clinic-settings.service';
 import { BannerComponent } from '../../../shared/components/banner/banner.component';
 import { BookingTimelineComponent } from '../components/booking-timeline/booking-timeline.component';
@@ -18,6 +18,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { ReceiptModalComponent } from '../../../shared/components/receipt-modal/receipt-modal.component';
+import { PatientService } from '../services/patient.service';
 
 @Component({
   selector: 'app-patient-booking-detail-page',
@@ -53,8 +54,8 @@ import { ReceiptModalComponent } from '../../../shared/components/receipt-modal/
             <div class="booking-summary__top">
               <div>
                 <div class="section-heading">Summary</div>
-                <h3>{{ service?.name || 'Service' }}</h3>
-                <p>{{ doctor?.fullName || 'Doctor' }}</p>
+                <h3>{{ serviceDisplayName }}</h3>
+                <p>{{ doctorDisplayName }}</p>
               </div>
               <div class="booking-summary__badges">
                 <app-status-badge [status]="booking.status"></app-status-badge>
@@ -64,7 +65,7 @@ import { ReceiptModalComponent } from '../../../shared/components/receipt-modal/
 
             <div class="summary-grid">
               <div><span>Appointment Date</span><strong>{{ booking.appointmentDate | date : 'EEEE, MMMM d, y' }}</strong></div>
-              <div><span>Time</span><strong>{{ booking.slotStartTime }} - {{ booking.slotEndTime }}</strong></div>
+              <div><span>Time</span><strong>{{ timeRangeLabel }}</strong></div>
               <div><span>Queue Number</span><strong>{{ booking.queueNumber !== null ? '#' + booking.queueNumber : 'Not assigned' }}</strong></div>
               <div><span>Payment Mode</span><strong>{{ booking.paymentMode }}</strong></div>
               <div><span>Total Fee</span><strong>PHP {{ booking.totalFee }}</strong></div>
@@ -124,9 +125,9 @@ import { ReceiptModalComponent } from '../../../shared/components/receipt-modal/
           <div class="clinic-card">
             <div class="section-heading">Doctor Info</div>
             <div class="side-profile">
-              <app-avatar [name]="doctor?.fullName || 'Doctor'" size="lg"></app-avatar>
+              <app-avatar [name]="doctorDisplayName" size="lg"></app-avatar>
               <div>
-                <h3>{{ doctor?.fullName || 'Doctor' }}</h3>
+                <h3>{{ doctorDisplayName }}</h3>
                 <p>{{ doctor?.specialization || 'Specialization' }}</p>
               </div>
             </div>
@@ -171,13 +172,13 @@ import { ReceiptModalComponent } from '../../../shared/components/receipt-modal/
 export class PatientBookingDetailPage implements OnInit {
   private readonly authState = inject(AuthStateService);
   private readonly bookingService = inject(BookingService);
-  private readonly patientState = inject(PatientStateService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly mockData = inject(MockDataService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly toastCtrl = inject(ToastController);
   private readonly clinicSettings = inject(ClinicSettingsService);
+  private readonly patientService = inject(PatientService);
 
 
   receiptModalOpen = false;
@@ -219,22 +220,38 @@ export class PatientBookingDetailPage implements OnInit {
     return !!this.booking && this.booking.status === 'Completed' && !this.mockData.getReviews().some((review) => review.bookingId === this.booking?.id);
   }
 
+  get doctorDisplayName(): string {
+    return this.booking?.doctorName?.trim() || this.doctor?.fullName?.trim() || 'Doctor';
+  }
+
+  get serviceDisplayName(): string {
+    return this.booking?.serviceName?.trim() || this.service?.name?.trim() || 'Service';
+  }
+
+  get timeRangeLabel(): string {
+    if (!this.booking) {
+      return 'Time not available';
+    }
+
+    return this.timeRangeLabelFor(this.booking);
+  }
+
   ngOnInit(): void {
-    this.authState.currentUser$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((user) => {
-      if (!user) {
-        this.currentPatient = null;
-        return;
-      }
-
-      this.patientState.getPatientByUserId(user.id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe((patient) => {
+    this.route.paramMap
+      .pipe(
+        switchMap((params) => {
+          const bookingId = params.get('id') ?? '';
+          return combineLatest([
+            this.patientService.getMyProfile().pipe(catchError(() => of(undefined))),
+            this.bookingService.getBookingById$(bookingId)
+          ]);
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe(([patient, booking]) => {
         this.currentPatient = patient ?? null;
-      });
-    });
 
-    this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
-      const bookingId = params.get('id') ?? '';
-      this.bookingService.getBookingById$(bookingId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe((booking) => {
-        if (!booking || (this.currentPatient && booking.patientId !== this.currentPatient.id)) {
+        if (!booking || !this.currentPatient || (booking.patientId && booking.patientId !== this.currentPatient.id)) {
           this.booking = null;
           this.doctor = undefined;
           this.service = undefined;
@@ -245,7 +262,6 @@ export class PatientBookingDetailPage implements OnInit {
         this.doctor = this.mockData.getDoctorById(booking.doctorId);
         this.service = this.mockData.getServiceById(booking.serviceId);
       });
-    });
   }
 
   handleProofSubmitted(bookingId: string, proofType: ProofType, proofValue: string): void {
@@ -310,12 +326,25 @@ export class PatientBookingDetailPage implements OnInit {
     if (!this.booking) {
       return;
     }
-    this.receiptData = this.buildReceiptData(this.booking);
+    const receipt = this.buildReceiptData(this.booking);
+    this.receiptData = {
+      ...receipt,
+      patientName:
+        this.booking.patientName?.trim() ||
+        (this.currentPatient ? `${this.currentPatient.firstName} ${this.currentPatient.lastName}` : receipt.patientName),
+      patientCode: this.currentPatient?.patientCode ?? receipt.patientCode,
+      doctorName: this.booking.doctorName?.trim() || this.doctor?.fullName?.trim() || receipt.doctorName,
+      serviceName: this.booking.serviceName?.trim() || this.service?.name?.trim() || receipt.serviceName,
+      slotTime: this.timeRangeLabelFor(this.booking)
+    };
     this.receiptModalOpen = true;
   }
 
   private buildReceiptData(booking: Booking): ReceiptData {
-    const patient = this.mockData.getPatients().find((p) => p.id === booking.patientId);
+    const patient =
+      this.currentPatient && this.currentPatient.id === booking.patientId
+        ? this.currentPatient
+        : this.mockData.getPatients().find((p) => p.id === booking.patientId);
     const doctor = this.mockData.getDoctors().find((d) => d.id === booking.doctorId);
     const service = this.mockData.getServices().find((s) => s.id === booking.serviceId);
     const settings = this.clinicSettings.load();
@@ -349,5 +378,20 @@ export class PatientBookingDetailPage implements OnInit {
         hour: '2-digit', minute: '2-digit'
       })
     };
+  }
+
+  private timeRangeLabelFor(booking: Booking): string {
+    const start = booking.slotStartTime?.trim() ?? '';
+    const end = booking.slotEndTime?.trim() ?? '';
+
+    if (!start) {
+      return 'Time not available';
+    }
+
+    if (!end || end === start) {
+      return start;
+    }
+
+    return `${start} - ${end}`;
   }
 }

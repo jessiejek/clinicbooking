@@ -68,43 +68,54 @@ import { PesoPipe } from '../../../../shared/pipes/peso.pipe';
             <ion-spinner name="crescent"></ion-spinner>
           </div>
 
-          <div class="service-list" *ngIf="!selectedDoctorLoading">
-            <div class="service-list__header">
-              <h3>Select a service</h3>
-            </div>
+          <ng-container *ngIf="!selectedDoctorLoading">
+            <app-empty-state
+              *ngIf="selectedDoctorError; else servicesTpl"
+              icon="medical-outline"
+              title="Unable to load services"
+              [description]="selectedDoctorError || 'Please try again.'"
+            ></app-empty-state>
 
-            <ng-container *ngIf="selectedDoctorServices.length > 0; else noServiceState">
-              <button
-                *ngFor="let service of selectedDoctorServices"
-                type="button"
-                class="service-option"
-                [class.service-option--selected]="service.id === (selectedServiceId$ | async)"
-                (click)="selectService(service.id)"
-              >
-                <div>
-                  <div class="service-option__name">{{ service.name }}</div>
-                  <div class="service-option__desc">{{ service.description || 'Included in consultation' }}</div>
+            <ng-template #servicesTpl>
+              <div class="service-list">
+                <div class="service-list__header">
+                  <h3>Select a service</h3>
                 </div>
-                <div class="service-option__right">
-                  <span class="service-option__fee">{{ service.price | peso }}</span>
-                  <div class="service-option__check">
-                    <ion-icon
-                      name="checkmark-circle-outline"
-                      *ngIf="service.id === (selectedServiceId$ | async)"
-                    ></ion-icon>
-                  </div>
-                </div>
-              </button>
-            </ng-container>
 
-            <ng-template #noServiceState>
-              <app-empty-state
-                icon="medical-outline"
-                title="No data found"
-                description="This doctor currently has no services assigned."
-              ></app-empty-state>
+                <ng-container *ngIf="selectedDoctorServices.length > 0; else noServiceState">
+                  <button
+                    *ngFor="let service of selectedDoctorServices"
+                    type="button"
+                    class="service-option"
+                    [class.service-option--selected]="service.id === (selectedServiceId$ | async)"
+                    (click)="selectService(service.id)"
+                  >
+                    <div>
+                      <div class="service-option__name">{{ service.name }}</div>
+                      <div class="service-option__desc">{{ service.description || 'Included in consultation' }}</div>
+                    </div>
+                    <div class="service-option__right">
+                      <span class="service-option__fee">{{ service.price | peso }}</span>
+                      <div class="service-option__check">
+                        <ion-icon
+                          name="checkmark-circle-outline"
+                          *ngIf="service.id === (selectedServiceId$ | async)"
+                        ></ion-icon>
+                      </div>
+                    </div>
+                  </button>
+                </ng-container>
+
+                <ng-template #noServiceState>
+                  <app-empty-state
+                    icon="medical-outline"
+                    title="No data found"
+                    description="This doctor currently has no services assigned."
+                  ></app-empty-state>
+                </ng-template>
+              </div>
             </ng-template>
-          </div>
+          </ng-container>
         </ng-container>
 
         <ng-template #doctorPhase>
@@ -161,6 +172,7 @@ export class StepDoctorServiceComponent implements OnInit {
   doctors: DoctorSummary[] = [];
   isLoading = true;
   selectedDoctorLoading = false;
+  selectedDoctorError: string | null = null;
   selectedDoctorDetail: DoctorDetail = undefined;
 
   selectedDoctorId$ = this.wizardService.selectedDoctorId$;
@@ -190,6 +202,7 @@ export class StepDoctorServiceComponent implements OnInit {
           switchMap((doctorId) => {
             this.latestSelectedDoctorId = doctorId;
             this.selectedDoctorDetail = undefined;
+            this.selectedDoctorError = null;
 
             if (!doctorId) {
               this.selectedDoctorLoading = false;
@@ -197,9 +210,10 @@ export class StepDoctorServiceComponent implements OnInit {
             }
 
             this.selectedDoctorLoading = true;
-            return this.publicService.getDoctorById(doctorId).pipe(
+            return this.publicService.refreshDoctorById(doctorId).pipe(
               catchError((error: unknown) => {
-                void this.presentToast(extractApiErrorMessage(error, 'Failed to load doctor services.'));
+                this.selectedDoctorError = extractApiErrorMessage(error, 'Failed to load doctor services.');
+                void this.presentToast(this.selectedDoctorError);
                 return of(undefined);
               }),
               finalize(() => {
@@ -210,8 +224,11 @@ export class StepDoctorServiceComponent implements OnInit {
           takeUntilDestroyed(this.destroyRef)
         )
         .subscribe((doctor) => {
-          this.selectedDoctorDetail = doctor;
-        })
+        this.selectedDoctorDetail = doctor;
+        if (doctor) {
+          this.selectedDoctorError = null;
+        }
+      })
     );
     this.subscriptions.add(
       this.selectedServiceId$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((serviceId) => {
@@ -222,7 +239,7 @@ export class StepDoctorServiceComponent implements OnInit {
 
   ngOnInit(): void {
     this.publicService
-      .getDoctors()
+      .refreshDoctors()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (doctors) => {

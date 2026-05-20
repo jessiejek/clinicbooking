@@ -21,6 +21,7 @@ export interface AuthUserDto {
 export interface AuthSessionDto {
   accessToken: string;
   refreshToken: string;
+  expiresAt?: string;
   user: AuthUserDto;
 }
 

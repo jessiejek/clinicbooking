@@ -34,10 +34,14 @@ interface DoctorDto {
   ptrNumber?: NullableString;
   s2Number?: NullableString;
   consultationFee?: number | null;
+  fee?: number | null;
   slotDurationMinutes?: number | null;
   slotCapacity?: number | null;
   dailyPatientLimit?: number | null;
   status?: DoctorStatus | string | null;
+  isActive?: boolean | null;
+  workingDays?: string[] | null;
+  schedule?: DoctorScheduleDto[] | null;
   averageRating?: number | null;
   reviewCount?: number | null;
   services?: ServiceDto[] | null;
@@ -98,7 +102,11 @@ export class PublicService {
   private doctorsCache$?: Observable<DoctorSummary[]>;
   private servicesCache$?: Observable<Service[]>;
 
-  getDoctors(): Observable<DoctorSummary[]> {
+  getDoctors(forceRefresh = false): Observable<DoctorSummary[]> {
+    if (forceRefresh) {
+      this.doctorsCache$ = undefined;
+    }
+
     if (!this.doctorsCache$) {
       this.doctorsCache$ = this.apiService.get<DoctorDto[]>('/doctors').pipe(
         map((doctors) => doctors.map((doctor) => mapDoctorDto(doctor))),
@@ -113,10 +121,19 @@ export class PublicService {
     return this.doctorsCache$;
   }
 
+  refreshDoctors(): Observable<DoctorSummary[]> {
+    return this.getDoctors(true);
+  }
+
   getDoctorById(id: string): Observable<DoctorDetail> {
+    return this.refreshDoctorById(id).pipe(
+      catchError(() => of(undefined))
+    );
+  }
+
+  refreshDoctorById(id: string): Observable<DoctorDetail> {
     return this.apiService.get<DoctorDto>(`/doctors/${id}`).pipe(
       map((doctor) => mapDoctorDetailDto(doctor)),
-      catchError(() => of(undefined))
     );
   }
 
@@ -169,8 +186,11 @@ export class PublicService {
   }
 }
 
+const DOCTOR_STATUSES: DoctorStatus[] = ['Active', 'Inactive', 'OnLeave'];
+
 function mapDoctorDto(dto: DoctorDto): DoctorSummary {
   const fullName = resolveDoctorName(dto);
+  const status = normalizeDoctorStatus(dto.status) ?? (dto.isActive === false ? 'Inactive' : 'Active');
   return {
     id: dto.id,
     userId: normalizeString(dto.userId) || dto.id,
@@ -181,11 +201,14 @@ function mapDoctorDto(dto: DoctorDto): DoctorSummary {
     licenseNumber: normalizeString(dto.licenseNumber),
     ptrNumber: normalizeString(dto.ptrNumber),
     s2Number: normalizeString(dto.s2Number),
-    consultationFee: dto.consultationFee ?? 0,
+    consultationFee: dto.consultationFee ?? dto.fee ?? 0,
     slotDurationMinutes: dto.slotDurationMinutes ?? 30,
     slotCapacity: dto.slotCapacity ?? 1,
     dailyPatientLimit: dto.dailyPatientLimit ?? null,
-    status: (dto.status as DoctorStatus) ?? 'Active',
+    status,
+    isActive: dto.isActive ?? status === 'Active',
+    workingDays: normalizeStringArray(dto.workingDays),
+    schedule: dto.schedule?.map((schedule) => mapDoctorScheduleDto(schedule)),
     averageRating: dto.averageRating ?? undefined,
     reviewCount: dto.reviewCount ?? undefined
   };
@@ -253,4 +276,25 @@ function resolveDoctorName(dto: DoctorDto): string {
 function normalizeString(value: NullableString): string | undefined {
   const trimmed = value?.trim();
   return trimmed ? trimmed : undefined;
+}
+
+function normalizeStringArray(values: unknown): string[] | undefined {
+  if (!Array.isArray(values)) {
+    return undefined;
+  }
+
+  const normalized = values
+    .map((value) => (typeof value === 'string' ? value.trim() : ''))
+    .filter((value) => value.length > 0);
+
+  return normalized.length ? normalized : undefined;
+}
+
+function normalizeDoctorStatus(value: unknown): DoctorStatus | undefined {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  return DOCTOR_STATUSES.find((item) => item.toLowerCase() === normalized);
 }

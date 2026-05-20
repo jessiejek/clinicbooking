@@ -28,6 +28,9 @@ export interface Doctor {
   slotCapacity: number;
   dailyPatientLimit: number | null;
   status: DoctorStatus;
+  isActive?: boolean;
+  workingDays?: string[];
+  schedule?: Array<Pick<DoctorSchedule, 'dayOfWeek' | 'startTime' | 'endTime'>>;
   averageRating?: number;
   reviewCount?: number;
 }

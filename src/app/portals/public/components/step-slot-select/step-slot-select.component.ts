@@ -3,7 +3,7 @@ import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { IonSpinner, ToastController } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { calendarOutline } from 'ionicons/icons';
-import { catchError, combineLatest, distinctUntilChanged, finalize, of, switchMap } from 'rxjs';
+import { catchError, combineLatest, distinctUntilChanged, finalize, of, switchMap, timer } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { BookingWizardService } from '../../../../core/services/booking-wizard.service';
 import { TimeSlotPipe } from '../../../../shared/pipes/time-slot.pipe';
@@ -39,14 +39,16 @@ import { AvailableSlot, PublicService } from '../../services/public.service';
                 type="button"
                 class="slot-chip"
                 [class.slot-chip--selected]="slot.slotStartTime === latestSelectedSlot"
-                [class.slot-chip--full]="!slot.isAvailable"
-                [disabled]="!slot.isAvailable"
+                [class.slot-chip--full]="isSlotUnavailable(selectedDate, slot)"
+                [disabled]="isSlotUnavailable(selectedDate, slot)"
                 (click)="selectSlot(slot)"
               >
                 <span class="slot-chip__time"
                   >{{ slot.slotStartTime | timeSlot }} - {{ slot.slotEndTime | timeSlot }}</span
                 >
-                <span class="slot-chip__label" *ngIf="!slot.isAvailable">Full</span>
+                <span class="slot-chip__label" *ngIf="isSlotUnavailable(selectedDate, slot)">
+                  {{ getUnavailableLabel(selectedDate, slot) }}
+                </span>
               </button>
             </div>
           </ng-container>
@@ -88,6 +90,8 @@ export class StepSlotSelectComponent implements OnInit {
   slots: AvailableSlot[] = [];
   isLoading = false;
   latestSelectedSlot: string | null = null;
+  private latestSelectedDate: string | null = null;
+  private manilaClock = getManilaClock();
 
   constructor() {
     addIcons({ calendarOutline });
@@ -96,6 +100,11 @@ export class StepSlotSelectComponent implements OnInit {
   ngOnInit(): void {
     this.selectedSlot$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((selectedSlot) => {
       this.latestSelectedSlot = selectedSlot;
+    });
+
+    this.selectedDate$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((selectedDate) => {
+      this.latestSelectedDate = selectedDate;
+      this.clearInvalidSelectedSlot();
     });
 
     combineLatest([this.selectedDoctorId$, this.selectedDate$])
@@ -125,11 +134,19 @@ export class StepSlotSelectComponent implements OnInit {
       )
       .subscribe((slots) => {
         this.slots = slots;
+        this.clearInvalidSelectedSlot();
+      });
+
+    timer(0, 1000)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.manilaClock = getManilaClock();
+        this.clearInvalidSelectedSlot();
       });
   }
 
   selectSlot(slot: AvailableSlot): void {
-    if (!slot.isAvailable) {
+    if (!this.isSlotSelectable(this.latestSelectedDate, slot)) {
       return;
     }
 
@@ -144,6 +161,80 @@ export class StepSlotSelectComponent implements OnInit {
     this.wizardService.nextStep();
   }
 
+  isSlotUnavailable(selectedDate: string | null, slot: AvailableSlot): boolean {
+    return !this.isSlotSelectable(selectedDate, slot);
+  }
+
+  getUnavailableLabel(selectedDate: string | null, slot: AvailableSlot): string {
+    if (this.isPastSlot(selectedDate, slot)) {
+      return 'Past';
+    }
+
+    return 'Full';
+  }
+
+  private clearInvalidSelectedSlot(): void {
+    if (!this.latestSelectedSlot || !this.latestSelectedDate) {
+      return;
+    }
+
+    const matchingSlot = this.slots.find((slot) => slot.slotStartTime === this.latestSelectedSlot);
+    if (!matchingSlot || !this.isSlotSelectable(this.latestSelectedDate, matchingSlot)) {
+      this.wizardService.selectSlot(null, null);
+      this.latestSelectedSlot = null;
+    }
+  }
+
+  private isSlotSelectable(selectedDate: string | null, slot: AvailableSlot): boolean {
+    if (!selectedDate) {
+      return false;
+    }
+
+    if (!slot.isAvailable) {
+      return false;
+    }
+
+    if (this.isDateInPastInManila(selectedDate)) {
+      return false;
+    }
+
+    if (!this.isDateTodayInManila(selectedDate)) {
+      return true;
+    }
+
+    const slotEndMinutes = this.getSlotEndMinutes(slot);
+    return slotEndMinutes !== null && slotEndMinutes > this.manilaClock.minutes;
+  }
+
+  private isPastSlot(selectedDate: string | null, slot: AvailableSlot): boolean {
+    if (!selectedDate) {
+      return true;
+    }
+
+    if (this.isDateInPastInManila(selectedDate)) {
+      return true;
+    }
+
+    if (!this.isDateTodayInManila(selectedDate)) {
+      return false;
+    }
+
+    const slotEndMinutes = this.getSlotEndMinutes(slot);
+    return slotEndMinutes === null || slotEndMinutes <= this.manilaClock.minutes;
+  }
+
+  private isDateTodayInManila(selectedDate: string): boolean {
+    return selectedDate === this.manilaClock.isoDate;
+  }
+
+  private isDateInPastInManila(selectedDate: string): boolean {
+    return selectedDate < this.manilaClock.isoDate;
+  }
+
+  private getSlotEndMinutes(slot: AvailableSlot): number | null {
+    return parseTimeToMinutes(slot.slotEndTime || slot.slotStartTime);
+  }
+
   private async presentToast(message: string): Promise<void> {
     const toast = await this.toastCtrl.create({
       message,
@@ -153,6 +244,53 @@ export class StepSlotSelectComponent implements OnInit {
     });
     await toast.present();
   }
+}
+
+interface ManilaClock {
+  isoDate: string;
+  minutes: number;
+}
+
+function getManilaClock(date = new Date()): ManilaClock {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Manila',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  }).formatToParts(date);
+
+  const getPart = (type: Intl.DateTimeFormatPartTypes): string =>
+    parts.find((part) => part.type === type)?.value ?? '0';
+
+  const year = getPart('year');
+  const month = getPart('month');
+  const day = getPart('day');
+  const hour = Number(getPart('hour'));
+  const minute = Number(getPart('minute'));
+
+  return {
+    isoDate: `${year}-${month}-${day}`,
+    minutes: hour * 60 + minute
+  };
+}
+
+function parseTimeToMinutes(value: string | null | undefined): number | null {
+  if (!value) {
+    return null;
+  }
+
+  const [hourText, minuteText = '0'] = value.split(':');
+  const hour = Number(hourText);
+  const minute = Number(minuteText);
+
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) {
+    return null;
+  }
+
+  return hour * 60 + minute;
 }
 
 function extractApiErrorMessage(error: unknown, fallback: string): string {

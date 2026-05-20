@@ -1,26 +1,39 @@
 import { Injectable, inject } from '@angular/core';
-import { map, Observable, timer } from 'rxjs';
+import { Observable, of } from 'rxjs';
 import { Booking, BookingStatus } from '../../../core/models';
-import { MockDataService } from '../../../core/services/mock-data.service';
+import { BookingService } from '../../../core/services/booking.service';
 
 @Injectable({ providedIn: 'root' })
 export class AdminBookingsService {
-  private readonly mockData = inject(MockDataService);
+  private readonly bookingService = inject(BookingService);
 
   getBookings(): Observable<Booking[]> {
-    return timer(300).pipe(map(() => this.mockData.getBookings()));
+    return this.bookingService.getBookings();
   }
 
   getBookingById(id: string): Observable<Booking | undefined> {
-    return timer(300).pipe(map(() => this.mockData.getBookingById(id)));
+    return this.bookingService.getBookingById$(id);
   }
 
   updateBookingStatus(id: string, status: BookingStatus): Observable<Booking | undefined> {
-    return timer(300).pipe(
-      map(() => {
-        const booking = this.mockData.getBookingById(id);
-        return booking ? { ...booking, status } : undefined;
-      })
-    );
+    switch (status) {
+      case 'Confirmed':
+        this.bookingService.confirmBooking(id);
+        break;
+      case 'Cancelled':
+        this.bookingService.cancelBooking(id, 'Updated booking status.');
+        break;
+      case 'Completed':
+        this.bookingService.completeBooking(id);
+        break;
+      case 'NoShow':
+        this.bookingService.markNoShow(id);
+        break;
+      default:
+        this.bookingService.updateBookingStatus(id, status);
+        break;
+    }
+
+    return of(this.bookingService.getBookingById(id));
   }
 }

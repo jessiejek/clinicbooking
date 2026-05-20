@@ -95,8 +95,12 @@
             <dd>{{ patient.civilStatus || 'Not specified' }}</dd>
           </div>
           <div class="detail-item">
-            <dt>Registered Status</dt>
+            <dt>Login Account Status</dt>
             <dd>{{ patientStatusLabel }}</dd>
+          </div>
+          <div class="detail-item" *ngIf="patient.userId">
+            <dt>User ID</dt>
+            <dd class="data-mono">{{ patient.userId }}</dd>
           </div>
         </dl>
       </article>

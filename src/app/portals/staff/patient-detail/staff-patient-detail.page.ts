@@ -87,8 +87,16 @@ export class StaffPatientDetailPage implements OnInit {
     return parts.length > 0 ? parts.join(' ') : 'Patient';
   }
 
-  get patientStatusLabel(): string {
-    return this.patient?.isGuest ? 'Guest' : 'Registered';
+  get patientStatusLabel(): 'LinkedAccount' | 'Guest' | 'NoAccount' {
+    if (this.patient?.userId) {
+      return 'LinkedAccount';
+    }
+
+    if (this.patient?.isGuest) {
+      return 'Guest';
+    }
+
+    return 'NoAccount';
   }
 
   private loadPatient(): void {

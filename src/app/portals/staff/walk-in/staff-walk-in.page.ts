@@ -4,12 +4,14 @@ import { FormsModule, ReactiveFormsModule, FormControl } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
 import { Booking, Doctor, Patient, Service, TimeSlot } from '../../../core/models';
-import { BookingService } from '../../../core/services/booking.service';
+import { BookingService, CreateWalkInRequest } from '../../../core/services/booking.service';
 import { DoctorStateService } from '../../../core/services/doctor-state.service';
 import { MockDataService } from '../../../core/services/mock-data.service';
 import { PatientStateService } from '../../../core/services/patient-state.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { SlotGridComponent } from '../../../shared/components/slot-grid/slot-grid.component';
+import { ToastController } from '@ionic/angular/standalone';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-staff-walk-in-page',
@@ -115,6 +117,7 @@ export class StaffWalkInPage implements OnInit {
   private readonly mockData = inject(MockDataService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly toastCtrl = inject(ToastController);
 
   currentWalkInStep: 1 | 2 | 3 = 1;
   searchControl = new FormControl('', { nonNullable: true });
@@ -194,37 +197,30 @@ export class StaffWalkInPage implements OnInit {
     this.currentWalkInStep = 3;
   }
 
-  createBooking(): void {
+  async createBooking(): Promise<void> {
     if (!this.selectedPatient || !this.selectedDoctor || !this.selectedDate || !this.selectedSlot) {
       return;
     }
 
     const service =
       this.selectedService ?? this.mockData.getServices().find((item) => item.doctorIds.includes(this.selectedDoctor!.id));
-    const consultationFee = this.selectedDoctor.consultationFee;
-    const serviceFee = service?.price ?? 0;
-    const booking: Booking = {
-      id: `BK-${Date.now()}`,
+    const payload: CreateWalkInRequest = {
       patientId: this.selectedPatient.id,
       doctorId: this.selectedDoctor.id,
       serviceId: service?.id ?? this.mockData.getServices()[0].id,
       appointmentDate: this.selectedDate,
       slotStartTime: this.selectedSlot.time,
       slotEndTime: this.selectedSlot.endTime,
-      status: 'Confirmed',
-      paymentStatus: this.paymentMode === 'Online' ? 'Paid' : 'Unpaid',
       paymentMode: this.paymentMode,
-      queueNumber: this.bookings.length + 1,
-      totalFee: consultationFee + serviceFee,
-      consultationFeeSnapshot: consultationFee,
-      serviceFeeSnapshot: serviceFee,
-      isWalkIn: true,
-      proofType: this.paymentMode === 'Online' ? 'ReferenceNumber' : undefined,
-      proofValue: this.paymentMode === 'Online' ? 'WALKIN-PROOF' : undefined,
-      createdAt: new Date().toISOString()
+      notes: 'Walk-in booking created by staff.'
     };
-    this.bookingService.addBooking(booking);
-    void this.router.navigate(['/staff/bookings', booking.id]);
+
+    try {
+      const booking = await firstValueFrom(this.bookingService.createWalkIn(payload));
+      void this.router.navigate(['/staff/bookings', booking.id]);
+    } catch (error) {
+      await this.presentToast(extractApiErrorMessage(error, 'Failed to create walk-in booking.'));
+    }
   }
 
   private refreshSlots(): void {
@@ -244,4 +240,35 @@ export class StaffWalkInPage implements OnInit {
       [patient.firstName, patient.lastName, patient.patientCode, patient.contactNumber ?? ''].join(' ').toLowerCase().includes(q)
     );
   }
+
+  private async presentToast(message: string): Promise<void> {
+    const toast = await this.toastCtrl.create({
+      message,
+      duration: 2400,
+      color: 'danger',
+      position: 'top'
+    });
+    await toast.present();
+  }
+}
+
+function extractApiErrorMessage(error: unknown, fallback: string): string {
+  if (typeof error === 'object' && error !== null && 'error' in error) {
+    const body = (error as { error?: unknown }).error;
+    if (typeof body === 'string' && body.trim()) {
+      return body;
+    }
+    if (typeof body === 'object' && body !== null && 'message' in body) {
+      const message = (body as { message?: unknown }).message;
+      if (typeof message === 'string' && message.trim()) {
+        return message;
+      }
+    }
+  }
+
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+
+  return fallback;
 }

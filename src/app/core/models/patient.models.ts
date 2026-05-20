@@ -9,6 +9,7 @@ export interface PatientSummary {
   sex: string;
   contactNumber?: string;
   email?: string;
+  userId?: string;
   isGuest: boolean;
 }
 
@@ -59,6 +60,7 @@ export interface CreatePatientRequest {
   philHealthNumber?: string;
   hmoProvider?: string;
   hmoCardNumber?: string;
+  userId?: string | null;
 }
 
 export type UpdatePatientRequest = Partial<CreatePatientRequest>;

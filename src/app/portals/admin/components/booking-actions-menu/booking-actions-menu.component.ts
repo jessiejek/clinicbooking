@@ -13,7 +13,7 @@ export interface BookingActionItem {
   standalone: true,
   imports: [NgFor, IonIcon, IonPopover],
   template: `
-    <button [id]="triggerId" type="button" class="actions-menu__button">
+    <button [id]="triggerId" type="button" class="actions-menu__button" aria-label="Open booking actions">
       <ion-icon name="ellipsis-vertical"></ion-icon>
     </button>
 
@@ -39,6 +39,9 @@ export class BookingActionsMenuComponent {
   @Input() actions: BookingActionItem[] = [
     { label: 'View', value: 'view' },
     { label: 'Confirm', value: 'confirm' },
+    { label: 'Confirm Payment', value: 'confirm-payment' },
+    { label: 'Waive Payment', value: 'waive-payment' },
+    { label: 'Refund Payment', value: 'refund-payment', danger: true },
     { label: 'Reject', value: 'reject', danger: true }
   ];
 

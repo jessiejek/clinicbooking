@@ -61,6 +61,11 @@ import { AdminPatientsService } from '../services/admin-patients.service';
           <p>{{ patient.address || 'No address provided' }}</p>
           <p>{{ patient.contactNumber || 'No phone provided' }}</p>
           <p>{{ patient.email || 'No email provided' }}</p>
+          <div class="section-heading" style="margin-top: var(--space-4);">Login Account</div>
+          <app-status-badge [status]="patientAccountStatus(patient)"></app-status-badge>
+          <p *ngIf="patient.userId" class="data-mono" style="margin-top: var(--space-2);">User ID: {{ patient.userId }}</p>
+          <p *ngIf="!patient.userId && patient.isGuest" style="margin-top: var(--space-2);">Guest patient profile</p>
+          <p *ngIf="!patient.userId && !patient.isGuest" style="margin-top: var(--space-2);">No linked login account</p>
         </div>
 
         <div class="clinic-card">
@@ -194,5 +199,17 @@ export class PatientDetailPage implements OnInit {
     this.medicalRecords.getLabResultsByPatientId(id).subscribe((labResults) => (this.labResults = labResults));
     this.medicalRecords.getVaccinationsByPatientId(id).subscribe((vaccinations) => (this.vaccinations = vaccinations));
     this.medicalRecords.getFollowUpsByPatientId(id).subscribe((followUps) => (this.followUps = followUps));
+  }
+
+  patientAccountStatus(patient: Patient): 'LinkedAccount' | 'Guest' | 'NoAccount' {
+    if (patient.userId) {
+      return 'LinkedAccount';
+    }
+
+    if (patient.isGuest) {
+      return 'Guest';
+    }
+
+    return 'NoAccount';
   }
 }

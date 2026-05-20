@@ -32,8 +32,11 @@ export interface Service {
 export interface Booking {
   id: string;
   patientId: string;
+  patientName?: string;
   doctorId: string;
+  doctorName?: string;
   serviceId: string;
+  serviceName?: string;
   appointmentDate: string;
   slotStartTime: string;
   slotEndTime: string;

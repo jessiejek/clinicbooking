@@ -11,7 +11,7 @@
 .patients-toolbar__add{display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2);min-height:48px;white-space:nowrap}
 .patients-meta{display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);flex-wrap:wrap;color:var(--clinic-text-secondary)}
 .patients-pagination{display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap}
-.patients-table{min-width:760px}
+.patients-table{min-width:860px}
 .patients-table thead th{background:rgba(122,76,255,.04)}
 .patients-table tbody tr{cursor:pointer;transition:background-color .18s ease}
 .patients-table tbody tr:hover{background:rgba(122,76,255,.035)}

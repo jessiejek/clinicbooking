@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable, delay, map, of } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
+import { BookingService } from '../../../core/services/booking.service';
 import { MockDataService } from '../../../core/services/mock-data.service';
 import { PagedResult, PatientDetail, PatientSummary } from '../../../core/models';
 
@@ -31,6 +32,7 @@ interface PagedResultDto<T> {
 @Injectable({ providedIn: 'root' })
 export class StaffService {
   private readonly apiService = inject(ApiService);
+  private readonly bookingService = inject(BookingService);
   private readonly mockData = inject(MockDataService);
 
   getDoctors = () => of(this.mockData.getDoctors()).pipe(delay(300));
@@ -46,15 +48,9 @@ export class StaffService {
     return this.apiService.get<PatientDetail>(`/patients/${encodeURIComponent(id)}`);
   }
 
-  getBookings = () => of(this.mockData.getBookings()).pipe(delay(400));
+  getBookings = () => this.bookingService.getBookings();
 
-  getTodaysBookings = () =>
-    of(
-      this.mockData.getBookings().filter((booking) => {
-        const today = new Date().toDateString();
-        return new Date(booking.appointmentDate).toDateString() === today;
-      })
-    ).pipe(delay(300));
+  getTodaysBookings = () => this.bookingService.getTodaysBookings();
 }
 
 function mapPagedPatientSummaries(result: PagedResultDto<PatientDto>): PagedResult<PatientSummary> {

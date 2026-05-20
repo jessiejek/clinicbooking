@@ -64,7 +64,7 @@ import { StaffService } from '../services/staff.service';
                 <td>{{ patient.contactNumber || 'No phone provided' }}</td>
                 <td>{{ patient.email || 'No email provided' }}</td>
                 <td>
-                  <app-status-badge [status]="patient.isGuest ? 'Guest' : 'Registered'"></app-status-badge>
+                  <app-status-badge [status]="patientAccountStatus(patient)"></app-status-badge>
                 </td>
               </tr>
             </tbody>
@@ -86,7 +86,7 @@ import { StaffService } from '../services/staff.service';
                 <strong>{{ patientDisplayName(patient) }}</strong>
                 <span class="data-mono">{{ patient.patientCode }}</span>
               </div>
-              <app-status-badge [status]="patient.isGuest ? 'Guest' : 'Registered'"></app-status-badge>
+              <app-status-badge [status]="patientAccountStatus(patient)"></app-status-badge>
             </div>
 
             <dl class="patient-mobile-card__details">
@@ -180,6 +180,18 @@ export class StaffPatientsPage implements OnInit {
 
   patientDisplayName(patient: PatientSummary): string {
     return patient.fullName || [patient.firstName, patient.middleName, patient.lastName].filter(Boolean).join(' ') || 'Patient';
+  }
+
+  patientAccountStatus(patient: PatientSummary): 'LinkedAccount' | 'Guest' | 'NoAccount' {
+    if (patient.userId) {
+      return 'LinkedAccount';
+    }
+
+    if (patient.isGuest) {
+      return 'Guest';
+    }
+
+    return 'NoAccount';
   }
 
   private loadPatients(page: number): void {

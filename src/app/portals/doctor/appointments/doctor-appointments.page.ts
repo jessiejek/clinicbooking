@@ -4,12 +4,10 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { BehaviorSubject, combineLatest, of } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
-import { Booking, Patient, Service } from '../../../core/models';
+import { Booking } from '../../../core/models';
 import { AuthStateService } from '../../../core/services/auth-state.service';
 import { BookingService } from '../../../core/services/booking.service';
 import { DoctorStateService } from '../../../core/services/doctor-state.service';
-import { MockDataService } from '../../../core/services/mock-data.service';
-import { PatientStateService } from '../../../core/services/patient-state.service';
 import { DoctorAppointmentCardComponent } from '../components/doctor-appointment-card/doctor-appointment-card.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
@@ -97,11 +95,10 @@ interface AppointmentFilters {
           <tbody>
             <tr *ngFor="let booking of bookings">
               <td>
-                <strong>{{ patientName(booking.patientId, patients) }}</strong>
-                <div class="row-muted">{{ patientCode(booking.patientId, patients) }}</div>
+                <strong>{{ patientName(booking) }}</strong>
               </td>
-              <td>{{ serviceName(booking.serviceId) }}</td>
-              <td>{{ booking.appointmentDate }} {{ booking.slotStartTime }}</td>
+              <td>{{ serviceName(booking) }}</td>
+              <td>{{ appointmentDateTimeLabel(booking) }}</td>
               <td class="data-mono">{{ booking.queueNumber ?? '-' }}</td>
               <td><app-status-badge [status]="booking.status"></app-status-badge></td>
               <td><app-status-badge [status]="booking.paymentStatus"></app-status-badge></td>
@@ -127,8 +124,8 @@ interface AppointmentFilters {
         <app-doctor-appointment-card
           *ngFor="let booking of bookings"
           [booking]="booking"
-          [patient]="patientFor(booking.patientId, patients)"
-          [service]="serviceFor(booking.serviceId)"
+          [patientName]="patientName(booking)"
+          [serviceName]="serviceName(booking)"
           (openBooking)="view($event)"
           (startConsultation)="consult($event)"
         ></app-doctor-appointment-card>
@@ -141,12 +138,7 @@ export class DoctorAppointmentsPage implements OnInit {
   private readonly authState = inject(AuthStateService);
   private readonly bookingService = inject(BookingService);
   private readonly doctorState = inject(DoctorStateService);
-  private readonly patientState = inject(PatientStateService);
   private readonly router = inject(Router);
-  private readonly mockData = inject(MockDataService);
-
-  readonly services: Service[] = this.mockData.getServices();
-  patients: Patient[] = [];
 
   filters: AppointmentFilters = {
     appointmentDate: '',
@@ -161,17 +153,25 @@ export class DoctorAppointmentsPage implements OnInit {
     switchMap((user) => (user ? this.doctorState.getDoctorByUserId(user.id) : of(undefined)))
   );
 
-  readonly doctorBookings$ = this.currentDoctor$.pipe(
-    switchMap((doctor) => (doctor ? this.bookingService.getBookingsByDoctorId(doctor.id) : of([])))
+  readonly doctorBookings$ = combineLatest([
+    this.bookingService.getDoctorTodayQueue(),
+    this.bookingService.getDoctorUpcoming()
+  ]).pipe(
+    map(([todayQueue, upcoming]) => {
+      const merged = new Map<string, Booking>();
+      [...todayQueue, ...upcoming].forEach((booking) => {
+        merged.set(booking.id, booking);
+      });
+
+      return [...merged.values()].sort((a, b) => `${a.appointmentDate} ${a.slotStartTime}`.localeCompare(`${b.appointmentDate} ${b.slotStartTime}`));
+    })
   );
 
   readonly filteredBookings$ = combineLatest([
     this.doctorBookings$,
-    this.patientState.getPatients(),
     this.filters$
   ]).pipe(
-    map(([bookings, patients, filters]) => {
-      this.patients = patients;
+    map(([bookings, filters]) => {
       const normalizedSearch = filters.search.trim().toLowerCase();
       return bookings.filter((booking) => {
         if (filters.appointmentDate && booking.appointmentDate !== filters.appointmentDate) {
@@ -188,12 +188,12 @@ export class DoctorAppointmentsPage implements OnInit {
           return true;
         }
 
-        const patient = patients.find((item) => item.id === booking.patientId);
         const haystack = [
-          patient?.patientCode ?? '',
-          patient ? `${patient.firstName} ${patient.lastName}` : '',
-          patient?.contactNumber ?? '',
-          patient?.email ?? ''
+          booking.patientName ?? '',
+          booking.serviceName ?? '',
+          booking.appointmentDate ?? '',
+          booking.slotStartTime ?? '',
+          booking.queueNumber?.toString() ?? ''
         ]
           .join(' ')
           .toLowerCase();
@@ -203,9 +203,7 @@ export class DoctorAppointmentsPage implements OnInit {
   );
 
   ngOnInit(): void {
-    this.bookingService.refresh();
     this.doctorState.refresh();
-    this.patientState.refresh();
   }
 
   setDate(value: string): void {
@@ -236,25 +234,27 @@ export class DoctorAppointmentsPage implements OnInit {
     void this.router.navigate(['/doctor/consultation', bookingId]);
   }
 
-  patientName(patientId: string, patients: Patient[]): string {
-    const patient = patients.find((item) => item.id === patientId);
-    return patient ? `${patient.firstName} ${patient.lastName}` : 'Unknown Patient';
+  patientName(booking: Booking): string {
+    return booking.patientName?.trim() || 'Unknown Patient';
   }
 
-  patientCode(patientId: string, patients: Patient[]): string {
-    return patients.find((item) => item.id === patientId)?.patientCode ?? '';
+  serviceName(booking: Booking): string {
+    return booking.serviceName?.trim() || 'Unknown Service';
   }
 
-  serviceName(serviceId: string): string {
-    return this.services.find((service) => service.id === serviceId)?.name ?? 'Unknown Service';
-  }
+  appointmentDateTimeLabel(booking: Booking): string {
+    const date = booking.appointmentDate?.trim() ?? '';
+    const time = booking.slotStartTime?.trim() ?? '';
 
-  patientFor(patientId: string, patients: Patient[]): Patient | undefined {
-    return patients.find((item) => item.id === patientId);
-  }
+    if (!date) {
+      return time || '-';
+    }
 
-  serviceFor(serviceId: string): Service | undefined {
-    return this.services.find((service) => service.id === serviceId);
+    if (!time) {
+      return date;
+    }
+
+    return `${date} ${time}`;
   }
 
   canStartConsultation(status: string): boolean {

@@ -1,10 +1,11 @@
 import { Component, DestroyRef, OnInit, ViewChild, inject } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { IonContent } from '@ionic/angular/standalone';
+import { catchError, distinctUntilChanged, map, of, switchMap } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { skip } from 'rxjs/operators';
-import { MockDataService } from '../../../core/services/mock-data.service';
 import { BookingWizardService } from '../../../core/services/booking-wizard.service';
+import { PublicService } from '../services/public.service';
 import { BookingWizardComponent } from '../components/booking-wizard/booking-wizard.component';
 
 @Component({
@@ -23,27 +24,45 @@ import { BookingWizardComponent } from '../components/booking-wizard/booking-wiz
 export class BookingPage implements OnInit {
   private readonly wizardService = inject(BookingWizardService);
   private readonly route = inject(ActivatedRoute);
-  private readonly mockData = inject(MockDataService);
+  private readonly publicService = inject(PublicService);
   private readonly destroyRef = inject(DestroyRef);
 
   @ViewChild('scrollContainer', { static: true }) private content!: IonContent;
 
   ngOnInit(): void {
-    this.wizardService.reset();
+    this.route.queryParamMap
+      .pipe(
+        map((params) => ({
+          doctorId: params.get('doctorId'),
+          serviceId: params.get('serviceId')
+        })),
+        distinctUntilChanged((prev, next) => prev.doctorId === next.doctorId && prev.serviceId === next.serviceId),
+        switchMap(({ doctorId, serviceId }) => {
+          if (doctorId || !serviceId) {
+            return of({ doctorId, serviceId });
+          }
 
-    const params = this.route.snapshot.queryParamMap;
-    const serviceId = params.get('serviceId');
-    const doctorIdParam = params.get('doctorId');
-    const service = serviceId ? this.mockData.getServices().find((item) => item.id === serviceId) : null;
-    const doctorId = doctorIdParam ?? service?.doctorIds[0] ?? null;
+          return this.publicService.getServices().pipe(
+            map((services) => ({
+              doctorId: services.find((item) => item.id === serviceId)?.doctorIds[0] ?? null,
+              serviceId
+            })),
+            catchError(() => of({ doctorId: null, serviceId }))
+          );
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe(({ doctorId, serviceId }) => {
+        this.wizardService.reset();
 
-    if (doctorId) {
-      this.wizardService.selectDoctor(doctorId);
-    }
+        if (doctorId) {
+          this.wizardService.selectDoctor(doctorId);
+        }
 
-    if (serviceId) {
-      this.wizardService.selectService(serviceId);
-    }
+        if (serviceId) {
+          this.wizardService.selectService(serviceId);
+        }
+      });
 
     this.wizardService.currentStep$
       .pipe(skip(1), takeUntilDestroyed(this.destroyRef))

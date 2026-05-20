@@ -1,17 +1,17 @@
 import { AsyncPipe, DatePipe, NgFor, NgIf } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { combineLatest, map, of, switchMap } from 'rxjs';
+import { catchError, combineLatest, map, of, switchMap } from 'rxjs';
 import { AuthUser, Booking, Consultation, Doctor, Patient, Prescription, Service } from '../../../core/models';
 import { AuthStateService } from '../../../core/services/auth-state.service';
 import { BookingService } from '../../../core/services/booking.service';
 import { DoctorStateService } from '../../../core/services/doctor-state.service';
 import { MedicalRecordsService } from '../../../core/services/medical-records.service';
 import { MockDataService } from '../../../core/services/mock-data.service';
-import { PatientStateService } from '../../../core/services/patient-state.service';
 import { BannerComponent } from '../../../shared/components/banner/banner.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { DoctorCardComponent } from '../../public/components/doctor-card/doctor-card.component';
+import { PatientService } from '../services/patient.service';
 import { MedicalRecordCardComponent } from '../components/medical-record-card/medical-record-card.component';
 import { PrescriptionCardComponent } from '../components/prescription-card/prescription-card.component';
 import { UpcomingAppointmentCardComponent } from '../components/upcoming-appointment-card/upcoming-appointment-card.component';
@@ -188,13 +188,15 @@ export class PatientDashboardPage implements OnInit {
   private readonly bookingService = inject(BookingService);
   private readonly doctorState = inject(DoctorStateService);
   private readonly medicalRecords = inject(MedicalRecordsService);
-  private readonly patientState = inject(PatientStateService);
   private readonly router = inject(Router);
   private readonly mockData = inject(MockDataService);
+  private readonly patientService = inject(PatientService);
 
   readonly currentUser$ = this.authState.currentUser$;
   readonly patient$ = this.currentUser$.pipe(
-    switchMap((user) => (user ? this.patientState.getPatientByUserId(user.id) : of(undefined)))
+    switchMap((user) =>
+      user ? this.patientService.getMyProfile().pipe(catchError(() => of(undefined))) : of(undefined)
+    )
   );
 
   readonly upcomingBookings$ = this.patient$.pipe(
@@ -288,9 +290,7 @@ export class PatientDashboardPage implements OnInit {
   );
 
   ngOnInit(): void {
-    this.bookingService.refresh();
     this.doctorState.refresh();
-    this.patientState.refresh();
   }
 
   canSubmitProof(booking: Booking): boolean {

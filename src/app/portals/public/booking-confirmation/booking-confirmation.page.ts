@@ -3,6 +3,7 @@ import { AsyncPipe, DatePipe, NgIf } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { IonContent } from '@ionic/angular/standalone';
 import { combineLatest, map } from 'rxjs';
+import { AuthStateService } from '../../../core/services/auth-state.service';
 import { MockDataService } from '../../../core/services/mock-data.service';
 import { BookingWizardService } from '../../../core/services/booking-wizard.service';
 import { PesoPipe } from '../../../shared/pipes/peso.pipe';
@@ -67,9 +68,19 @@ import { TimeSlotPipe } from '../../../shared/pipes/time-slot.pipe';
         </div>
 
         <div class="confirmation-actions">
-          <button class="btn-primary" routerLink="/patient/bookings" type="button">
-            View My Appointments
-          </button>
+          <ng-container *ngIf="vm.isAuthenticated; else guestActions">
+            <button class="btn-primary" routerLink="/patient/bookings" type="button">
+              View My Appointments
+            </button>
+          </ng-container>
+          <ng-template #guestActions>
+            <div class="confirmation-guest-note">
+              <p>Create an account to track your bookings.</p>
+            </div>
+            <button class="btn-primary" routerLink="/auth/register" type="button">
+              Create Account
+            </button>
+          </ng-template>
           <button class="btn-outline" routerLink="/public" type="button">Back to Home</button>
         </div>
       </div>
@@ -79,11 +90,12 @@ import { TimeSlotPipe } from '../../../shared/pipes/time-slot.pipe';
 })
 export class BookingConfirmationPage {
   private readonly route = inject(ActivatedRoute);
+  private readonly authState = inject(AuthStateService);
   private readonly wizardService = inject(BookingWizardService);
   private readonly mockData = inject(MockDataService);
 
-  vm$ = combineLatest([this.route.paramMap, this.wizardService.state$]).pipe(
-    map(([params, wizard]) => {
+  vm$ = combineLatest([this.route.paramMap, this.wizardService.state$, this.authState.isAuthenticated$]).pipe(
+    map(([params, wizard, isAuthenticated]) => {
       const bookingId = params.get('bookingId') ?? wizard.bookingId ?? '-';
       const doctor = wizard.selectedDoctorId
         ? this.mockData.getDoctors().find((item) => item.id === wizard.selectedDoctorId)
@@ -103,7 +115,8 @@ export class BookingConfirmationPage {
         selectedSlotEnd: wizard.selectedSlotEnd,
         serviceName: service?.name ?? '-',
         totalFee: consultationFee + serviceFee,
-        paymentMode: wizard.paymentMode
+        paymentMode: wizard.paymentMode,
+        isAuthenticated
       };
     })
   );

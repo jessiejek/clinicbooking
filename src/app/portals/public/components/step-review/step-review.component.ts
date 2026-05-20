@@ -1,9 +1,6 @@
 import { AsyncPipe, DatePipe, NgIf } from '@angular/common';
 import { Component, inject } from '@angular/core';
-import { Router } from '@angular/router';
-import { AlertController } from '@ionic/angular/standalone';
 import { catchError, combineLatest, map, of } from 'rxjs';
-import { AuthStateService } from '../../../../core/services/auth-state.service';
 import { BookingWizardService } from '../../../../core/services/booking-wizard.service';
 import { PesoPipe } from '../../../../shared/pipes/peso.pipe';
 import { TimeSlotPipe } from '../../../../shared/pipes/time-slot.pipe';
@@ -19,9 +16,7 @@ import { PublicService } from '../../services/public.service';
         <div>
           <p class="section-heading">Step 4</p>
           <h2 class="wizard-title">Review your booking</h2>
-          <p class="wizard-subtitle">
-            Take a moment to confirm the details before moving to authentication.
-          </p>
+          <p class="wizard-subtitle">Take a moment to confirm the details before continuing.</p>
         </div>
       </div>
 
@@ -81,9 +76,6 @@ import { PublicService } from '../../services/public.service';
 export class StepReviewComponent {
   private readonly wizardService = inject(BookingWizardService);
   private readonly publicService = inject(PublicService);
-  private readonly authState = inject(AuthStateService);
-  private readonly router = inject(Router);
-  private readonly alertCtrl = inject(AlertController);
 
   vm$ = combineLatest([
     this.wizardService.state$,
@@ -115,36 +107,7 @@ export class StepReviewComponent {
     })
   );
 
-  async onConfirmAndProceed(): Promise<void> {
-    if (!this.authState.snapshot) {
-      const alert = await this.alertCtrl.create({
-        header: 'Login or register to continue',
-        message: 'Please login or create an account to book an appointment.',
-        backdropDismiss: false,
-        buttons: [
-          {
-            text: 'Login',
-            handler: () => {
-              void this.router.navigate(['/auth/login']);
-            }
-          },
-          {
-            text: 'Register',
-            handler: () => {
-              void this.router.navigate(['/auth/register']);
-            }
-          },
-          {
-            text: 'Cancel',
-            role: 'cancel'
-          }
-        ]
-      });
-
-      await alert.present();
-      return;
-    }
-
+  onConfirmAndProceed(): void {
     this.wizardService.nextStep();
   }
 

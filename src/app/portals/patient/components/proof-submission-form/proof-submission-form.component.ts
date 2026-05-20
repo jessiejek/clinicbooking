@@ -74,7 +74,9 @@ interface ProofSubmissionPayload {
       </div>
 
       <div class="proof-form__actions">
-        <ion-button type="submit" expand="block" color="primary">Submit Proof</ion-button>
+        <ion-button type="submit" expand="block" color="primary" [disabled]="isSubmitting">
+          {{ isSubmitting ? 'Submitting...' : 'Submit Proof' }}
+        </ion-button>
       </div>
     </form>
   `,
@@ -82,6 +84,7 @@ interface ProofSubmissionPayload {
 })
 export class ProofSubmissionFormComponent {
   @Input({ required: true }) booking!: Booking;
+  @Input() isSubmitting = false;
   @Output() proofSubmitted = new EventEmitter<ProofSubmissionPayload>();
 
   readonly form = this.fb.group({

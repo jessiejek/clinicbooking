@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { map, Observable } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
 import {
+  AuthSessionDto,
   CreatePatientRequest,
   PagedResult,
   PatientDetail,
@@ -49,6 +50,15 @@ interface PagedResultDto<T> {
   totalPages: number;
 }
 
+export interface PatientAccountRegistrationRequest {
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  email: string;
+  password: string;
+  avatarUrl?: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AdminPatientsService {
   private readonly apiService = inject(ApiService);
@@ -62,6 +72,28 @@ export class AdminPatientsService {
 
   createPatient(dto: CreatePatientRequest): Observable<PatientDetail> {
     return this.apiService.post<PatientDto>('/patients', dto).pipe(map((patient) => mapPatientDetail(patient)));
+  }
+
+  registerPatientAccount(dto: PatientAccountRegistrationRequest): Observable<string> {
+    return this.apiService
+      .post<AuthSessionDto>('/auth/register', {
+        firstName: dto.firstName.trim(),
+        middleName: dto.middleName?.trim() || undefined,
+        lastName: dto.lastName.trim(),
+        email: dto.email.trim(),
+        password: dto.password,
+        avatarUrl: dto.avatarUrl?.trim() || undefined
+      })
+      .pipe(
+        map((response) => {
+          const userId = response.user.id?.trim();
+          if (!userId) {
+            throw new Error('Register response did not include a user id.');
+          }
+
+          return userId;
+        })
+      );
   }
 
   getPatientById(id: string): Observable<PatientDetail> {
@@ -107,6 +139,7 @@ function mapPatientSummary(dto: PatientDto): PatientSummary {
     sex: normalizeString(dto.sex) || '',
     contactNumber: normalizeString(dto.contactNumber),
     email: normalizeString(dto.email),
+    userId: normalizeString(dto.userId),
     isGuest: Boolean(dto.isGuest)
   };
 }

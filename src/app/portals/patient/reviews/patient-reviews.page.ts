@@ -1,14 +1,15 @@
 import { DatePipe, NgIf } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ToastController } from '@ionic/angular/standalone';
-import { Booking, Patient, Review } from '../../../core/models';
-import { AuthStateService } from '../../../core/services/auth-state.service';
+import { catchError, combineLatest, of } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Booking, Patient } from '../../../core/models';
 import { BookingService } from '../../../core/services/booking.service';
 import { MockDataService } from '../../../core/services/mock-data.service';
-import { PatientStateService } from '../../../core/services/patient-state.service';
 import { ReviewFormComponent } from '../components/review-form/review-form.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { PatientService } from '../services/patient.service';
 
 @Component({
   selector: 'app-patient-reviews-page',
@@ -53,31 +54,31 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
   styleUrl: './patient-reviews.page.scss'
 })
 export class PatientReviewsPage implements OnInit {
-  private readonly authState = inject(AuthStateService);
   private readonly bookingService = inject(BookingService);
-  private readonly patientState = inject(PatientStateService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly mockData = inject(MockDataService);
   private readonly toastCtrl = inject(ToastController);
+  private readonly patientService = inject(PatientService);
+  private readonly destroyRef = inject(DestroyRef);
 
   booking: Booking | null = null;
   currentPatient: Patient | null = null;
 
   ngOnInit(): void {
     const bookingId = this.route.snapshot.paramMap.get('bookingId') ?? '';
-    this.authState.currentUser$.subscribe((user) => {
-      if (!user) {
-        this.currentPatient = null;
-        return;
-      }
-      this.patientState.getPatientByUserId(user.id).subscribe((patient) => {
+    combineLatest([
+      this.patientService.getMyProfile().pipe(catchError(() => of(undefined))),
+      this.bookingService.getBookingById$(bookingId)
+    ])
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(([patient, booking]) => {
         this.currentPatient = patient ?? null;
-        this.bookingService.getBookingById$(bookingId).subscribe((booking) => {
-          this.booking = booking && (!this.currentPatient || booking.patientId === this.currentPatient.id) ? booking : null;
-        });
+        this.booking =
+          booking && this.currentPatient && (!booking.patientId || booking.patientId === this.currentPatient.id)
+            ? booking
+            : null;
       });
-    });
   }
 
   get canReview(): boolean {

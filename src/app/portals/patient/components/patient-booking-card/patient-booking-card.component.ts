@@ -12,8 +12,8 @@ import { StatusBadgeComponent } from '../../../../shared/components/status-badge
       <div class="booking-card__header">
         <div>
           <div class="booking-card__id data-mono">{{ booking.id }}</div>
-          <h3>{{ doctor?.fullName || 'Assigned Doctor' }}</h3>
-          <p>{{ service?.name || 'Service' }}</p>
+          <h3>{{ doctorDisplayName }}</h3>
+          <p>{{ serviceDisplayName }}</p>
         </div>
         <div class="booking-card__badges">
           <app-status-badge [status]="booking.status"></app-status-badge>
@@ -28,7 +28,7 @@ import { StatusBadgeComponent } from '../../../../shared/components/status-badge
         </div>
         <div>
           <span>Time</span>
-          <strong>{{ booking.slotStartTime }} - {{ booking.slotEndTime }}</strong>
+          <strong>{{ timeRangeLabel }}</strong>
         </div>
         <div *ngIf="booking.queueNumber !== null">
           <span>Queue</span>
@@ -61,4 +61,27 @@ export class PatientBookingCardComponent {
   @Output() viewDetails = new EventEmitter<string>();
   @Output() submitProof = new EventEmitter<string>();
   @Output() cancelBooking = new EventEmitter<string>();
+
+  get doctorDisplayName(): string {
+    return this.doctor?.fullName?.trim() || this.booking.doctorName?.trim() || 'Assigned Doctor';
+  }
+
+  get serviceDisplayName(): string {
+    return this.service?.name?.trim() || this.booking.serviceName?.trim() || 'Service';
+  }
+
+  get timeRangeLabel(): string {
+    const start = this.booking.slotStartTime?.trim() ?? '';
+    const end = this.booking.slotEndTime?.trim() ?? '';
+
+    if (!start) {
+      return 'Time not available';
+    }
+
+    if (!end || end === start) {
+      return start;
+    }
+
+    return `${start} - ${end}`;
+  }
 }

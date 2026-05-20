@@ -1,6 +1,6 @@
 import { NgIf } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { Booking, Patient, Service } from '../../../../core/models';
+import { Booking } from '../../../../core/models';
 import { StatusBadgeComponent } from '../../../../shared/components/status-badge/status-badge.component';
 
 @Component({
@@ -11,8 +11,8 @@ import { StatusBadgeComponent } from '../../../../shared/components/status-badge
     <article class="clinic-card appointment-card">
       <div class="appointment-card__head">
         <div>
-          <div class="appointment-card__patient">{{ patientName }}</div>
-          <div class="appointment-card__sub">{{ patientCode }}</div>
+          <div class="appointment-card__patient">{{ displayPatientName }}</div>
+          <div class="appointment-card__sub" *ngIf="patientCode">{{ patientCode }}</div>
         </div>
         <app-status-badge [status]="booking.status"></app-status-badge>
       </div>
@@ -20,11 +20,11 @@ import { StatusBadgeComponent } from '../../../../shared/components/status-badge
       <div class="appointment-card__meta">
         <div>
           <span class="label">Service</span>
-          <strong>{{ serviceName }}</strong>
+          <strong>{{ displayServiceName }}</strong>
         </div>
         <div>
           <span class="label">Schedule</span>
-          <strong>{{ booking.appointmentDate }} {{ booking.slotStartTime }}</strong>
+          <strong>{{ scheduleLabel }}</strong>
         </div>
         <div>
           <span class="label">Queue #</span>
@@ -53,22 +53,34 @@ import { StatusBadgeComponent } from '../../../../shared/components/status-badge
 })
 export class DoctorAppointmentCardComponent {
   @Input({ required: true }) booking!: Booking;
-  @Input() patient: Patient | undefined;
-  @Input() service: Service | undefined;
+  @Input() patientName = '';
+  @Input() patientCode = '';
+  @Input() serviceName = '';
 
   @Output() openBooking = new EventEmitter<string>();
   @Output() startConsultation = new EventEmitter<string>();
 
-  get patientName(): string {
-    return this.patient ? `${this.patient.firstName} ${this.patient.lastName}` : 'Unknown Patient';
+  get displayPatientName(): string {
+    return this.patientName.trim() || this.booking.patientName?.trim() || 'Unknown Patient';
   }
 
-  get patientCode(): string {
-    return this.patient?.patientCode ?? '';
+  get displayServiceName(): string {
+    return this.serviceName.trim() || this.booking.serviceName?.trim() || 'Unknown Service';
   }
 
-  get serviceName(): string {
-    return this.service?.name ?? 'Unknown Service';
+  get scheduleLabel(): string {
+    const date = this.booking.appointmentDate?.trim() ?? '';
+    const time = this.booking.slotStartTime?.trim() ?? '';
+
+    if (!date) {
+      return time || '-';
+    }
+
+    if (!time) {
+      return date;
+    }
+
+    return `${date} ${time}`;
   }
 
   canStartConsultation(status: string): boolean {
