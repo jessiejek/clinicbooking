@@ -76,6 +76,11 @@ export const DOCTOR_ROUTES: Routes = [
         data: { title: 'Consultation Form' }
       },
       {
+        path: 'my-profile',
+        loadComponent: () => import('./profile/doctor-profile.page').then((m) => m.DoctorProfilePage),
+        data: { title: 'My Profile' }
+      },
+      {
         path: 'profile',
         loadComponent: () => import('./profile/doctor-profile.page').then((m) => m.DoctorProfilePage),
         data: { title: 'My Profile' }

@@ -61,7 +61,19 @@ interface DoctorDayStatusDto {
 
 export type DoctorDetail = Doctor;
 
-export interface UpdateDoctorDto extends Partial<Omit<Doctor, 'id'>> {}
+export interface UpdateDoctorDto {
+  fullName: string;
+  specialization: string;
+  bio: string;
+  licenseNumber: string;
+  ptrNumber: string;
+  s2Number: string;
+  consultationFee: number;
+  slotDurationMinutes: number;
+  slotCapacity: number;
+  dailyPatientLimit: number | null;
+  status: DoctorStatus;
+}
 
 export interface SetDayStatusDto {
   date: string;
