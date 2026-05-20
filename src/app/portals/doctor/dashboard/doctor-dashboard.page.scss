@@ -4,6 +4,12 @@
   max-width: 100%;
 }
 
+.page-loading {
+  min-height: 320px;
+  display: grid;
+  place-items: center;
+}
+
 .dashboard-header-copy h2 {
   margin: 0;
   font-size: 28px;
@@ -16,50 +22,52 @@
   color: var(--clinic-text-muted);
 }
 
-.stat-grid {
+.dashboard-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: var(--space-4);
-  margin: var(--space-5) 0;
+  margin-top: var(--space-5);
   min-width: 0;
 }
 
-.stat-card {
+.doctor-profile-card,
+.schedule-card {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-4);
   min-width: 0;
 }
 
-.stat-card__label {
+.doctor-profile-card h3,
+.schedule-card h3 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.section-label {
+  margin: 0 0 4px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--clinic-text-muted);
+}
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.profile-item {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.profile-label {
   font-size: 13px;
   color: var(--clinic-text-muted);
-  overflow-wrap: anywhere;
-}
-
-.stat-card__value {
-  font-size: 34px;
-  font-weight: 800;
-  line-height: 1;
-}
-
-.content-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(320px, 0.9fr);
-  gap: var(--space-5);
-  min-width: 0;
-}
-
-.content-grid__main,
-.content-grid__aside {
-  min-width: 0;
-}
-
-.upcoming-card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  min-width: 0;
 }
 
 .card-head {
@@ -81,12 +89,12 @@
   font-size: 20px;
 }
 
-.upcoming-list {
+.schedule-list {
   display: grid;
   gap: var(--space-3);
 }
 
-.upcoming-item {
+.schedule-item {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -98,63 +106,54 @@
   min-width: 0;
 }
 
-.upcoming-item > div {
-  min-width: 0;
-}
-
-.upcoming-item strong {
-  display: block;
-  margin-bottom: 4px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.upcoming-item p,
-.upcoming-item span {
+.schedule-item strong,
+.schedule-item span {
   margin: 0;
   color: var(--clinic-text-muted);
   font-size: 13px;
 }
 
+:host ::ng-deep .doctor-profile-card .badge--available,
+:host ::ng-deep .doctor-status-panel .badge--available {
+  background: var(--color-success-100);
+  color: #14532d;
+}
+
+:host ::ng-deep .doctor-profile-card .badge--running-late,
+:host ::ng-deep .doctor-status-panel .badge--running-late {
+  background: var(--color-warning-100);
+  color: #92400e;
+}
+
+:host ::ng-deep .doctor-profile-card .badge--unavailable-today,
+:host ::ng-deep .doctor-status-panel .badge--unavailable-today {
+  background: var(--color-danger-100);
+  color: #7f1d1d;
+}
+
 @media (max-width: 1024px) {
-  .content-grid {
+  .dashboard-grid {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 960px) {
-  .stat-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .profile-grid {
+    grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 580px) {
-  .stat-grid {
-    grid-template-columns: 1fr;
-    gap: var(--space-3);
-    margin: var(--space-4) 0;
-  }
-
   .dashboard-header-copy h2 {
     font-size: var(--text-xl);
   }
 
-  .stat-card,
-  .upcoming-card {
+  .doctor-profile-card,
+  .schedule-card {
     padding: var(--space-4);
   }
 
-  .stat-card__value {
-    font-size: var(--text-3xl);
-  }
-
-  .upcoming-item {
+  .schedule-item {
     flex-direction: column;
-  }
-
-  .upcoming-item .btn-ghost {
-    width: 100%;
-    justify-content: center;
   }
 }

@@ -1,6 +1,6 @@
 import { NgFor, NgIf } from '@angular/common';
-import { Component, DestroyRef, OnInit, inject } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { Component, DestroyRef, ElementRef, OnInit, ViewChild, inject } from '@angular/core';
+import { FormsModule, NgForm } from '@angular/forms';
 import { IonModal, IonSpinner, ToastController } from '@ionic/angular/standalone';
 import { catchError, finalize, forkJoin, of } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -8,7 +8,7 @@ import { ServiceCategory } from '../../../core/models';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 import { AdminDoctorsService, DoctorSummary } from '../services/admin-doctors.service';
-import { AdminServicesService, ManagedService } from '../services/admin-services.service';
+import { AdminServicesService, ManagedService, ServiceWriteDto } from '../services/admin-services.service';
 
 @Component({
   selector: 'app-admin-services-page',
@@ -100,30 +100,53 @@ import { AdminServicesService, ManagedService } from '../services/admin-services
       </ng-container>
     </section>
 
-    <ion-modal [isOpen]="modalOpen" (didDismiss)="closeModal()">
+    <ion-modal #serviceModal [backdropDismiss]="!isSaving" (didDismiss)="onModalDismiss()">
       <ng-template>
         <div class="modal-shell">
           <h3>{{ editingId ? 'Edit Service' : 'Add Service' }}</h3>
-          <form class="modal-form" (ngSubmit)="save()">
-            <input class="filter-input" name="name" [(ngModel)]="draft.name" placeholder="Service name" />
+          <form #serviceForm="ngForm" class="modal-form" novalidate (ngSubmit)="save(serviceForm)">
+            <input
+              class="filter-input"
+              name="name"
+              [(ngModel)]="draft.name"
+              placeholder="Service name"
+              required
+            />
 
-            <select class="filter-input" name="category" [(ngModel)]="draft.category">
+            <textarea
+              class="textarea"
+              name="description"
+              [(ngModel)]="draft.description"
+              placeholder="Description"
+            ></textarea>
+
+            <select class="filter-input" name="category" [(ngModel)]="draft.category" required>
+              <option value="" disabled>Select category</option>
               <option *ngFor="let cat of serviceCategories" [ngValue]="cat">{{ cat }}</option>
             </select>
 
-            <input class="filter-input" type="number" name="price" [(ngModel)]="draft.price" placeholder="Price" />
+            <input
+              class="filter-input"
+              type="number"
+              name="price"
+              [(ngModel)]="draft.price"
+              placeholder="Price"
+              min="0"
+              required
+            />
             <input
               class="filter-input"
               type="number"
               name="estimatedDurationMinutes"
               [(ngModel)]="draft.estimatedDurationMinutes"
               placeholder="Duration"
+              min="1"
+              required
             />
 
-            <label><input type="checkbox" name="isActive" [(ngModel)]="draft.isActive" /> Active</label>
             <div class="modal-actions">
               <button type="button" class="btn-ghost" (click)="closeModal()">Cancel</button>
-              <button type="submit" class="btn-primary" [disabled]="isSaving">
+              <button type="submit" class="btn-primary" [disabled]="isSaving || serviceForm.invalid">
                 {{ isSaving ? 'Saving...' : 'Save' }}
               </button>
             </div>
@@ -139,11 +162,11 @@ export class ServicesPage implements OnInit {
   private readonly adminDoctorsService = inject(AdminDoctorsService);
   private readonly toastCtrl = inject(ToastController);
   private readonly destroyRef = inject(DestroyRef);
+  @ViewChild('serviceModal', { read: ElementRef }) private readonly serviceModal?: ElementRef<HTMLElement>;
 
   services: ManagedService[] = [];
   doctors: DoctorSummary[] = [];
   serviceCategories: ServiceCategory[] = ['Consultation', 'Procedure', 'Laboratory', 'Diagnostic'];
-  modalOpen = false;
   editingId: string | null = null;
   draft: ManagedService = this.emptyDraft();
   isLoading = true;
@@ -170,7 +193,7 @@ export class ServicesPage implements OnInit {
   openModal(): void {
     this.editingId = null;
     this.draft = this.emptyDraft();
-    this.modalOpen = true;
+    void this.presentModal();
   }
 
   closeModal(): void {
@@ -178,13 +201,13 @@ export class ServicesPage implements OnInit {
       return;
     }
 
-    this.modalOpen = false;
+    void this.dismissModal();
   }
 
   edit(service: ManagedService): void {
     this.editingId = service.id;
-    this.draft = { ...service };
-    this.modalOpen = true;
+    this.draft = { ...service, doctorIds: [...service.doctorIds], description: service.description ?? '' };
+    void this.presentModal();
   }
 
   toggle(service: ManagedService): void {
@@ -235,13 +258,18 @@ export class ServicesPage implements OnInit {
       });
   }
 
-  save(): void {
+  save(form: NgForm): void {
     if (this.isSaving) {
       return;
     }
 
+    if (form.invalid) {
+      form.control.markAllAsTouched();
+      return;
+    }
+
     this.isSaving = true;
-    const payload = this.stripId(this.draft);
+    const payload = this.buildWritePayload(this.draft);
     const request$ = this.editingId
       ? this.adminServicesService.updateService(this.editingId, payload)
       : this.adminServicesService.createService(payload);
@@ -254,16 +282,9 @@ export class ServicesPage implements OnInit {
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe({
-        next: (saved) => {
-          if (this.editingId) {
-            this.services = this.services.map((service) => (service.id === saved.id ? saved : service));
-          } else {
-            this.services = [...this.services, saved];
-          }
-
-          this.modalOpen = false;
-          this.editingId = null;
-          this.draft = this.emptyDraft();
+        next: () => {
+          void this.presentToast('Service saved successfully.', 'success');
+          void this.dismissModal().then(() => this.loadData());
         },
         error: (error: unknown) => {
           void this.presentToast(extractApiErrorMessage(error, 'Failed to save service.'));
@@ -304,29 +325,62 @@ export class ServicesPage implements OnInit {
       });
   }
 
-  private stripId(service: ManagedService): Omit<ManagedService, 'id'> {
-    const { id: _id, ...payload } = service;
-    return payload;
+  private buildWritePayload(service: ManagedService): ServiceWriteDto {
+    return {
+      name: service.name.trim(),
+      description: service.description?.trim() || '',
+      category: service.category,
+      price: Number(service.price ?? 0),
+      estimatedDurationMinutes: Number(service.estimatedDurationMinutes ?? 0),
+      doctorIds: [...(service.doctorIds ?? [])]
+    };
   }
 
   private emptyDraft(): ManagedService {
     return {
       id: '',
       name: '',
+      description: '',
       category: 'Consultation',
       price: 0,
       estimatedDurationMinutes: 30,
       doctorIds: [],
-      description: '',
       isActive: true
     };
   }
 
-  private async presentToast(message: string): Promise<void> {
+  onModalDismiss(): void {
+    this.editingId = null;
+    this.draft = this.emptyDraft();
+  }
+
+  private async presentModal(): Promise<void> {
+    const modal = this.getModalElement();
+    if (!modal) {
+      return;
+    }
+
+    await modal.present();
+  }
+
+  private async dismissModal(): Promise<void> {
+    const modal = this.getModalElement();
+    if (!modal) {
+      return;
+    }
+
+    await modal.dismiss();
+  }
+
+  private getModalElement(): HTMLIonModalElement | null {
+    return this.serviceModal?.nativeElement as HTMLIonModalElement | null;
+  }
+
+  private async presentToast(message: string, color: 'danger' | 'success' = 'danger'): Promise<void> {
     const toast = await this.toastCtrl.create({
       message,
       duration: 2400,
-      color: 'danger',
+      color,
       position: 'top'
     });
     await toast.present();

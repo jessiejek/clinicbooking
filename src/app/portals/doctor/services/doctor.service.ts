@@ -59,13 +59,14 @@ interface DoctorDayStatusDto {
   runningLateMinutes?: number | null;
 }
 
-export type DoctorDetail = Doctor | undefined;
+export type DoctorDetail = Doctor;
 
 export interface UpdateDoctorDto extends Partial<Omit<Doctor, 'id'>> {}
 
 export interface SetDayStatusDto {
+  date: string;
   status: AvailabilityStatus;
-  runningLateMinutes?: number;
+  runningLateMinutes: number | null;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -73,10 +74,7 @@ export class DoctorService {
   private readonly apiService = inject(ApiService);
 
   getMyProfile(): Observable<DoctorDetail> {
-    return this.apiService.get<DoctorDto>('/doctors/me').pipe(
-      map((doctor) => mapDoctorDto(doctor)),
-      catchError(() => of(undefined))
-    );
+    return this.apiService.get<DoctorDto>('/doctors/me').pipe(map((doctor) => mapDoctorDto(doctor)));
   }
 
   updateMyProfile(dto: UpdateDoctorDto): Observable<DoctorDetail> {

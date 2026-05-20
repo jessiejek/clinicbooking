@@ -20,6 +20,10 @@ export interface ManagedService extends Service {
   isActive: boolean;
 }
 
+export interface ServiceWriteDto extends Omit<Service, 'id'> {
+  isActive?: boolean;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AdminServicesService {
   private readonly apiService = inject(ApiService);
@@ -30,15 +34,15 @@ export class AdminServicesService {
     );
   }
 
-  createService(service: Omit<ManagedService, 'id'>): Observable<ManagedService> {
+  createService(service: ServiceWriteDto): Observable<ManagedService> {
     return this.apiService.post<ServiceDto>('/services', service).pipe(map((dto) => mapManagedServiceDto(dto)));
   }
 
-  addService(service: Omit<ManagedService, 'id'>): Observable<ManagedService> {
+  addService(service: ServiceWriteDto): Observable<ManagedService> {
     return this.createService(service);
   }
 
-  updateService(id: string, service: Omit<ManagedService, 'id'>): Observable<ManagedService> {
+  updateService(id: string, service: ServiceWriteDto): Observable<ManagedService> {
     return this.apiService.put<ServiceDto>(`/services/${id}`, service).pipe(map((dto) => mapManagedServiceDto(dto)));
   }
 
@@ -47,7 +51,7 @@ export class AdminServicesService {
   }
 
   toggleServiceStatus(service: ManagedService, isActive: boolean): Observable<ManagedService> {
-    const { id: _id, ...payload } = service;
+    const { id: _id, isActive: _current, ...payload } = service;
     return this.updateService(service.id, { ...payload, isActive });
   }
 }

@@ -60,6 +60,15 @@
   background: white;
 }
 
+.textarea {
+  border: 1px solid var(--clinic-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  min-height: 120px;
+  resize: vertical;
+  background: white;
+}
+
 .clinic-table td,
 .clinic-table th {
   vertical-align: middle;
