@@ -1,11 +1,11 @@
 import { NgFor, NgIf } from '@angular/common';
-import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { Component, EventEmitter, Input, Output, inject } from '@angular/core';
+import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { IonIcon } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { closeOutline, logOutOutline } from 'ionicons/icons';
 import { AvatarComponent } from '../../../../shared/components/avatar/avatar.component';
-import { AuthUser, NavItem } from '../../../../core/models';
+import { AuthUser, NavItem, Role } from '../../../../core/models';
 
 @Component({
   selector: 'app-admin-sidebar',
@@ -49,16 +49,23 @@ import { AuthUser, NavItem } from '../../../../core/models';
       </nav>
 
       <div class="sidebar__footer" *ngIf="currentUser">
-        <button type="button" class="sidebar__user" aria-label="Logout" (click)="logout.emit()">
+        <button
+          type="button"
+          class="sidebar__profile"
+          [attr.aria-label]="profileAriaLabel"
+          [disabled]="!profileRoute"
+          (click)="goToProfile()"
+        >
           <app-avatar [name]="currentUser.fullName" size="md"></app-avatar>
           <div class="sidebar__user-meta">
             <div class="sidebar__user-name">{{ currentUser.fullName }}</div>
             <div class="sidebar__user-role">{{ currentUser.role }} Account</div>
           </div>
-          <span class="sidebar__logout-action">
-            <span class="sidebar__logout-label">Logout</span>
-            <ion-icon name="log-out-outline"></ion-icon>
-          </span>
+        </button>
+
+        <button type="button" class="sidebar__logout-action" aria-label="Logout" (click)="onLogoutClick($event)">
+          <span class="sidebar__logout-label">Logout</span>
+          <ion-icon name="log-out-outline"></ion-icon>
         </button>
       </div>
     </aside>
@@ -75,7 +82,41 @@ export class SidebarComponent {
   @Output() logout = new EventEmitter<void>();
   @Output() navClick = new EventEmitter<void>();
 
+  private readonly router = inject(Router);
+  private readonly profileRoutes: Record<Role, string> = {
+    Admin: '/admin/settings',
+    Staff: '/staff/profile',
+    Doctor: '/doctor/profile',
+    Patient: '/patient/profile'
+  };
+
   constructor() {
     addIcons({ closeOutline, logOutOutline });
+  }
+
+  get profileRoute(): string | null {
+    return this.currentUser ? this.profileRoutes[this.currentUser.role] : null;
+  }
+
+  get profileAriaLabel(): string {
+    if (!this.currentUser) {
+      return 'Open profile';
+    }
+
+    return this.currentUser.role === 'Admin' ? 'Open admin settings' : `Open ${this.currentUser.role} profile`;
+  }
+
+  goToProfile(): void {
+    if (!this.profileRoute) {
+      return;
+    }
+
+    this.navClick.emit();
+    void this.router.navigateByUrl(this.profileRoute);
+  }
+
+  onLogoutClick(event: MouseEvent): void {
+    event.stopPropagation();
+    this.logout.emit();
   }
 }

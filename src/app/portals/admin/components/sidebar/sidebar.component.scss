@@ -110,39 +110,39 @@
 .sidebar__footer {
   padding: var(--space-4);
   border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: grid;
+  gap: var(--space-3);
 }
 
-.sidebar__user {
+.sidebar__profile {
   width: 100%;
   border: none;
   background: rgba(255, 255, 255, 0.02);
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  grid-template-areas:
-    'avatar meta'
-    'logout logout';
   align-items: center;
   gap: var(--space-3);
-  cursor: pointer;
   padding: var(--space-4) var(--space-4);
   border-radius: var(--radius-lg);
-  transition:
-    background var(--transition-fast),
-    transform var(--transition-fast);
+  cursor: pointer;
+  transition: background var(--transition-fast);
   text-align: left;
 }
 
-.sidebar__user app-avatar {
-  grid-area: avatar;
+.sidebar__profile:hover,
+.sidebar__profile:focus-visible {
+  background: rgba(255, 255, 255, 0.06);
 }
 
-.sidebar__user:hover {
-  background: rgba(255, 255, 255, 0.06);
-  transform: translateY(-1px);
+.sidebar__profile:hover .sidebar__user-name,
+.sidebar__profile:hover .sidebar__user-role,
+.sidebar__profile:focus-visible .sidebar__user-name,
+.sidebar__profile:focus-visible .sidebar__user-role {
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .sidebar__user-meta {
-  grid-area: meta;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -169,7 +169,8 @@
 }
 
 .sidebar__logout-action {
-  grid-area: logout;
+  border: none;
+  background: transparent;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -181,9 +182,21 @@
   min-width: 0;
   padding-top: var(--space-3);
   border-top: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
 }
 
-.sidebar__user ion-icon {
+.sidebar__logout-action:hover,
+.sidebar__logout-action:focus-visible {
+  color: white;
+}
+
+.sidebar__logout-action:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.26);
+  outline-offset: 3px;
+}
+
+.sidebar__profile ion-icon,
+.sidebar__logout-action ion-icon {
   color: rgba(255, 255, 255, 0.45);
   flex-shrink: 0;
 }

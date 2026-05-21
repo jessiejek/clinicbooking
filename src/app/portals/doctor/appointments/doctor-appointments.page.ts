@@ -46,146 +46,163 @@ type DoctorQueueFilter = 'all' | 'Confirmed' | 'CheckedIn' | 'Completed' | 'NoSh
     StatusBadgeComponent
   ],
   template: `
-    <app-page-header title="Today Queue" subtitle="Today’s bookings, check-ins, and completed consultations"></app-page-header>
+    <app-page-header
+      title="Today Queue"
+      subtitle="Today's bookings, check-ins, and completed consultations"
+    ></app-page-header>
 
-    <section class="stats-grid" *ngIf="summary">
-      <div class="stat-card stat-card--blue">
-        <div class="stat-card__value">{{ summary.bookedToday }}</div>
-        <div class="stat-card__label">Booked Today</div>
-      </div>
-      <div class="stat-card stat-card--amber">
-        <div class="stat-card__value">{{ summary.checkedIn }}</div>
-        <div class="stat-card__label">In Clinic</div>
-      </div>
-      <div class="stat-card stat-card--green">
-        <div class="stat-card__value">{{ summary.waiting }}</div>
-        <div class="stat-card__label">Waiting</div>
-      </div>
-      <div class="stat-card stat-card--blue">
-        <div class="stat-card__value">{{ summary.completed }}</div>
-        <div class="stat-card__label">Completed</div>
-      </div>
-      <div class="stat-card stat-card--red">
-        <div class="stat-card__value">{{ summary.noShow }}</div>
-        <div class="stat-card__label">No Show</div>
-      </div>
-      <div class="stat-card stat-card--red">
-        <div class="stat-card__value">{{ summary.cancelled }}</div>
-        <div class="stat-card__label">Cancelled</div>
-      </div>
-    </section>
-
-    <section class="clinic-card filters-card">
-      <div class="filters-grid">
-        <label>
-          <span>Status</span>
-          <select [(ngModel)]="selectedFilter">
-            <option *ngFor="let option of filterOptions" [value]="option.value">{{ option.label }}</option>
-          </select>
-        </label>
-        <label class="filters-grid__search">
-          <span>Search patient or service</span>
-          <input type="search" [(ngModel)]="searchQuery" placeholder="Search queue" />
-        </label>
-        <div class="filters-grid__actions">
-          <button type="button" class="btn-ghost" (click)="loadSummary()" [disabled]="isLoading">Refresh</button>
+    <section class="doctor-appointments-page">
+      <section class="stats-grid" *ngIf="summary">
+        <div class="stat-card stat-card--blue">
+          <div class="stat-card__value">{{ summary.bookedToday }}</div>
+          <div class="stat-card__label">Booked Today</div>
         </div>
-      </div>
-    </section>
+        <div class="stat-card stat-card--amber">
+          <div class="stat-card__value">{{ summary.checkedIn }}</div>
+          <div class="stat-card__label">In Clinic</div>
+        </div>
+        <div class="stat-card stat-card--green">
+          <div class="stat-card__value">{{ summary.waiting }}</div>
+          <div class="stat-card__label">Waiting</div>
+        </div>
+        <div class="stat-card stat-card--blue">
+          <div class="stat-card__value">{{ summary.completed }}</div>
+          <div class="stat-card__label">Completed</div>
+        </div>
+        <div class="stat-card stat-card--red">
+          <div class="stat-card__value">{{ summary.noShow }}</div>
+          <div class="stat-card__label">No Show</div>
+        </div>
+        <div class="stat-card stat-card--red">
+          <div class="stat-card__value">{{ summary.cancelled }}</div>
+          <div class="stat-card__label">Cancelled</div>
+        </div>
+      </section>
 
-    <div class="clinic-card" *ngIf="isLoading">
-      Loading today’s queue...
-    </div>
+      <section class="clinic-card filters-card">
+        <div class="filters-grid">
+          <label>
+            <span>Status</span>
+            <select [(ngModel)]="selectedFilter">
+              <option *ngFor="let option of filterOptions" [value]="option.value">{{ option.label }}</option>
+            </select>
+          </label>
+          <label class="filters-grid__search">
+            <span>Search patient or service</span>
+            <input type="search" [(ngModel)]="searchQuery" placeholder="Search queue" />
+          </label>
+          <div class="filters-grid__actions">
+            <button type="button" class="btn-ghost" (click)="loadSummary()" [disabled]="isLoading">Refresh</button>
+          </div>
+        </div>
+      </section>
 
-    <ng-container *ngIf="!isLoading">
-      <app-empty-state
-        *ngIf="filteredBookings.length === 0"
-        icon="calendar-outline"
-        title="No matching appointments"
-        description="No appointments match the selected filters."
-      ></app-empty-state>
+      <div class="clinic-card" *ngIf="isLoading">Loading today's queue...</div>
 
-      <section class="appointments-desktop clinic-card" *ngIf="filteredBookings.length > 0">
-        <table class="clinic-table">
-          <thead>
-            <tr>
-              <th>Queue</th>
-              <th>Patient</th>
-              <th>Services</th>
-              <th>Time</th>
-              <th>Status</th>
-              <th>Payment</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let booking of filteredBookings">
-              <td>{{ booking.queueNumber !== null ? '#' + booking.queueNumber : '-' }}</td>
-              <td>{{ booking.patientName || 'Patient' }}</td>
-              <td>{{ servicesLabel(booking) }}</td>
-              <td>{{ timeRangeLabel(booking) }}</td>
-              <td><app-status-badge [status]="booking.status"></app-status-badge></td>
-              <td><app-status-badge [status]="booking.paymentStatus"></app-status-badge></td>
-              <td>
-                <div class="action-row">
-                  <button type="button" class="btn-ghost" (click)="view(booking.id)">View</button>
-                  <button
-                    *ngIf="canStartConsultation(booking)"
-                    type="button"
-                    class="btn-outline"
-                    (click)="consult(booking.id)"
-                  >
-                    Start Consultation
-                  </button>
-                  <button
-                    *ngIf="canComplete(booking)"
-                    type="button"
-                    class="btn-primary"
-                    (click)="openCompleteModal(booking)"
-                  >
-                    Complete
-                  </button>
+      <ng-container *ngIf="!isLoading">
+        <app-empty-state
+          *ngIf="filteredBookings.length === 0"
+          icon="calendar-outline"
+          title="No matching appointments"
+          description="No appointments match the selected filters."
+        ></app-empty-state>
+
+        <section class="appointments-desktop clinic-card" *ngIf="filteredBookings.length > 0">
+          <table class="clinic-table">
+            <thead>
+              <tr>
+                <th>Queue</th>
+                <th>Patient</th>
+                <th>Services</th>
+                <th>Time</th>
+                <th>Status</th>
+                <th>Payment</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let booking of filteredBookings">
+                <td>{{ booking.queueNumber !== null ? '#' + booking.queueNumber : '-' }}</td>
+                <td>{{ booking.patientName || 'Patient' }}</td>
+                <td>{{ servicesLabel(booking) }}</td>
+                <td>{{ timeRangeLabel(booking) }}</td>
+                <td><app-status-badge [status]="booking.status"></app-status-badge></td>
+                <td><app-status-badge [status]="booking.paymentStatus"></app-status-badge></td>
+                <td>
+                  <div class="action-row">
+                    <button type="button" class="btn-ghost" (click)="view(booking.id)">View</button>
+                    <button
+                      *ngIf="canStartConsultation(booking)"
+                      type="button"
+                      class="btn-outline"
+                      (click)="consult(booking.id)"
+                    >
+                      Start Consultation
+                    </button>
+                    <button
+                      *ngIf="canComplete(booking)"
+                      type="button"
+                      class="btn-primary"
+                      (click)="openCompleteModal(booking)"
+                    >
+                      Complete
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="appointments-mobile" *ngIf="filteredBookings.length > 0">
+          <article class="mobile-card appointment-card" *ngFor="let booking of filteredBookings">
+            <div class="mobile-card__header">
+              <div>
+                <div class="mobile-card__name">{{ booking.patientName || 'Patient' }}</div>
+                <div class="mobile-card__code">
+                  {{ booking.queueNumber !== null ? '#' + booking.queueNumber : booking.id }}
                 </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </section>
-
-      <section class="appointments-mobile" *ngIf="filteredBookings.length > 0">
-        <article class="doctor-queue-card clinic-card" *ngFor="let booking of filteredBookings">
-          <div class="doctor-queue-card__head">
-            <div>
-              <div class="data-mono">{{ booking.queueNumber !== null ? '#' + booking.queueNumber : booking.id }}</div>
-              <strong>{{ booking.patientName || 'Patient' }}</strong>
-              <p>{{ servicesLabel(booking) }}</p>
+              </div>
+              <button type="button" class="btn-ghost" (click)="view(booking.id)">View</button>
             </div>
-            <button type="button" class="btn-ghost" (click)="view(booking.id)">View</button>
-          </div>
 
-          <div class="doctor-queue-card__badges">
-            <app-status-badge [status]="booking.status"></app-status-badge>
-            <app-status-badge [status]="booking.paymentStatus"></app-status-badge>
-          </div>
-
-          <dl class="doctor-queue-card__details">
-            <div>
-              <dt>Time</dt>
-              <dd>{{ timeRangeLabel(booking) }}</dd>
+            <div class="mobile-card__row">
+              <span class="mobile-card__label">Status</span>
+              <app-status-badge [status]="booking.status"></app-status-badge>
             </div>
-          </dl>
 
-          <div class="doctor-queue-card__actions">
-            <button *ngIf="canStartConsultation(booking)" type="button" class="btn-outline" (click)="consult(booking.id)">
-              Start Consultation
-            </button>
-            <button *ngIf="canComplete(booking)" type="button" class="btn-primary" (click)="openCompleteModal(booking)">
-              Complete
-            </button>
-          </div>
-        </article>
-      </section>
-    </ng-container>
+            <div class="mobile-card__row">
+              <span class="mobile-card__label">Payment</span>
+              <app-status-badge [status]="booking.paymentStatus"></app-status-badge>
+            </div>
+
+            <div class="mobile-card__row">
+              <span class="mobile-card__label">Services</span>
+              <span>{{ servicesLabel(booking) }}</span>
+            </div>
+
+            <div class="mobile-card__row">
+              <span class="mobile-card__label">Time</span>
+              <span class="data-mono">{{ timeRangeLabel(booking) }}</span>
+            </div>
+
+            <div class="appointment-card__actions">
+              <button
+                *ngIf="canStartConsultation(booking)"
+                type="button"
+                class="btn-outline"
+                (click)="consult(booking.id)"
+              >
+                Start Consultation
+              </button>
+              <button *ngIf="canComplete(booking)" type="button" class="btn-primary" (click)="openCompleteModal(booking)">
+                Complete
+              </button>
+            </div>
+          </article>
+        </section>
+      </ng-container>
+    </section>
 
     <ion-modal [isOpen]="completeModalOpen" (didDismiss)="closeCompleteModal()">
       <ng-template>
