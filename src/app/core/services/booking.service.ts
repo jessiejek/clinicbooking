@@ -846,7 +846,13 @@ export class BookingService {
 
     const serviceIds = normalizeStringArray(dto.serviceIds);
     const legacyServiceId = trimOptionalString(dto.serviceId);
-    if (serviceIds.length > 0) {
+    const resolvedServiceId = serviceIds[0] ?? legacyServiceId;
+
+    if (isWalkIn) {
+      if (resolvedServiceId) {
+        payload['serviceId'] = resolvedServiceId;
+      }
+    } else if (serviceIds.length > 0) {
       payload['serviceIds'] = serviceIds;
     } else if (legacyServiceId) {
       payload['serviceIds'] = [legacyServiceId];
