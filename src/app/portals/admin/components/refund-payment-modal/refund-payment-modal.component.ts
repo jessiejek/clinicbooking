@@ -46,7 +46,9 @@ import { Booking } from '../../../../core/models';
             <span *ngIf="paymentId"> · Payment {{ paymentId }}</span>
           </p>
           <ion-textarea
+            name="refundReason"
             [(ngModel)]="reason"
+            [ngModelOptions]="{ standalone: true }"
             label="Reason"
             labelPlacement="stacked"
             placeholder="Why is this payment being refunded?"

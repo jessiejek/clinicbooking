@@ -19,9 +19,14 @@ import { NgIf } from '@angular/common';
           <textarea
             class="filter-input confirm-modal__textarea"
             rows="4"
+            name="confirmModalReason"
             [(ngModel)]="reason"
+            [ngModelOptions]="{ standalone: true }"
             [placeholder]="reasonLabel"
           ></textarea>
+          <p class="confirm-modal__hint">
+            Enter at least {{ reasonMinLength }} characters to continue.
+          </p>
         </div>
         <div class="confirm-modal__actions">
           <button class="btn-ghost" type="button" (click)="cancel()">
@@ -31,7 +36,7 @@ import { NgIf } from '@angular/common';
             [class.btn-danger]="isDanger"
             [class.btn-primary]="!isDanger"
             type="button"
-            [disabled]="requireReason && reasonTrimmed.length < 10"
+            [disabled]="requireReason && reasonTrimmed.length < reasonMinLength"
             (click)="onConfirm()"
           >
             {{ confirmLabel }}
@@ -51,6 +56,7 @@ export class ConfirmModalComponent {
   @Input() isDanger = false;
   @Input() requireReason = false;
   @Input() reasonLabel = 'Reason (required)';
+  @Input() reasonMinLength = 10;
 
   @Output() confirmed = new EventEmitter<string | undefined>();
   @Output() cancelled = new EventEmitter<void>();

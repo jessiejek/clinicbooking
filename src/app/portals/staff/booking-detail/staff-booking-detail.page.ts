@@ -240,24 +240,48 @@ type CollectPaymentMethod = 'Cash' | 'GCash' | 'Maya' | 'BankTransfer';
 
           <div class="clinic-card">
             <label class="form-label">Payment Method</label>
-            <select class="filter-input" [(ngModel)]="paymentMethod">
+            <select
+              class="filter-input"
+              name="paymentMethod"
+              [(ngModel)]="paymentMethod"
+              [ngModelOptions]="{ standalone: true }"
+            >
               <option *ngFor="let method of paymentMethods" [value]="method">{{ method }}</option>
             </select>
           </div>
 
           <div class="clinic-card">
             <label class="form-label">Amount Received</label>
-            <input class="filter-input" type="number" min="0" [(ngModel)]="amountReceived" />
+            <input
+              class="filter-input"
+              type="number"
+              min="0"
+              name="amountReceived"
+              [(ngModel)]="amountReceived"
+              [ngModelOptions]="{ standalone: true }"
+            />
           </div>
 
           <div class="clinic-card">
             <label class="form-label">Reference Number</label>
-            <input class="filter-input" type="text" [(ngModel)]="referenceNumber" />
+            <input
+              class="filter-input"
+              type="text"
+              name="referenceNumber"
+              [(ngModel)]="referenceNumber"
+              [ngModelOptions]="{ standalone: true }"
+            />
           </div>
 
           <div class="clinic-card">
             <label class="form-label">Notes</label>
-            <textarea class="filter-input" rows="3" [(ngModel)]="notes"></textarea>
+            <textarea
+              class="filter-input"
+              rows="3"
+              name="paymentNotes"
+              [(ngModel)]="notes"
+              [ngModelOptions]="{ standalone: true }"
+            ></textarea>
           </div>
 
           <div class="wizard-actions wizard-actions--split">
@@ -277,6 +301,7 @@ type CollectPaymentMethod = 'Cash' | 'GCash' | 'Maya' | 'BankTransfer';
       confirmLabel="Waive PF"
       [isDanger]="true"
       [requireReason]="true"
+      [reasonMinLength]="waiverReasonMinLength"
       reasonLabel="Waive reason"
       (confirmed)="confirmWaive($event)"
       (cancelled)="closeWaiveModal()"
@@ -309,6 +334,7 @@ export class StaffBookingDetailPage implements OnInit {
   notes = '';
 
   waiveModalOpen = false;
+  readonly waiverReasonMinLength = 5;
 
   receiptModalOpen = false;
   receiptData: ReceiptData | null = null;
@@ -569,10 +595,12 @@ export class StaffBookingDetailPage implements OnInit {
     this.isActing = true;
     this.bookingService.confirmPayment(this.booking.payment.id, payload).subscribe({
       next: async (receipt) => {
-        this.receiptData = receipt;
-        this.receiptModalOpen = true;
         this.closePaymentModal();
         this.refreshBooking();
+        window.setTimeout(() => {
+          this.receiptData = receipt;
+          this.receiptModalOpen = true;
+        }, 0);
         await this.presentToast('Payment confirmed.', 'success');
       },
       error: async (error) => {
@@ -597,13 +625,21 @@ export class StaffBookingDetailPage implements OnInit {
   }
 
   confirmWaive(reason?: string): void {
-    if (!this.booking || !this.canWaivePf || this.isActing) {
+    if (!this.booking || this.isActing) {
+      return;
+    }
+
+    if (!this.canWaivePf) {
+      void this.presentToast('This payment is no longer available to waive.', 'warning');
       return;
     }
 
     const waiveReason = (reason ?? '').trim();
-    if (waiveReason.length < 10) {
-      void this.presentToast('Please provide a waiver reason.', 'warning');
+    if (waiveReason.length < this.waiverReasonMinLength) {
+      void this.presentToast(
+        `Please provide a waiver reason with at least ${this.waiverReasonMinLength} characters.`,
+        'warning'
+      );
       return;
     }
 

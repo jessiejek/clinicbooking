@@ -1,16 +1,7 @@
-import { DatePipe, NgFor, NgIf } from '@angular/common';
+import { DecimalPipe, DatePipe, NgFor, NgIf } from '@angular/common';
 import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import {
-  IonButton,
-  IonButtons,
-  IonContent,
-  IonHeader,
-  IonModal,
-  IonTitle,
-  IonToolbar,
-  ToastController
-} from '@ionic/angular/standalone';
+import { ToastController } from '@ionic/angular/standalone';
 import {
   BookingService,
   ConfirmPaymentRequest,
@@ -28,21 +19,20 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 type CollectPaymentMethod = 'Cash' | 'GCash' | 'Maya' | 'BankTransfer';
 
+interface CollectPaymentMethodOption {
+  value: CollectPaymentMethod;
+  label: string;
+}
+
 @Component({
   selector: 'app-staff-payments-page',
   standalone: true,
   imports: [
+    DecimalPipe,
     DatePipe,
     NgFor,
     NgIf,
     FormsModule,
-    IonButton,
-    IonButtons,
-    IonContent,
-    IonHeader,
-    IonModal,
-    IonTitle,
-    IonToolbar,
     PageHeaderComponent,
     EmptyStateComponent,
     StatusBadgeComponent,
@@ -50,12 +40,44 @@ type CollectPaymentMethod = 'Cash' | 'GCash' | 'Maya' | 'BankTransfer';
     ReceiptModalComponent
   ],
   template: `
-    <app-page-header title="Payment Queue" subtitle="Collect payment for completed consultations with an amount due"></app-page-header>
+    <section class="page-shell payment-page">
+      <app-page-header
+        title="Payment Queue"
+        subtitle="Collect payment for completed consultations with an amount due"
+      ></app-page-header>
 
-    <div class="clinic-card" *ngIf="isLoading">Loading payment queue...</div>
+      <div class="payment-summary-grid" *ngIf="!isLoading">
+        <article class="stat-card stat-card--green clinic-card">
+          <p class="stat-card__label">Ready to collect</p>
+          <div class="stat-card__value">{{ readyForPaymentCount }}</div>
+          <div class="stat-card__trend">Completed consultations still waiting on payment.</div>
+        </article>
 
-    <ng-container *ngIf="!isLoading">
-      <section class="clinic-card payment-card" *ngIf="items.length > 0; else emptyState">
+        <article class="stat-card stat-card--red clinic-card">
+          <p class="stat-card__label">Total due on page</p>
+          <div class="stat-card__value">PHP {{ totalDueOnPage | number : '1.0-0' }}</div>
+          <div class="stat-card__trend">Current batch only, before pagination.</div>
+        </article>
+
+        <article class="stat-card stat-card--blue clinic-card">
+          <p class="stat-card__label">Page view</p>
+          <div class="stat-card__value">{{ currentPage }} / {{ totalPages }}</div>
+          <div class="stat-card__trend">Showing {{ items.length }} record(s) on this page.</div>
+        </article>
+      </div>
+
+      <div class="clinic-card payment-loading" *ngIf="isLoading">Loading payment queue...</div>
+
+      <ng-container *ngIf="!isLoading">
+        <section class="clinic-card payment-card" *ngIf="items.length > 0; else emptyState">
+          <div class="payment-card__header">
+            <div>
+              <div class="section-heading">Outstanding professional fees</div>
+              <p class="page-subtitle">Review completed consultations and collect or waive the professional fee.</p>
+            </div>
+            <div class="data-mono">Page {{ currentPage }} of {{ totalPages }}</div>
+          </div>
+
         <div class="table-wrap">
           <table class="clinic-table payment-table">
             <thead>
@@ -88,7 +110,7 @@ type CollectPaymentMethod = 'Cash' | 'GCash' | 'Maya' | 'BankTransfer';
                 <td class="payment-table__cell payment-table__cell--payment">
                   <app-status-badge [status]="item.paymentStatus"></app-status-badge>
                 </td>
-                <td class="payment-table__cell payment-table__cell--amount">PHP {{ item.amountDue }}</td>
+                <td class="payment-table__cell payment-table__cell--amount">PHP {{ item.amountDue | number : '1.0-0' }}</td>
                 <td class="payment-table__cell payment-table__cell--completed">
                   {{ item.doctorCompletedAt ? (item.doctorCompletedAt | date : 'MMM d, y h:mm a') : '-' }}
                 </td>
@@ -111,11 +133,11 @@ type CollectPaymentMethod = 'Cash' | 'GCash' | 'Maya' | 'BankTransfer';
         </div>
 
         <div class="payment-mobile-list">
-          <article class="payment-mobile-card" *ngFor="let item of items">
-            <div class="payment-mobile-card__header">
-              <div class="payment-mobile-card__identity">
-                <span class="payment-mobile-card__queue data-mono">{{ queueLabel(item) }}</span>
-                <strong>{{ patientLabel(item) }}</strong>
+          <article class="mobile-card payment-mobile-card" *ngFor="let item of items">
+            <div class="mobile-card__header">
+              <div>
+                <div class="mobile-card__name">{{ patientLabel(item) }}</div>
+                <div class="mobile-card__code data-mono">{{ queueLabel(item) }}</div>
               </div>
 
               <div class="payment-mobile-card__badges">
@@ -124,28 +146,26 @@ type CollectPaymentMethod = 'Cash' | 'GCash' | 'Maya' | 'BankTransfer';
               </div>
             </div>
 
-            <dl class="payment-mobile-card__details">
-              <div>
-                <dt>Doctor</dt>
-                <dd>{{ doctorLabel(item) }}</dd>
-              </div>
-              <div>
-                <dt>Services</dt>
-                <dd>{{ servicesLabel(item) }}</dd>
-              </div>
-              <div>
-                <dt>Time</dt>
-                <dd class="data-mono">{{ item.appointmentDate | date : 'MMM d, y' }} {{ item.slotStartTime }}</dd>
-              </div>
-              <div>
-                <dt>Amount Due</dt>
-                <dd>PHP {{ item.amountDue }}</dd>
-              </div>
-              <div>
-                <dt>Completed</dt>
-                <dd>{{ item.doctorCompletedAt ? (item.doctorCompletedAt | date : 'MMM d, y h:mm a') : '-' }}</dd>
-              </div>
-            </dl>
+            <div class="mobile-card__row">
+              <span class="mobile-card__label">Doctor</span>
+              <span>{{ doctorLabel(item) }}</span>
+            </div>
+            <div class="mobile-card__row">
+              <span class="mobile-card__label">Services</span>
+              <span>{{ servicesLabel(item) }}</span>
+            </div>
+            <div class="mobile-card__row">
+              <span class="mobile-card__label">Time</span>
+              <span class="data-mono">{{ item.appointmentDate | date : 'MMM d, y' }} {{ item.slotStartTime }}</span>
+            </div>
+            <div class="mobile-card__row">
+              <span class="mobile-card__label">Amount Due</span>
+              <span>PHP {{ item.amountDue | number : '1.0-0' }}</span>
+            </div>
+            <div class="mobile-card__row">
+              <span class="mobile-card__label">Completed</span>
+              <span>{{ item.doctorCompletedAt ? (item.doctorCompletedAt | date : 'MMM d, y h:mm a') : '-' }}</span>
+            </div>
 
             <div class="payment-actions payment-mobile-card__actions">
               <ng-container *ngIf="canTakePaymentAction(item); else noMobileAction">
@@ -171,65 +191,110 @@ type CollectPaymentMethod = 'Cash' | 'GCash' | 'Maya' | 'BankTransfer';
           </button>
         </div>
       </section>
-    </ng-container>
+      </ng-container>
 
-    <ng-template #emptyState>
-      <app-empty-state
-        icon="cash-outline"
-        title="No queue items for now."
-        description="Completed bookings with an unpaid professional fee will appear here."
-      ></app-empty-state>
-    </ng-template>
+      <ng-template #emptyState>
+        <app-empty-state
+          icon="cash-outline"
+          title="No queue items for now."
+          description="Completed bookings with an unpaid professional fee will appear here."
+        ></app-empty-state>
+      </ng-template>
 
-    <ion-modal [isOpen]="paymentModalOpen" (didDismiss)="closePaymentModal()">
-      <ng-template>
-        <ion-header>
-          <ion-toolbar>
-            <ion-title>Collect Payment</ion-title>
-            <ion-buttons slot="end">
-              <ion-button fill="clear" (click)="closePaymentModal()">Close</ion-button>
-            </ion-buttons>
-          </ion-toolbar>
-        </ion-header>
-        <ion-content class="ion-padding">
-          <div class="clinic-card" *ngIf="selectedItem">
-            <div class="section-heading">{{ selectedItem.patientName }}</div>
-            <p>{{ selectedItem.doctorName }}</p>
-            <p>{{ servicesLabel(selectedItem) }}</p>
-            <p><strong>Amount Due:</strong> PHP {{ selectedItem.amountDue }}</p>
+      <div
+        *ngIf="paymentModalOpen"
+        class="payment-modal__backdrop"
+        (click)="closePaymentModal()"
+      >
+        <section
+          class="clinic-card payment-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="collect-payment-title"
+          (click)="$event.stopPropagation()"
+        >
+          <div class="payment-modal__header">
+            <div>
+              <div class="section-heading">Collect payment</div>
+              <h3 id="collect-payment-title" class="page-title payment-modal__title">
+                {{ selectedItem?.patientName || 'Unknown Patient' }}
+              </h3>
+              <p class="page-subtitle">{{ selectedItem?.doctorName }}</p>
+            </div>
+            <button type="button" class="btn-ghost payment-modal__close" (click)="closePaymentModal()">Close</button>
           </div>
 
-          <div class="clinic-card">
-            <label class="form-label">Payment Method</label>
-            <select class="filter-input" [(ngModel)]="paymentMethod">
-              <option *ngFor="let method of paymentMethods" [value]="method">{{ method }}</option>
-            </select>
+          <div class="payment-modal__summary" *ngIf="selectedItem as item">
+            <div>
+              <small>Services</small>
+              <strong>{{ servicesLabel(item) }}</strong>
+            </div>
+            <div>
+              <small>Amount due</small>
+              <strong>PHP {{ item.amountDue | number : '1.0-0' }}</strong>
+            </div>
+            <div>
+              <small>Queue</small>
+              <strong>{{ queueLabel(item) }}</strong>
+            </div>
           </div>
 
-          <div class="clinic-card">
-            <label class="form-label">Amount Received</label>
-            <input class="filter-input" type="number" min="0" [(ngModel)]="amountReceived" />
+          <div class="payment-modal__form">
+            <div class="clinic-card payment-modal__field">
+              <label class="payment-modal__label">Payment Method</label>
+              <select
+                class="filter-input"
+                name="paymentMethod"
+                [(ngModel)]="paymentMethod"
+                [ngModelOptions]="{ standalone: true }"
+              >
+                <option *ngFor="let method of paymentMethods" [value]="method.value">{{ method.label }}</option>
+              </select>
+            </div>
+
+            <div class="clinic-card payment-modal__field">
+              <label class="payment-modal__label">Amount Received</label>
+              <input
+                class="filter-input"
+                type="number"
+                min="0"
+                name="amountReceived"
+                [(ngModel)]="amountReceived"
+                [ngModelOptions]="{ standalone: true }"
+              />
+            </div>
+
+            <div class="clinic-card payment-modal__field">
+              <label class="payment-modal__label">Reference Number</label>
+              <input
+                class="filter-input"
+                type="text"
+                name="referenceNumber"
+                [(ngModel)]="referenceNumber"
+                [ngModelOptions]="{ standalone: true }"
+              />
+            </div>
+
+            <div class="clinic-card payment-modal__field payment-modal__field--wide">
+              <label class="payment-modal__label">Notes</label>
+              <textarea
+                class="filter-input"
+                rows="3"
+                name="paymentNotes"
+                [(ngModel)]="notes"
+                [ngModelOptions]="{ standalone: true }"
+              ></textarea>
+            </div>
           </div>
 
-          <div class="clinic-card">
-            <label class="form-label">Reference Number</label>
-            <input class="filter-input" type="text" [(ngModel)]="referenceNumber" />
-          </div>
-
-          <div class="clinic-card">
-            <label class="form-label">Notes</label>
-            <textarea class="filter-input" rows="3" [(ngModel)]="notes"></textarea>
-          </div>
-
-        <div class="wizard-actions wizard-actions--split">
-          <button type="button" class="btn-outline" (click)="closePaymentModal()">Cancel</button>
-          <button type="button" class="btn-primary" [disabled]="isSubmitting" (click)="confirmPayment()">
+          <div class="wizard-actions wizard-actions--split payment-modal__actions">
+            <button type="button" class="btn-outline" (click)="closePaymentModal()">Cancel</button>
+            <button type="button" class="btn-primary" [disabled]="isSubmitting" (click)="confirmPayment()">
               {{ isSubmitting ? 'Confirming...' : 'Confirm Payment' }}
             </button>
           </div>
-        </ion-content>
-      </ng-template>
-    </ion-modal>
+        </section>
+      </div>
 
     <app-confirm-modal
       *ngIf="waiveModalOpen"
@@ -239,12 +304,14 @@ type CollectPaymentMethod = 'Cash' | 'GCash' | 'Maya' | 'BankTransfer';
       confirmLabel="Waive PF"
       [isDanger]="true"
       [requireReason]="true"
+      [reasonMinLength]="waiverReasonMinLength"
       reasonLabel="Waive reason"
       (confirmed)="confirmWaive($event)"
       (cancelled)="closeWaiveModal()"
     ></app-confirm-modal>
 
     <app-receipt-modal [isOpen]="receiptModalOpen" [data]="receiptData" (closed)="receiptModalOpen = false"></app-receipt-modal>
+    </section>
   `,
   styleUrl: './staff-payments.page.scss'
 })
@@ -273,7 +340,13 @@ export class StaffPaymentsPage implements OnInit {
   receiptModalOpen = false;
   receiptData: ReceiptData | null = null;
 
-  readonly paymentMethods: CollectPaymentMethod[] = ['Cash', 'GCash', 'Maya', 'BankTransfer'];
+  readonly waiverReasonMinLength = 5;
+  readonly paymentMethods: CollectPaymentMethodOption[] = [
+    { value: 'Cash', label: 'Cash' },
+    { value: 'GCash', label: 'GCash' },
+    { value: 'Maya', label: 'Maya' },
+    { value: 'BankTransfer', label: 'Bank Transfer' }
+  ];
 
   ngOnInit(): void {
     this.loadQueue();
@@ -305,6 +378,14 @@ export class StaffPaymentsPage implements OnInit {
 
     this.currentPage += 1;
     this.loadQueue();
+  }
+
+  get readyForPaymentCount(): number {
+    return this.items.filter((item) => this.canTakePaymentAction(item)).length;
+  }
+
+  get totalDueOnPage(): number {
+    return this.items.reduce((total, item) => total + (item.amountDue ?? 0), 0);
   }
 
   openPaymentModal(item: StaffForPaymentItem): void {
@@ -347,7 +428,12 @@ export class StaffPaymentsPage implements OnInit {
   }
 
   confirmPayment(): void {
-    if (!this.selectedItem || !this.canTakePaymentAction(this.selectedItem) || this.isSubmitting) {
+    if (!this.selectedItem || this.isSubmitting) {
+      return;
+    }
+
+    if (!this.canTakePaymentAction(this.selectedItem)) {
+      void this.presentToast('This payment is no longer available to collect.', 'warning');
       return;
     }
 
@@ -374,10 +460,12 @@ export class StaffPaymentsPage implements OnInit {
     this.isSubmitting = true;
     this.bookingService.confirmPayment(this.selectedItem.paymentId, payload).subscribe({
       next: async (receipt) => {
-        this.receiptData = receipt;
-        this.receiptModalOpen = true;
         this.closePaymentModal();
         this.loadQueue();
+        window.setTimeout(() => {
+          this.receiptData = receipt;
+          this.receiptModalOpen = true;
+        }, 0);
         await this.presentToast('Payment confirmed.', 'success');
       },
       error: async (error) => {
@@ -388,13 +476,21 @@ export class StaffPaymentsPage implements OnInit {
   }
 
   confirmWaive(reason?: string): void {
-    if (!this.waiveTarget || !this.canTakePaymentAction(this.waiveTarget) || this.isSubmitting) {
+    if (!this.waiveTarget || this.isSubmitting) {
+      return;
+    }
+
+    if (!this.canTakePaymentAction(this.waiveTarget)) {
+      void this.presentToast('This payment is no longer available to waive.', 'warning');
       return;
     }
 
     const waiveReason = (reason ?? '').trim();
-    if (waiveReason.length < 10) {
-      void this.presentToast('Please provide a waiver reason.', 'warning');
+    if (waiveReason.length < this.waiverReasonMinLength) {
+      void this.presentToast(
+        `Please provide a waiver reason with at least ${this.waiverReasonMinLength} characters.`,
+        'warning'
+      );
       return;
     }
 

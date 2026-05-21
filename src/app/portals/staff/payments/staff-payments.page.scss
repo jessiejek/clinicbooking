@@ -1,8 +1,40 @@
-/* Staff Payments Page Styles */
+:host {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.payment-page {
+  display: grid;
+  gap: var(--space-6);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.payment-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.payment-loading {
+  color: var(--clinic-text-secondary);
+}
+
 .payment-card {
+  display: grid;
+  gap: var(--space-5);
   padding-top: var(--space-5);
   min-width: 0;
   max-width: 100%;
+}
+
+.payment-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
 }
 
 .table-wrap {
@@ -13,7 +45,7 @@
 
 .payment-table {
   width: 100%;
-  min-width: 1100px;
+  min-width: 1120px;
   table-layout: fixed;
 }
 
@@ -40,7 +72,8 @@
 }
 
 .payment-table__cell--amount {
-  width: 120px;
+  width: 132px;
+  font-weight: var(--font-semibold);
 }
 
 .payment-table__cell--completed {
@@ -53,57 +86,20 @@
 }
 
 .payment-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
+  display: grid;
   gap: var(--space-2);
-  flex-wrap: wrap;
+  width: 100%;
 }
 
 .payment-actions button {
-  min-height: 36px;
+  width: 100%;
+  min-height: 40px;
   white-space: nowrap;
+  justify-content: center;
 }
 
 .payment-mobile-list {
   display: none;
-}
-
-.payment-mobile-card {
-  display: grid;
-  gap: var(--space-3);
-  min-width: 0;
-  padding: var(--space-4);
-  border: 1px solid var(--clinic-border);
-  border-radius: var(--radius-lg);
-  background: var(--clinic-bg-elevated);
-  box-shadow: var(--shadow-sm);
-}
-
-.payment-mobile-card__header {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: var(--space-3);
-  align-items: flex-start;
-}
-
-.payment-mobile-card__identity {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-}
-
-.payment-mobile-card__identity strong,
-.payment-mobile-card__details dd {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.payment-mobile-card__queue {
-  width: max-content;
-  font-size: var(--text-xs);
-  font-weight: var(--font-semibold);
-  color: var(--clinic-text-muted);
 }
 
 .payment-mobile-card__badges {
@@ -113,45 +109,12 @@
   gap: var(--space-2);
 }
 
-.payment-mobile-card__details {
-  display: grid;
-  gap: var(--space-2);
-  margin: 0;
-}
-
-.payment-mobile-card__details > div {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-3);
-  min-width: 0;
-}
-
-.payment-mobile-card__details dt {
-  flex-shrink: 0;
-  font-size: var(--text-xs);
-  font-weight: var(--font-semibold);
-  color: var(--clinic-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.payment-mobile-card__details dd {
-  margin: 0;
-  color: var(--clinic-text-primary);
-  font-size: var(--text-sm);
-  text-align: right;
-}
-
-.payment-mobile-card__actions {
-  justify-content: flex-end;
-}
-
 .bookings-pagination {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: var(--space-6);
+  gap: var(--space-4);
+  margin-top: var(--space-2);
   padding-top: var(--space-4);
   border-top: 1px solid var(--clinic-border);
 }
@@ -176,7 +139,115 @@
   justify-content: space-between;
 }
 
+.payment-modal__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  overflow-y: auto;
+  background: rgba(15, 23, 42, 0.52);
+  backdrop-filter: blur(10px);
+  animation: fadeIn 180ms ease-out;
+}
+
+.payment-modal {
+  width: min(100%, 760px);
+  display: grid;
+  gap: var(--space-4);
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  padding: var(--space-6);
+  box-shadow: var(--shadow-2xl);
+  animation: scaleIn 220ms ease-out;
+}
+
+.payment-modal__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.payment-modal__summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--clinic-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-neutral-50);
+}
+
+.payment-modal__form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.payment-modal__field {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-4);
+}
+
+.payment-modal__field--wide {
+  grid-column: 1 / -1;
+}
+
+.payment-modal__label {
+  display: block;
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+}
+
+.payment-modal__actions {
+  margin-top: var(--space-2);
+}
+
+@media (max-width: 960px) {
+  .payment-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .payment-modal__summary {
+    grid-template-columns: 1fr;
+  }
+
+  .payment-modal__form {
+    grid-template-columns: 1fr;
+  }
+
+  .payment-modal {
+    width: min(100%, 640px);
+  }
+}
+
 @media (max-width: 720px) {
+  .payment-page {
+    gap: var(--space-4);
+  }
+
+  .payment-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .payment-card {
+    padding: var(--space-4);
+  }
+
+  .payment-card__header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .payment-card__page {
+    white-space: normal;
+  }
+
   .table-wrap {
     display: none;
   }
@@ -186,19 +257,7 @@
     gap: var(--space-3);
   }
 
-  .payment-mobile-card {
-    padding: var(--space-4);
-  }
-
-  .payment-mobile-card__header {
-    grid-template-columns: 1fr;
-  }
-
   .payment-mobile-card__badges {
-    justify-content: flex-start;
-  }
-
-  .payment-mobile-card__actions {
     justify-content: flex-start;
   }
 
@@ -208,6 +267,38 @@
 
   .payment-actions button {
     width: 100%;
-    justify-content: center;
+  }
+
+  .bookings-pagination {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .bookings-pagination__button {
+    width: 100%;
+  }
+
+  .bookings-pagination__page {
+    text-align: center;
+  }
+
+  .payment-modal__backdrop {
+    padding: var(--space-3);
+  }
+
+  .payment-modal {
+    padding: var(--space-4);
+  }
+
+  .payment-modal__header {
+    flex-direction: column;
+  }
+
+  .payment-modal__close {
+    align-self: stretch;
+  }
+
+  .payment-modal__summary {
+    padding: var(--space-3);
   }
 }
