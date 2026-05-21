@@ -90,12 +90,17 @@ export interface PrescriptionItem {
   id: string;
   medicineName: string;
   genericName?: string;
-  dosageForm: 'Tablet' | 'Capsule' | 'Syrup' | 'Injection' | 'Cream' | 'Drops' | 'Others';
+  dosageForm: string;
   strength: string;
   quantity: number;
   sig: string;
   frequency?: string;
+  frequencyCode?: string;
   duration?: string;
+  route?: string;
+  routeDescription?: string;
+  unitOfMeasure?: string;
+  unitOfMeasureDescription?: string;
   instructions?: string;
   isControlledSubstance?: boolean;
   prescriptionId?: string;

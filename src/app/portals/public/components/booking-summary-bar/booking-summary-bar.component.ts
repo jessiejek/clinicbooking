@@ -1,15 +1,14 @@
-import { Component, inject } from '@angular/core';
 import { AsyncPipe, DatePipe, NgIf } from '@angular/common';
-import { catchError, combineLatest, map, of } from 'rxjs';
+import { Component, inject } from '@angular/core';
+import { catchError, combineLatest, map, of, switchMap } from 'rxjs';
 import { BookingWizardService } from '../../../../core/services/booking-wizard.service';
-import { PublicService } from '../../services/public.service';
-import { PesoPipe } from '../../../../shared/pipes/peso.pipe';
 import { TimeSlotPipe } from '../../../../shared/pipes/time-slot.pipe';
+import { PublicService } from '../../services/public.service';
 
 @Component({
   selector: 'app-booking-summary-bar',
   standalone: true,
-  imports: [NgIf, AsyncPipe, DatePipe, PesoPipe, TimeSlotPipe],
+  imports: [NgIf, AsyncPipe, DatePipe, TimeSlotPipe],
   template: `
     <div class="summary-bar" *ngIf="(currentStep$ | async)! >= 2">
       <ng-container *ngIf="summary$ | async as summary">
@@ -18,7 +17,12 @@ import { TimeSlotPipe } from '../../../../shared/pipes/time-slot.pipe';
             <span class="summary-bar__label">Doctor</span>
             <span class="summary-bar__value">{{ summary.doctorName }}</span>
           </div>
-          <div class="summary-bar__divider" *ngIf="summary.doctorName && summary.selectedDate"></div>
+          <div class="summary-bar__divider" *ngIf="summary.doctorName && summary.servicesLabel"></div>
+          <div class="summary-bar__item" *ngIf="summary.servicesLabel">
+            <span class="summary-bar__label">Services</span>
+            <span class="summary-bar__value">{{ summary.servicesLabel }}</span>
+          </div>
+          <div class="summary-bar__divider" *ngIf="summary.servicesLabel && summary.selectedDate"></div>
           <div class="summary-bar__item" *ngIf="summary.selectedDate">
             <span class="summary-bar__label">Date</span>
             <span class="summary-bar__value">{{ summary.selectedDate | date : 'MMM d' }}</span>
@@ -29,9 +33,6 @@ import { TimeSlotPipe } from '../../../../shared/pipes/time-slot.pipe';
             <span class="summary-bar__value data-mono"
               >{{ summary.selectedSlot | timeSlot }} - {{ summary.selectedSlotEnd | timeSlot }}</span
             >
-          </div>
-          <div class="summary-bar__fee" *ngIf="summary.doctorFee">
-            {{ summary.doctorFee | peso }}
           </div>
         </div>
       </ng-container>
@@ -46,23 +47,26 @@ export class BookingSummaryBarComponent {
   wizard$ = this.wizardService.state$;
   currentStep$ = this.wizardService.currentStep$;
 
-  summary$ = combineLatest([
-    this.wizard$,
-    this.publicService.getDoctors().pipe(catchError(() => of([]))),
-    this.publicService.getServices().pipe(catchError(() => of([])))
-  ]).pipe(
+  summary$ = this.wizard$.pipe(
+    switchMap((wizard) =>
+      combineLatest([
+        of(wizard),
+        this.publicService.getDoctors().pipe(catchError(() => of([]))),
+        wizard.selectedDoctorId
+          ? this.publicService.getDoctorServices(wizard.selectedDoctorId).pipe(catchError(() => of([])))
+          : of([])
+      ])
+    ),
     map(([wizard, doctors, services]) => {
-      const doctor = wizard.selectedDoctorId
-        ? doctors.find((item) => item.id === wizard.selectedDoctorId)
-        : null;
-      const service = wizard.selectedServiceId
-        ? services.find((item) => item.id === wizard.selectedServiceId)
-        : null;
+      const doctor = wizard.selectedDoctorId ? doctors.find((item) => item.id === wizard.selectedDoctorId) : null;
+      const selectedServices = services.filter((service) => wizard.selectedServiceIds.includes(service.id));
 
       return {
         doctorName: doctor?.fullName ?? '',
-        serviceName: service?.name ?? '',
-        doctorFee: doctor?.consultationFee ?? 0,
+        servicesLabel:
+          selectedServices.length > 0
+            ? selectedServices.map((service) => service.name).join(', ')
+            : '',
         selectedDate: wizard.selectedDate,
         selectedSlot: wizard.selectedSlot,
         selectedSlotEnd: wizard.selectedSlotEnd

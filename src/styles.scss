@@ -554,7 +554,20 @@ button,
     background: var(--color-success-100);
     color: #14532d;
   }
+  &.badge--booked {
+    background: var(--color-success-100);
+    color: #14532d;
+  }
+  &.badge--checked-in,
+  &.badge--in-clinic {
+    background: var(--color-warning-100);
+    color: #92400e;
+  }
   &.badge--completed {
+    background: var(--color-primary-100);
+    color: var(--color-primary-900);
+  }
+  &.badge--completed-paid {
     background: var(--color-primary-100);
     color: var(--color-primary-900);
   }
@@ -577,6 +590,15 @@ button,
   &.badge--proof-submitted {
     background: #fdf4ff;
     color: #6b21a8;
+  }
+  &.badge--for-payment {
+    background: #fff7ed;
+    color: #9a3412;
+  }
+  &.badge--pfwaived,
+  &.badge--pf-waived {
+    background: var(--color-neutral-100);
+    color: var(--color-neutral-600);
   }
   &.badge--rescheduled {
     background: #fff7ed;

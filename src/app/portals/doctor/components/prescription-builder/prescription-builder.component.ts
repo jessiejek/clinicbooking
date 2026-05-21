@@ -14,6 +14,14 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MockDataService } from '../../../../core/services/mock-data.service';
 import { MockDrug, PrescriptionItem } from '../../../../core/models';
 import {
+  MEDICATION_FREQUENCY_MASTERS,
+  MEDICATION_ROUTE_MASTERS,
+  MEDICATION_UOM_MASTERS,
+  MedicationFrequencyMaster,
+  MedicationRouteMaster,
+  MedicationUomMaster
+} from './prescription-masters';
+import {
   IonBadge,
   IonButton,
   IonCheckbox,
@@ -45,7 +53,7 @@ import {
     IonTextarea
   ],
   template: `
-    <section class="clinic-card section-card">
+    <section class="clinic-card section-card" [formGroup]="form">
       <div class="section-card__head">
         <h3>Prescription</h3>
         <p>Add one or more medicines for this consultation.</p>
@@ -97,9 +105,58 @@ import {
               <ion-label position="stacked">Strength</ion-label>
               <ion-input formControlName="strength" [disabled]="locked"></ion-input>
             </ion-item>
+          </div>
+
+          <div class="item-grid item-grid--triple">
+            <ion-item class="field">
+              <ion-label position="stacked">Unit of Measure</ion-label>
+              <ion-select
+                formControlName="unitOfMeasure"
+                interface="popover"
+                [disabled]="locked"
+                (ionChange)="syncUnitOfMeasure(i)"
+              >
+                <ion-select-option *ngFor="let option of unitOfMeasureOptions" [value]="option.unit_of_measure">
+                  {{ option.unit_of_measure }}{{ option.description ? ' - ' + option.description : '' }}
+                </ion-select-option>
+              </ion-select>
+            </ion-item>
             <ion-item class="field">
               <ion-label position="stacked">Quantity</ion-label>
               <ion-input type="number" formControlName="quantity" [disabled]="locked"></ion-input>
+            </ion-item>
+            <ion-item class="field">
+              <ion-label position="stacked">Frequency</ion-label>
+              <ion-select
+                formControlName="frequencyCode"
+                interface="popover"
+                [disabled]="locked"
+                (ionChange)="syncFrequency(i)"
+              >
+                <ion-select-option *ngFor="let option of frequencyOptions" [value]="option.dosage_no">
+                  {{ option.dosage_desc }}
+                </ion-select-option>
+              </ion-select>
+            </ion-item>
+          </div>
+
+          <div class="item-grid">
+            <ion-item class="field">
+              <ion-label position="stacked">Route</ion-label>
+              <ion-select
+                formControlName="route"
+                interface="popover"
+                [disabled]="locked"
+                (ionChange)="syncRoute(i)"
+              >
+                <ion-select-option *ngFor="let option of routeOptions" [value]="option.route_code">
+                  {{ option.route_code }} - {{ option.route_description }}
+                </ion-select-option>
+              </ion-select>
+            </ion-item>
+            <ion-item class="field">
+              <ion-label position="stacked">Duration</ion-label>
+              <ion-input formControlName="duration" [disabled]="locked"></ion-input>
             </ion-item>
           </div>
 
@@ -107,17 +164,6 @@ import {
             <ion-label position="stacked">Sig</ion-label>
             <ion-textarea formControlName="sig" autoGrow="true" [disabled]="locked"></ion-textarea>
           </ion-item>
-
-          <div class="item-grid">
-            <ion-item class="field">
-              <ion-label position="stacked">Frequency</ion-label>
-              <ion-input formControlName="frequency" [disabled]="locked"></ion-input>
-            </ion-item>
-            <ion-item class="field">
-              <ion-label position="stacked">Duration</ion-label>
-              <ion-input formControlName="duration" [disabled]="locked"></ion-input>
-            </ion-item>
-          </div>
 
           <ion-item class="field">
             <ion-label position="stacked">Instructions</ion-label>
@@ -150,6 +196,14 @@ export class PrescriptionBuilderComponent implements OnChanges {
   readonly form = this.fb.group({
     items: this.fb.array([])
   });
+
+  readonly unitOfMeasureOptions = MEDICATION_UOM_MASTERS.filter(
+    (option) => option.unit_of_measure.trim().length > 0
+  );
+  readonly routeOptions = MEDICATION_ROUTE_MASTERS;
+  readonly frequencyOptions = [...MEDICATION_FREQUENCY_MASTERS].sort(
+    (a, b) => a.priority_order - b.priority_order || a.arrangement_count - b.arrangement_count
+  );
 
   suggestions: MockDrug[] = [];
   activeSuggestionIndex = -1;
@@ -205,6 +259,45 @@ export class PrescriptionBuilderComponent implements OnChanges {
     this.suggestions = this.lookupDrugs(value ?? '');
   }
 
+  syncUnitOfMeasure(index: number): void {
+    const group = this.itemControls.at(index);
+    const code = (group?.get('unitOfMeasure')?.value as string | undefined) ?? '';
+    const match = this.unitOfMeasureOptions.find((option) => option.unit_of_measure === code);
+    group?.patchValue(
+      {
+        unitOfMeasureDescription: match?.description || ''
+      },
+      { emitEvent: false }
+    );
+    this.emitValue();
+  }
+
+  syncRoute(index: number): void {
+    const group = this.itemControls.at(index);
+    const code = (group?.get('route')?.value as string | undefined) ?? '';
+    const match = this.routeOptions.find((option) => option.route_code === code);
+    group?.patchValue(
+      {
+        routeDescription: match?.route_description || ''
+      },
+      { emitEvent: false }
+    );
+    this.emitValue();
+  }
+
+  syncFrequency(index: number): void {
+    const group = this.itemControls.at(index);
+    const code = (group?.get('frequencyCode')?.value as string | undefined) ?? '';
+    const match = this.frequencyOptions.find((option) => normalizeMasterCode(option.dosage_no) === code);
+    group?.patchValue(
+      {
+        frequency: match?.dosage_desc || ''
+      },
+      { emitEvent: false }
+    );
+    this.emitValue();
+  }
+
   applySuggestion(index: number, drug: MockDrug): void {
     const group = this.itemControls.at(index);
     if (!group || this.locked) {
@@ -244,13 +337,21 @@ export class PrescriptionBuilderComponent implements OnChanges {
       quantity: 1,
       sig: '',
       frequency: '',
+      frequencyCode: '',
       duration: '',
+      route: '',
+      routeDescription: '',
+      unitOfMeasure: '',
+      unitOfMeasureDescription: '',
       instructions: '',
       isControlledSubstance: false
     };
   }
 
   private createItemGroup(item?: PrescriptionItem) {
+    const frequencyCode =
+      item?.frequencyCode ?? findFrequencyCode(item?.frequency, this.frequencyOptions) ?? '';
+
     return this.fb.group({
       id: [item?.id ?? `rx-item-${Date.now()}`],
       medicineName: [item?.medicineName ?? '', Validators.required],
@@ -260,7 +361,12 @@ export class PrescriptionBuilderComponent implements OnChanges {
       quantity: [item?.quantity ?? 1, [Validators.required, Validators.min(1)]],
       sig: [item?.sig ?? '', Validators.required],
       frequency: [item?.frequency ?? ''],
+      frequencyCode: [frequencyCode],
       duration: [item?.duration ?? ''],
+      route: [item?.route ?? ''],
+      routeDescription: [item?.routeDescription ?? ''],
+      unitOfMeasure: [item?.unitOfMeasure ?? ''],
+      unitOfMeasureDescription: [item?.unitOfMeasureDescription ?? ''],
       instructions: [item?.instructions ?? ''],
       isControlledSubstance: [item?.isControlledSubstance ?? false]
     });
@@ -292,11 +398,33 @@ export class PrescriptionBuilderComponent implements OnChanges {
         quantity: Number(item.quantity) || 1,
         sig: item.sig as string,
         frequency: (item.frequency as string) || undefined,
+        frequencyCode: (item.frequencyCode as string) || undefined,
         duration: (item.duration as string) || undefined,
+        route: (item.route as string) || undefined,
+        routeDescription: (item.routeDescription as string) || undefined,
+        unitOfMeasure: (item.unitOfMeasure as string) || undefined,
+        unitOfMeasureDescription: (item.unitOfMeasureDescription as string) || undefined,
         instructions: (item.instructions as string) || undefined,
         isControlledSubstance: Boolean(item.isControlledSubstance)
       }));
 
     this.itemsChange.emit(items);
   }
+}
+
+function normalizeMasterCode(value: string | null | undefined): string {
+  return value?.trim() ?? '';
+}
+
+function findFrequencyCode(
+  frequency: string | undefined,
+  options: MedicationFrequencyMaster[]
+): string | undefined {
+  const normalizedFrequency = frequency?.trim().toLowerCase();
+  if (!normalizedFrequency) {
+    return undefined;
+  }
+
+  const match = options.find((option) => option.dosage_desc.trim().toLowerCase() === normalizedFrequency);
+  return match ? normalizeMasterCode(match.dosage_no) : undefined;
 }

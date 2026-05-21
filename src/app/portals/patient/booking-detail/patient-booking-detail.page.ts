@@ -1,41 +1,30 @@
-import { AsyncPipe, DatePipe, NgIf } from '@angular/common';
+import { DatePipe, NgFor, NgIf } from '@angular/common';
 import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { IonModal, ToastController } from '@ionic/angular/standalone';
+import { ToastController } from '@ionic/angular/standalone';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { catchError, combineLatest, of, switchMap } from 'rxjs';
-import { Booking, Doctor, Patient, ProofType, Service, ReceiptData } from '../../../core/models';
-import { AuthStateService } from '../../../core/services/auth-state.service';
+import { catchError, combineLatest, firstValueFrom, of, switchMap, take } from 'rxjs';
+import { Booking, ReceiptData } from '../../../core/models';
 import { BookingService } from '../../../core/services/booking.service';
-import { MockDataService } from '../../../core/services/mock-data.service';
-import { ClinicSettingsService } from '../../../core/services/clinic-settings.service';
-import { BannerComponent } from '../../../shared/components/banner/banner.component';
-import { BookingTimelineComponent } from '../components/booking-timeline/booking-timeline.component';
-import { ProofSubmissionFormComponent } from '../components/proof-submission-form/proof-submission-form.component';
+import { ClinicDashboardRealtimeService } from '../../../core/services/clinic-dashboard-realtime.service';
 import { ConfirmModalComponent } from '../../../shared/components/confirm-modal/confirm-modal.component';
-import { BookingTimerComponent } from '../../../shared/components/booking-timer/booking-timer.component';
-import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
-import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { ReceiptModalComponent } from '../../../shared/components/receipt-modal/receipt-modal.component';
+import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
+import { BookingTimelineComponent } from '../components/booking-timeline/booking-timeline.component';
 import { PatientService } from '../services/patient.service';
 
 @Component({
   selector: 'app-patient-booking-detail-page',
   standalone: true,
   imports: [
-    AsyncPipe,
     DatePipe,
+    NgFor,
     NgIf,
-    BannerComponent,
     BookingTimelineComponent,
-    ProofSubmissionFormComponent,
     ConfirmModalComponent,
-    BookingTimerComponent,
     StatusBadgeComponent,
     EmptyStateComponent,
-    AvatarComponent,
-    IonModal,
     ReceiptModalComponent
   ],
   template: `
@@ -54,12 +43,12 @@ import { PatientService } from '../services/patient.service';
             <div class="booking-summary__top">
               <div>
                 <div class="section-heading">Summary</div>
-                <h3>{{ serviceDisplayName }}</h3>
-                <p>{{ doctorDisplayName }}</p>
+                <h3>{{ servicesDisplayName }}</h3>
+                <p>{{ booking.doctorName || 'Doctor' }}</p>
               </div>
               <div class="booking-summary__badges">
-                <app-status-badge [status]="booking.status"></app-status-badge>
-                <app-status-badge [status]="booking.paymentStatus"></app-status-badge>
+                <app-status-badge [status]="displayStatus"></app-status-badge>
+                <app-status-badge [status]="displayPaymentStatus"></app-status-badge>
               </div>
             </div>
 
@@ -68,11 +57,14 @@ import { PatientService } from '../services/patient.service';
               <div><span>Time</span><strong>{{ timeRangeLabel }}</strong></div>
               <div><span>Queue Number</span><strong>{{ booking.queueNumber !== null ? '#' + booking.queueNumber : 'Not assigned' }}</strong></div>
               <div><span>Payment Mode</span><strong>{{ booking.paymentMode }}</strong></div>
-              <div><span>Total Fee</span><strong>PHP {{ booking.totalFee }}</strong></div>
+              <div *ngIf="showAmountDue"><span>Amount Due</span><strong>PHP {{ booking.finalAmount }}</strong></div>
+              <div *ngIf="isWaived"><span>Professional Fee</span><strong>Waived</strong></div>
               <div><span>Created</span><strong>{{ booking.createdAt | date : 'MMM d, y h:mm a' }}</strong></div>
             </div>
 
-            <app-booking-timer *ngIf="showBookingTimer" [durationSeconds]="proofTimerSeconds"></app-booking-timer>
+            <div class="clinic-card clinic-card--accent-green booking-summary__note">
+              Payment will be settled at the clinic after consultation.
+            </div>
           </div>
 
           <app-booking-timeline [booking]="booking"></app-booking-timeline>
@@ -80,32 +72,20 @@ import { PatientService } from '../services/patient.service';
           <div class="clinic-card payment-panel">
             <div class="section-heading">Payment Details</div>
             <div class="summary-grid summary-grid--compact">
-              <div><span>Payment Status</span><strong>{{ booking.paymentStatus }}</strong></div>
-              <div><span>Proof Type</span><strong>{{ booking.proofType || 'None' }}</strong></div>
-              <div><span>Proof Submitted</span><strong>{{ booking.proofSubmittedAt ? (booking.proofSubmittedAt | date : 'MMM d, y h:mm a') : 'Not yet submitted' }}</strong></div>
+              <div><span>Payment Status</span><strong>{{ displayPaymentStatus }}</strong></div>
+              <div><span>Payment Method</span><strong>{{ booking.payment?.paymentMethod || booking.paymentMode }}</strong></div>
+              <div *ngIf="showAmountDue"><span>Final Amount Due</span><strong>PHP {{ booking.finalAmount }}</strong></div>
+              <div *ngIf="isWaived && booking.professionalFeeWaivedReason">
+                <span>Waived Reason</span>
+                <strong>{{ booking.professionalFeeWaivedReason }}</strong>
+              </div>
             </div>
           </div>
 
-          <div class="clinic-card" *ngIf="booking.status === 'Completed'">
+          <div class="clinic-card" *ngIf="canViewReceipt">
             <div class="section-heading">Official Receipt</div>
-            <p>Your payment has been processed and your official receipt is available.</p>
+            <p>Your payment has been recorded. You can open or print the clinic receipt.</p>
             <button type="button" class="btn-primary" (click)="openReceipt()">View Receipt</button>
-          </div>
-
-          <app-proof-submission-form
-            *ngIf="canSubmitProof"
-            [booking]="booking"
-            (proofSubmitted)="handleProofSubmitted($event.bookingId, $event.proofType, $event.proofValue)"
-          ></app-proof-submission-form>
-
-          <div class="clinic-card" *ngIf="!canSubmitProof && booking.paymentMode === 'Online' && booking.status === 'ProofSubmitted'">
-            <app-banner variant="info" message="Your proof has been submitted and is waiting for review."></app-banner>
-          </div>
-
-          <div class="clinic-card" *ngIf="canLeaveReview">
-            <div class="section-heading">Review Your Visit</div>
-            <p>Share feedback about your completed appointment.</p>
-            <button type="button" class="btn-outline" (click)="leaveReview()">Leave Review</button>
           </div>
 
           <div class="clinic-card cancellation-panel" *ngIf="canCancelOnline; else cannotCancelTpl">
@@ -114,31 +94,25 @@ import { PatientService } from '../services/patient.service';
             <button type="button" class="btn-danger" (click)="openCancelModal()">Cancel Booking</button>
           </div>
           <ng-template #cannotCancelTpl>
-            <app-banner
-              variant="danger"
-              message="This booking can no longer be cancelled online. Please contact the clinic."
-            ></app-banner>
+            <div class="clinic-card">
+              <p>This booking can no longer be cancelled online. Please contact the clinic if you need help.</p>
+            </div>
           </ng-template>
         </div>
 
         <div class="booking-detail-side">
           <div class="clinic-card">
             <div class="section-heading">Doctor Info</div>
-            <div class="side-profile">
-              <app-avatar [name]="doctorDisplayName" size="lg"></app-avatar>
-              <div>
-                <h3>{{ doctorDisplayName }}</h3>
-                <p>{{ doctor?.specialization || 'Specialization' }}</p>
-              </div>
-            </div>
+            <p>{{ booking.doctorName || 'Doctor' }}</p>
           </div>
 
           <div class="clinic-card">
-            <div class="section-heading">Service Info</div>
-            <p class="detail-copy">{{ service?.description || 'Clinic service description not available.' }}</p>
+            <div class="section-heading">Services</div>
             <div class="detail-meta">
-              <div><span>Estimated Duration</span><strong>{{ service?.estimatedDurationMinutes || 0 }} mins</strong></div>
-              <div><span>Price</span><strong>PHP {{ service?.price || 0 }}</strong></div>
+              <div *ngFor="let serviceName of serviceNamesToDisplay">
+                <span>Service</span>
+                <strong>{{ serviceName }}</strong>
+              </div>
             </div>
           </div>
         </div>
@@ -154,6 +128,7 @@ import { PatientService } from '../services/patient.service';
         (confirmed)="confirmCancel()"
         (cancelled)="cancelModalOpen = false"
       ></app-confirm-modal>
+
       <app-receipt-modal [isOpen]="receiptModalOpen" [data]="receiptData" (closed)="receiptModalOpen = false"></app-receipt-modal>
     </section>
 
@@ -170,62 +145,108 @@ import { PatientService } from '../services/patient.service';
   styleUrl: './patient-booking-detail.page.scss'
 })
 export class PatientBookingDetailPage implements OnInit {
-  private readonly authState = inject(AuthStateService);
   private readonly bookingService = inject(BookingService);
+  private readonly realtime = inject(ClinicDashboardRealtimeService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
-  private readonly mockData = inject(MockDataService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly toastCtrl = inject(ToastController);
-  private readonly clinicSettings = inject(ClinicSettingsService);
   private readonly patientService = inject(PatientService);
-
 
   receiptModalOpen = false;
   receiptData: ReceiptData | null = null;
 
   booking: Booking | null = null;
-  doctor: Doctor | undefined;
-  service: Service | undefined;
-  currentPatient: Patient | null = null;
   cancelModalOpen = false;
 
-  get canSubmitProof(): boolean {
-    return !!this.booking && this.booking.paymentMode === 'Online' && ['Pending', 'OnHold'].includes(this.booking.status) && this.booking.paymentStatus === 'Unpaid';
-  }
-
-  get proofTimerSeconds(): number {
+  get displayStatus(): string {
     if (!this.booking) {
-      return 0;
+      return '-';
     }
-    const deadline = new Date(this.booking.createdAt);
-    deadline.setHours(deadline.getHours() + 24);
-    return Math.max(0, Math.floor((deadline.getTime() - Date.now()) / 1000));
+
+    if (this.booking.status === 'Confirmed') {
+      return 'Booked';
+    }
+
+    if (this.booking.status === 'CheckedIn') {
+      return 'InClinic';
+    }
+
+    if (this.booking.status === 'Completed' && this.booking.paymentStatus === 'Unpaid') {
+      return 'ForPayment';
+    }
+
+    if (this.booking.status === 'Completed' && this.isWaived) {
+      return 'PFWaived';
+    }
+
+    if (this.booking.status === 'Completed' && this.booking.paymentStatus === 'Paid') {
+      return 'CompletedPaid';
+    }
+
+    return this.booking.status;
   }
 
-  get showBookingTimer(): boolean {
-    return this.canSubmitProof && this.proofTimerSeconds > 0;
+  get displayPaymentStatus(): string {
+    if (!this.booking) {
+      return '-';
+    }
+
+    return this.isWaived ? 'Waived' : this.booking.paymentStatus;
+  }
+
+  get isWaived(): boolean {
+    return !!this.booking && (this.booking.isProfessionalFeeWaived === true || this.booking.paymentStatus === 'Waived');
+  }
+
+  get showAmountDue(): boolean {
+    return !!this.booking && !this.isWaived && this.booking.finalAmount !== null && this.booking.finalAmount !== undefined;
   }
 
   get canCancelOnline(): boolean {
     if (!this.booking || ['Cancelled', 'Completed', 'NoShow', 'Expired'].includes(this.booking.status)) {
       return false;
     }
-    const appointmentDateTime = new Date(`${this.booking.appointmentDate}T${this.booking.slotStartTime}:00`);
-    const cancellationWindow = this.mockData.getClinicSettings().cancellationDeadlineHours * 3600000;
-    return appointmentDateTime.getTime() - Date.now() > cancellationWindow;
+
+    return new Date(`${this.booking.appointmentDate}T${this.booking.slotStartTime}:00`).getTime() > Date.now();
   }
 
-  get canLeaveReview(): boolean {
-    return !!this.booking && this.booking.status === 'Completed' && !this.mockData.getReviews().some((review) => review.bookingId === this.booking?.id);
+  get canViewReceipt(): boolean {
+    return !!this.booking?.payment?.id && ['Paid', 'Waived'].includes(this.booking.paymentStatus);
   }
 
-  get doctorDisplayName(): string {
-    return this.booking?.doctorName?.trim() || this.doctor?.fullName?.trim() || 'Doctor';
+  get servicesDisplayName(): string {
+    if (!this.booking) {
+      return 'Service';
+    }
+
+    if (this.booking.serviceNames?.length) {
+      return this.booking.serviceNames.join(', ');
+    }
+
+    const names = this.booking.services?.map((service) => service.name).filter((name) => name.trim().length > 0) ?? [];
+    if (names.length > 0) {
+      return names.join(', ');
+    }
+
+    return this.booking.serviceName?.trim() || 'Service';
   }
 
-  get serviceDisplayName(): string {
-    return this.booking?.serviceName?.trim() || this.service?.name?.trim() || 'Service';
+  get serviceNamesToDisplay(): string[] {
+    if (!this.booking) {
+      return [];
+    }
+
+    if (this.booking.serviceNames?.length) {
+      return this.booking.serviceNames;
+    }
+
+    const names = this.booking.services?.map((service) => service.name).filter((name) => name.trim().length > 0) ?? [];
+    if (names.length > 0) {
+      return names;
+    }
+
+    return this.booking.serviceName?.trim() ? [this.booking.serviceName.trim()] : [];
   }
 
   get timeRangeLabel(): string {
@@ -237,6 +258,7 @@ export class PatientBookingDetailPage implements OnInit {
   }
 
   ngOnInit(): void {
+    void this.realtime.ensureConnected();
     this.route.paramMap
       .pipe(
         switchMap((params) => {
@@ -249,41 +271,40 @@ export class PatientBookingDetailPage implements OnInit {
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe(([patient, booking]) => {
-        this.currentPatient = patient ?? null;
-
-        if (!booking || !this.currentPatient || (booking.patientId && booking.patientId !== this.currentPatient.id)) {
+        if (!booking || !patient || (booking.patientId && booking.patientId !== patient.id)) {
           this.booking = null;
-          this.doctor = undefined;
-          this.service = undefined;
           return;
         }
 
         this.booking = booking;
-        this.doctor = this.mockData.getDoctorById(booking.doctorId);
-        this.service = this.mockData.getServiceById(booking.serviceId);
       });
-  }
 
-  handleProofSubmitted(bookingId: string, proofType: ProofType, proofValue: string): void {
-    if (!this.booking || this.booking.id !== bookingId) {
-      return;
-    }
-
-    this.bookingService.submitBookingProof(bookingId, proofType, proofValue);
-    this.booking = {
-      ...this.booking,
-      status: 'ProofSubmitted',
-      proofType,
-      proofValue,
-      proofSubmittedAt: new Date().toISOString()
-    };
-    void this.presentToast('Payment proof submitted for review.');
+    this.realtime.events$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((event) => {
+        if (
+          this.booking &&
+          [
+            'BookingCreated',
+            'BookingCancelled',
+            'PatientCheckedIn',
+            'PatientCheckInUndone',
+            'DoctorCompletedConsultation',
+            'PaymentCompleted',
+            'PaymentWaived'
+          ].includes(event.eventName) &&
+          (!event.bookingId || event.bookingId === this.booking.id)
+        ) {
+          this.bookingService.getBookingById$(this.booking.id).pipe(take(1)).subscribe();
+        }
+      });
   }
 
   openCancelModal(): void {
     if (!this.canCancelOnline) {
       return;
     }
+
     this.cancelModalOpen = true;
   }
 
@@ -306,78 +327,31 @@ export class PatientBookingDetailPage implements OnInit {
     void this.router.navigate(['/patient/bookings']);
   }
 
-  leaveReview(): void {
-    if (!this.booking) {
+  async openReceipt(): Promise<void> {
+    if (!this.booking?.payment?.id) {
+      await this.presentToast('Receipt is not available yet.', 'warning');
       return;
     }
-    void this.router.navigate(['/patient/reviews', this.booking.id]);
+
+    try {
+      this.receiptData = await firstValueFrom(this.bookingService.getReceipt(this.booking.payment.id));
+      this.receiptModalOpen = true;
+    } catch (error) {
+      await this.presentToast(extractApiErrorMessage(error, 'Failed to load receipt.'), 'danger');
+    }
   }
 
-  private async presentToast(message: string): Promise<void> {
+  private async presentToast(
+    message: string,
+    color: 'success' | 'danger' | 'warning' = 'success'
+  ): Promise<void> {
     const toast = await this.toastCtrl.create({
       message,
       duration: 2200,
-      color: 'success',
+      color,
       position: 'top'
     });
     await toast.present();
-  }
-  openReceipt(): void {
-    if (!this.booking) {
-      return;
-    }
-    const receipt = this.buildReceiptData(this.booking);
-    this.receiptData = {
-      ...receipt,
-      patientName:
-        this.booking.patientName?.trim() ||
-        (this.currentPatient ? `${this.currentPatient.firstName} ${this.currentPatient.lastName}` : receipt.patientName),
-      patientCode: this.currentPatient?.patientCode ?? receipt.patientCode,
-      doctorName: this.booking.doctorName?.trim() || this.doctor?.fullName?.trim() || receipt.doctorName,
-      serviceName: this.booking.serviceName?.trim() || this.service?.name?.trim() || receipt.serviceName,
-      slotTime: this.timeRangeLabelFor(this.booking)
-    };
-    this.receiptModalOpen = true;
-  }
-
-  private buildReceiptData(booking: Booking): ReceiptData {
-    const patient =
-      this.currentPatient && this.currentPatient.id === booking.patientId
-        ? this.currentPatient
-        : this.mockData.getPatients().find((p) => p.id === booking.patientId);
-    const doctor = this.mockData.getDoctors().find((d) => d.id === booking.doctorId);
-    const service = this.mockData.getServices().find((s) => s.id === booking.serviceId);
-    const settings = this.clinicSettings.load();
-    const currentUser = this.authState.snapshot;
-
-    return {
-      orNumber: booking.orNumber ?? '—',
-      clinicName: settings.clinicName,
-      clinicAddress: settings.address ?? '',
-      clinicPhone: settings.phone ?? '',
-      clinicEmail: settings.email ?? '',
-      patientName: patient ? `${patient.firstName} ${patient.lastName}` : '—',
-      patientCode: patient?.patientCode ?? '—',
-      doctorName: doctor?.fullName ?? '—',
-      serviceName: service?.name ?? '—',
-      appointmentDate: new Date(booking.appointmentDate).toLocaleDateString('en-PH', {
-        year: 'numeric', month: 'long', day: 'numeric'
-      }),
-      slotTime: booking.slotStartTime,
-      queueNumber: booking.queueNumber,
-      consultationFee: booking.consultationFeeSnapshot,
-      serviceFee: booking.serviceFeeSnapshot,
-      totalFee: booking.totalFee,
-      paymentMethod: booking.paymentMode === 'PayAtClinic' ? 'Pay at Clinic' : 'Online',
-      paymentStatus: booking.paymentStatus,
-      waivedReason: undefined,
-      isWalkIn: booking.isWalkIn,
-      printedBy: currentUser?.fullName ?? 'Patient',
-      printedAt: new Date().toLocaleDateString('en-PH', {
-        year: 'numeric', month: 'long', day: 'numeric',
-        hour: '2-digit', minute: '2-digit'
-      })
-    };
   }
 
   private timeRangeLabelFor(booking: Booking): string {
@@ -394,4 +368,25 @@ export class PatientBookingDetailPage implements OnInit {
 
     return `${start} - ${end}`;
   }
+}
+
+function extractApiErrorMessage(error: unknown, fallback: string): string {
+  if (typeof error === 'object' && error !== null && 'error' in error) {
+    const body = (error as { error?: unknown }).error;
+    if (typeof body === 'string' && body.trim()) {
+      return body;
+    }
+    if (typeof body === 'object' && body !== null && 'message' in body) {
+      const message = (body as { message?: unknown }).message;
+      if (typeof message === 'string' && message.trim()) {
+        return message;
+      }
+    }
+  }
+
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+
+  return fallback;
 }

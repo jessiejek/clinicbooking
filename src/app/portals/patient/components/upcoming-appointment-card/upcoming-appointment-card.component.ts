@@ -100,6 +100,15 @@ export class UpcomingAppointmentCardComponent {
   }
 
   get serviceDisplayName(): string {
+    if (this.booking.serviceNames?.length) {
+      return this.booking.serviceNames.join(', ');
+    }
+
+    const names = this.booking.services?.map((item) => item.name).filter((name) => name.trim().length > 0) ?? [];
+    if (names.length > 0) {
+      return names.join(', ');
+    }
+
     return this.service?.name?.trim() || this.booking.serviceName?.trim() || 'Service';
   }
 

@@ -31,8 +31,8 @@ interface TimelineStep {
         </div>
       </div>
       <div class="timeline__footer">
-        <app-status-badge [status]="booking.status"></app-status-badge>
-        <app-status-badge [status]="booking.paymentStatus"></app-status-badge>
+        <app-status-badge [status]="displayStatus"></app-status-badge>
+        <app-status-badge [status]="displayPaymentStatus"></app-status-badge>
       </div>
     </div>
   `,
@@ -42,12 +42,39 @@ export class BookingTimelineComponent {
   @Input({ required: true }) booking!: Booking;
 
   readonly steps: TimelineStep[] = [
-    { label: 'Booking Created', description: 'Patient request submitted.' },
-    { label: 'Payment Pending', description: 'Waiting for payment proof or verification.' },
-    { label: 'Proof Submitted', description: 'Payment proof sent for review.' },
-    { label: 'Confirmed', description: 'Clinic confirmed the schedule.' },
-    { label: 'Completed', description: 'Appointment and consultation completed.' }
+    { label: 'Booked', description: 'Your appointment has been confirmed by the clinic.' },
+    { label: 'In Clinic', description: 'The clinic has checked you in for your appointment.' },
+    { label: 'Consultation Completed', description: 'The doctor has finished the consultation.' },
+    { label: 'Payment Settled', description: 'Your clinic payment has been completed or waived.' }
   ];
+
+  get displayStatus(): string {
+    if (this.booking.status === 'Confirmed') {
+      return 'Booked';
+    }
+
+    if (this.booking.status === 'CheckedIn') {
+      return 'InClinic';
+    }
+
+    if (this.booking.status === 'Completed' && this.booking.paymentStatus === 'Unpaid') {
+      return 'ForPayment';
+    }
+
+    if (this.booking.status === 'Completed' && this.isWaived) {
+      return 'PFWaived';
+    }
+
+    if (this.booking.status === 'Completed' && this.booking.paymentStatus === 'Paid') {
+      return 'CompletedPaid';
+    }
+
+    return this.booking.status;
+  }
+
+  get displayPaymentStatus(): string {
+    return this.isWaived ? 'Waived' : this.booking.paymentStatus;
+  }
 
   stateClass(index: number): TimelineState {
     const current = this.currentStepIndex;
@@ -61,23 +88,22 @@ export class BookingTimelineComponent {
   }
 
   get currentStepIndex(): number {
-    switch (this.booking.status) {
-      case 'Completed':
-        return 4;
-      case 'Confirmed':
-        return 3;
-      case 'ProofSubmitted':
-        return 2;
-      case 'Pending':
-      case 'OnHold':
-        return this.booking.paymentStatus === 'Paid' ? 3 : 1;
-      case 'Cancelled':
-      case 'NoShow':
-      case 'Expired':
-      case 'Rescheduled':
-        return 0;
-      default:
-        return 1;
+    if (this.booking.paymentStatus === 'Paid' || this.isWaived) {
+      return 3;
     }
+
+    if (this.booking.status === 'Completed') {
+      return 2;
+    }
+
+    if (this.booking.status === 'CheckedIn') {
+      return 1;
+    }
+
+    return 0;
+  }
+
+  private get isWaived(): boolean {
+    return this.booking.isProfessionalFeeWaived === true || this.booking.paymentStatus === 'Waived';
   }
 }

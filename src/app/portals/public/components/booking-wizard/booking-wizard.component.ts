@@ -9,7 +9,6 @@ import { StepAuthCheckComponent } from '../step-auth-check/step-auth-check.compo
 import { StepDatePickerComponent } from '../step-date-picker/step-date-picker.component';
 import { StepDoctorServiceComponent } from '../step-doctor-service/step-doctor-service.component';
 import { StepPaymentComponent } from '../step-payment/step-payment.component';
-import { StepProofComponent } from '../step-proof/step-proof.component';
 import { StepReviewComponent } from '../step-review/step-review.component';
 import { StepSlotSelectComponent } from '../step-slot-select/step-slot-select.component';
 
@@ -29,8 +28,7 @@ import { StepSlotSelectComponent } from '../step-slot-select/step-slot-select.co
     StepSlotSelectComponent,
     StepReviewComponent,
     StepAuthCheckComponent,
-    StepPaymentComponent,
-    StepProofComponent
+    StepPaymentComponent
   ],
   template: `
     <div class="booking-wizard">
@@ -58,7 +56,6 @@ import { StepSlotSelectComponent } from '../step-slot-select/step-slot-select.co
           <app-step-review *ngSwitchCase="4"></app-step-review>
           <app-step-auth-check *ngSwitchCase="5"></app-step-auth-check>
           <app-step-payment *ngSwitchCase="6"></app-step-payment>
-          <app-step-proof *ngSwitchCase="7"></app-step-proof>
         </ng-container>
       </div>
 
@@ -74,8 +71,7 @@ export class BookingWizardComponent {
     { step: 3, label: 'Select Time' },
     { step: 4, label: 'Review' },
     { step: 5, label: 'Account' },
-    { step: 6, label: 'Payment' },
-    { step: 7, label: 'Submit Proof' }
+    { step: 6, label: 'Confirm' }
   ];
 
   private readonly wizardService = inject(BookingWizardService);

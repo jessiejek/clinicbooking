@@ -3,16 +3,16 @@ import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize } from 'rxjs';
-import { Booking, Doctor, Service } from '../../../core/models';
+import { Booking } from '../../../core/models';
 import { BookingService, MyBookingsPageResult } from '../../../core/services/booking.service';
-import { MockDataService } from '../../../core/services/mock-data.service';
+import { ClinicDashboardRealtimeService } from '../../../core/services/clinic-dashboard-realtime.service';
+import { ConfirmModalComponent } from '../../../shared/components/confirm-modal/confirm-modal.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { SkeletonComponent } from '../../../shared/components/skeleton/skeleton.component';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
-import { ConfirmModalComponent } from '../../../shared/components/confirm-modal/confirm-modal.component';
 import { PatientBookingCardComponent } from '../components/patient-booking-card/patient-booking-card.component';
 
-type BookingFilter = 'all' | 'upcoming' | 'pending' | 'confirmed' | 'completed' | 'cancelled';
+type BookingFilter = 'all' | 'upcoming' | 'for-payment' | 'completed' | 'cancelled';
 
 @Component({
   selector: 'app-patient-bookings-page',
@@ -32,7 +32,7 @@ type BookingFilter = 'all' | 'upcoming' | 'pending' | 'confirmed' | 'completed' 
       <div class="page-shell__header">
         <div>
           <h2 class="page-title">My Bookings</h2>
-          <p class="page-subtitle">View and manage your appointment history.</p>
+          <p class="page-subtitle">View your appointment status and clinic payment progress.</p>
         </div>
       </div>
 
@@ -72,8 +72,9 @@ type BookingFilter = 'all' | 'upcoming' | 'pending' | 'confirmed' | 'completed' 
               <tr>
                 <th>Booking ID</th>
                 <th>Doctor</th>
-                <th>Service</th>
+                <th>Services</th>
                 <th>Date / Time</th>
+                <th>Queue</th>
                 <th>Status</th>
                 <th>Payment</th>
                 <th>Actions</th>
@@ -82,21 +83,19 @@ type BookingFilter = 'all' | 'upcoming' | 'pending' | 'confirmed' | 'completed' 
             <tbody>
               <tr *ngFor="let booking of filteredBookings">
                 <td class="data-mono">{{ booking.id }}</td>
-                <td>{{ bookingDoctorName(booking) }}</td>
-                <td>{{ bookingServiceName(booking) }}</td>
+                <td>{{ doctorName(booking) }}</td>
+                <td>{{ servicesLabel(booking) }}</td>
                 <td>
                   <div>{{ booking.appointmentDate | date : 'MMM d, y' }}</div>
                   <div class="table-time">{{ formatTimeRange(booking) }}</div>
                 </td>
-                <td><app-status-badge [status]="booking.status"></app-status-badge></td>
-                <td><app-status-badge [status]="booking.paymentStatus"></app-status-badge></td>
+                <td>{{ booking.queueNumber !== null ? '#' + booking.queueNumber : '-' }}</td>
+                <td><app-status-badge [status]="displayStatus(booking)"></app-status-badge></td>
+                <td><app-status-badge [status]="displayPaymentStatus(booking)"></app-status-badge></td>
                 <td>
                   <div class="table-actions">
                     <button type="button" class="btn-outline" (click)="openBooking(booking.id)">
                       View Details
-                    </button>
-                    <button *ngIf="canSubmitProof(booking)" type="button" class="btn-primary" (click)="openBooking(booking.id)">
-                      Submit Proof
                     </button>
                     <button *ngIf="canCancelBooking(booking)" type="button" class="btn-ghost" (click)="promptCancel(booking)">
                       Cancel
@@ -112,12 +111,8 @@ type BookingFilter = 'all' | 'upcoming' | 'pending' | 'confirmed' | 'completed' 
           <app-patient-booking-card
             *ngFor="let booking of filteredBookings"
             [booking]="booking"
-            [doctor]="doctorById(booking.doctorId)"
-            [service]="serviceById(booking.serviceId)"
-            [canSubmitProof]="canSubmitProof(booking)"
             [canCancel]="canCancelBooking(booking)"
             (viewDetails)="openBooking($event)"
-            (submitProof)="openBooking($event)"
             (cancelBooking)="promptCancelById($event)"
           ></app-patient-booking-card>
         </div>
@@ -158,15 +153,14 @@ type BookingFilter = 'all' | 'upcoming' | 'pending' | 'confirmed' | 'completed' 
 })
 export class PatientBookingsPage implements OnInit {
   private readonly bookingService = inject(BookingService);
-  private readonly mockData = inject(MockDataService);
+  private readonly realtime = inject(ClinicDashboardRealtimeService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly filters: Array<{ label: string; value: BookingFilter }> = [
     { label: 'All', value: 'all' },
     { label: 'Upcoming', value: 'upcoming' },
-    { label: 'Pending Payment', value: 'pending' },
-    { label: 'Confirmed', value: 'confirmed' },
+    { label: 'For Payment', value: 'for-payment' },
     { label: 'Completed', value: 'completed' },
     { label: 'Cancelled', value: 'cancelled' }
   ];
@@ -183,11 +177,27 @@ export class PatientBookingsPage implements OnInit {
   totalCount = 0;
   pageSize = 20;
   private loadRequestVersion = 0;
-  doctors = this.mockData.getDoctors();
-  services = this.mockData.getServices();
 
   ngOnInit(): void {
     this.loadBookings(this.currentPage || 1);
+    void this.realtime.ensureConnected();
+    this.realtime.events$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((event) => {
+        if (
+          [
+            'BookingCreated',
+            'BookingCancelled',
+            'PatientCheckedIn',
+            'PatientCheckInUndone',
+            'DoctorCompletedConsultation',
+            'PaymentCompleted',
+            'PaymentWaived'
+          ].includes(event.eventName)
+        ) {
+          this.loadBookings(this.currentPage || 1);
+        }
+      });
   }
 
   ionViewWillEnter(): void {
@@ -273,6 +283,7 @@ export class PatientBookingsPage implements OnInit {
     if (!booking) {
       return;
     }
+
     this.promptCancel(booking);
   }
 
@@ -280,6 +291,7 @@ export class PatientBookingsPage implements OnInit {
     if (!this.canCancelBooking(booking)) {
       return;
     }
+
     this.bookingToCancel = booking;
     this.cancelModalOpen = true;
   }
@@ -305,38 +317,61 @@ export class PatientBookingsPage implements OnInit {
     this.bookingToCancel = null;
   }
 
-  canSubmitProof(booking: Booking): boolean {
-    return (
-      booking.paymentMode === 'Online' &&
-      booking.paymentStatus === 'Unpaid' &&
-      ['Pending', 'OnHold'].includes(booking.status)
-    );
-  }
-
   canCancelBooking(booking: Booking): boolean {
     if (['Cancelled', 'Completed', 'NoShow', 'Expired'].includes(booking.status)) {
       return false;
     }
 
-    const appointmentDateTime = new Date(`${booking.appointmentDate}T${booking.slotStartTime}:00`);
-    const cancellationWindow = this.mockData.getClinicSettings().cancellationDeadlineHours * 3600000;
-    return appointmentDateTime.getTime() - Date.now() > cancellationWindow;
+    return bookingDateTime(booking) > Date.now();
   }
 
-  bookingDoctorName(booking: Booking): string {
-    if (booking.doctorName?.trim()) {
-      return booking.doctorName.trim();
-    }
-
-    return this.doctorById(booking.doctorId)?.fullName ?? 'Doctor';
+  doctorName(booking: Booking): string {
+    return booking.doctorName?.trim() || 'Doctor';
   }
 
-  bookingServiceName(booking: Booking): string {
-    if (booking.serviceName?.trim()) {
-      return booking.serviceName.trim();
+  servicesLabel(booking: Booking): string {
+    if (booking.serviceNames?.length) {
+      return booking.serviceNames.join(', ');
     }
 
-    return this.serviceById(booking.serviceId)?.name ?? 'Service';
+    const names = booking.services?.map((service) => service.name).filter((name) => name.trim().length > 0) ?? [];
+    if (names.length > 0) {
+      return names.join(', ');
+    }
+
+    return booking.serviceName?.trim() || 'Service';
+  }
+
+  displayStatus(booking: Booking): string {
+    if (booking.status === 'Confirmed') {
+      return 'Booked';
+    }
+
+    if (booking.status === 'CheckedIn') {
+      return 'InClinic';
+    }
+
+    if (booking.status === 'Completed' && booking.paymentStatus === 'Unpaid') {
+      return 'ForPayment';
+    }
+
+    if (booking.status === 'Completed' && this.isWaived(booking)) {
+      return 'PFWaived';
+    }
+
+    if (booking.status === 'Completed' && booking.paymentStatus === 'Paid') {
+      return 'CompletedPaid';
+    }
+
+    return booking.status;
+  }
+
+  displayPaymentStatus(booking: Booking): string {
+    if (this.isWaived(booking)) {
+      return 'Waived';
+    }
+
+    return booking.paymentStatus;
   }
 
   formatTimeRange(booking: Booking): string {
@@ -352,22 +387,6 @@ export class PatientBookingsPage implements OnInit {
     }
 
     return `${start} - ${end}`;
-  }
-
-  doctorById(doctorId: string): Doctor | undefined {
-    return this.doctors.find((doctor) => doctor.id === doctorId);
-  }
-
-  doctorName(doctorId: string): string {
-    return this.doctorById(doctorId)?.fullName ?? 'Doctor';
-  }
-
-  serviceById(serviceId: string): Service | undefined {
-    return this.services.find((service) => service.id === serviceId);
-  }
-
-  serviceName(serviceId: string): string {
-    return this.serviceById(serviceId)?.name ?? 'Service';
   }
 
   private loadBookings(page: number): void {
@@ -417,26 +436,29 @@ export class PatientBookingsPage implements OnInit {
   private refreshFilteredBookings(): void {
     const now = Date.now();
     this.filteredBookings = this.bookings.filter((booking) => {
-      const bookingTime = new Date(`${booking.appointmentDate}T${booking.slotStartTime}:00`).getTime();
+      const bookingTime = bookingDateTime(booking);
       switch (this.selectedFilter) {
         case 'upcoming':
-          return (
-            bookingTime >= now &&
-            ['Pending', 'ProofSubmitted', 'Confirmed', 'OnHold'].includes(booking.status)
-          );
-        case 'pending':
-          return booking.paymentMode === 'Online' && booking.paymentStatus === 'Unpaid' && ['Pending', 'OnHold'].includes(booking.status);
-        case 'confirmed':
-          return booking.status === 'Confirmed';
+          return bookingTime >= now && ['Confirmed', 'CheckedIn'].includes(booking.status);
+        case 'for-payment':
+          return booking.status === 'Completed' && booking.paymentStatus === 'Unpaid' && (booking.finalAmount ?? 0) > 0;
         case 'completed':
-          return booking.status === 'Completed';
+          return booking.status === 'Completed' && booking.paymentStatus === 'Paid';
         case 'cancelled':
-          return booking.status === 'Cancelled';
+          return booking.status === 'Cancelled' || booking.status === 'NoShow';
         default:
           return true;
       }
     });
   }
+
+  private isWaived(booking: Booking): boolean {
+    return booking.isProfessionalFeeWaived === true || booking.paymentStatus === 'Waived';
+  }
+}
+
+function bookingDateTime(booking: Booking): number {
+  return new Date(`${booking.appointmentDate}T${booking.slotStartTime}:00`).getTime();
 }
 
 function extractErrorMessage(error: unknown, fallback: string): string {

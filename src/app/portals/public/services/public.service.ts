@@ -172,8 +172,8 @@ export class PublicService {
   }
 
   getDoctorServices(doctorId: string): Observable<Service[]> {
-    return this.getServices().pipe(
-      map((services) => services.filter((service) => service.doctorIds.includes(doctorId))),
+    return this.apiService.get<ServiceDto[]>(`/doctors/${doctorId}/services`).pipe(
+      map((services) => services.map((service) => mapServiceDto(service))),
       catchError(() => of([]))
     );
   }

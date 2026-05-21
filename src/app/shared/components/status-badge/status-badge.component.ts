@@ -18,6 +18,8 @@ export class StatusBadgeComponent {
     const raw = String(this.status);
     const kebab = raw
       .replace(/([a-z])([A-Z])/g, '$1-$2')
+      .replace(/\s+/g, '-')
+      .replace(/\//g, '-')
       .replace(/_/g, '-')
       .toLowerCase();
     return `badge--${kebab}`;
@@ -29,7 +31,12 @@ export class StatusBadgeComponent {
       ProofSubmitted: 'Proof Submitted',
       OnHold: 'On Hold',
       NoShow: 'No Show',
-      OnLeave: 'On Leave'
+      OnLeave: 'On Leave',
+      CheckedIn: 'Checked In',
+      InClinic: 'In Clinic',
+      ForPayment: 'For Payment',
+      PFWaived: 'PF Waived',
+      CompletedPaid: 'Completed / Paid'
     };
     if (map[raw]) {
       return map[raw];

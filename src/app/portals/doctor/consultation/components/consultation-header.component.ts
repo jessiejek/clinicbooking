@@ -13,56 +13,76 @@ import { PageHeaderComponent } from '../../../../shared/components/page-header/p
       subtitle="Complete the medical record from the appointment"
       [showBackButton]="true"
       defaultBackHref="/doctor/appointments"
-    >
-      <div class="consultation-header">
-        <div class="consultation-header__copy">
-          <h2>{{ patientName }}</h2>
-          <p>
-            Booking {{ booking.id }} &bull; {{ booking.appointmentDate | date : 'MMM d, y' }}
-            {{ booking.slotStartTime }} - {{ booking.slotEndTime }}
-          </p>
-        </div>
-        <div class="consultation-header__actions">
-          <button type="button" class="btn-ghost" [disabled]="locked" (click)="saveDraft.emit()">
-            Save Draft
-          </button>
-          <button type="button" class="btn-primary" [disabled]="locked" (click)="complete.emit()">
-            Complete Consultation
-          </button>
-        </div>
+    ></app-page-header>
+
+    <section class="consultation-header">
+      <div class="consultation-header__copy">
+        <h2>{{ patientName }}</h2>
+        <p>
+          Booking {{ booking.id }} &bull; {{ booking.appointmentDate | date : 'MMM d, y' }}
+          {{ booking.slotStartTime }} - {{ booking.slotEndTime }}
+        </p>
       </div>
-    </app-page-header>
+      <div class="consultation-header__actions">
+        <button type="button" class="btn-ghost" [disabled]="locked" (click)="saveDraft.emit()">
+          Save Draft
+        </button>
+        <button type="button" class="btn-primary" [disabled]="locked" (click)="complete.emit()">
+          Complete Consultation
+        </button>
+      </div>
+    </section>
   `,
   styles: [
     `
       .consultation-header {
         display: flex;
-        align-items: flex-end;
+        align-items: center;
         justify-content: space-between;
         gap: var(--space-4);
-        width: 100%;
-        margin-top: var(--space-4);
+        margin-bottom: var(--space-6);
+      }
+
+      .consultation-header__copy {
+        flex: 1;
+        min-width: 0;
       }
 
       .consultation-header__copy h2 {
         margin: 0;
+        font-size: clamp(1.75rem, 2vw, 2.25rem);
+        line-height: 1.1;
       }
 
       .consultation-header__copy p {
-        margin: 4px 0 0;
+        margin: var(--space-2) 0 0;
         color: var(--clinic-text-secondary);
+        overflow-wrap: anywhere;
       }
 
       .consultation-header__actions {
         display: flex;
         gap: var(--space-2);
         flex-wrap: wrap;
+        justify-content: flex-end;
+        flex-shrink: 0;
       }
 
       @media (max-width: 900px) {
         .consultation-header {
-          display: grid;
-          grid-template-columns: 1fr;
+          flex-direction: column;
+          align-items: stretch;
+          margin-bottom: var(--space-4);
+        }
+
+        .consultation-header__actions {
+          justify-content: flex-start;
+        }
+      }
+
+      @media (max-width: 640px) {
+        .consultation-header__actions button {
+          width: 100%;
         }
       }
     `
@@ -77,6 +97,6 @@ export class ConsultationHeaderComponent {
   @Output() complete = new EventEmitter<void>();
 
   get patientName(): string {
-    return `${this.patient.firstName} ${this.patient.lastName}`;
+    return [this.patient.firstName, this.patient.lastName].filter(Boolean).join(' ') || 'Patient';
   }
 }

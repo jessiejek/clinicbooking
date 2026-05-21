@@ -1,154 +1,76 @@
+import { AsyncPipe, NgFor, NgIf } from '@angular/common';
 import { Component, inject } from '@angular/core';
-import { AsyncPipe, NgIf, NgSwitch, NgSwitchCase } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { ToastController } from '@ionic/angular';
-import { IonIcon } from '@ionic/angular/standalone';
-import { addIcons } from 'ionicons';
-import { copyOutline } from 'ionicons/icons';
-import { map } from 'rxjs';
-import { MockDataService } from '../../../../core/services/mock-data.service';
+import { firstValueFrom, combineLatest, map, of, switchMap, catchError } from 'rxjs';
+import { AuthStateService } from '../../../../core/services/auth-state.service';
+import { BookingService, CreateBookingRequest } from '../../../../core/services/booking.service';
 import { BookingWizardService } from '../../../../core/services/booking-wizard.service';
-
-type PaymentTab = 'gcash' | 'maya' | 'bank';
-type BookingPaymentMode = 'Online' | 'PayAtClinic';
+import { PublicService } from '../../services/public.service';
 
 @Component({
   selector: 'app-step-payment',
   standalone: true,
-  imports: [NgIf, AsyncPipe, NgSwitch, NgSwitchCase, IonIcon],
+  imports: [NgIf, NgFor, AsyncPipe, FormsModule],
   template: `
     <section class="wizard-panel">
       <div class="wizard-panel__header">
         <div>
           <p class="section-heading">Step 6</p>
-          <h2 class="wizard-title">Payment instructions</h2>
+          <h2 class="wizard-title">Confirm your booking</h2>
           <p class="wizard-subtitle">
-            Choose how you want to settle the bill for this appointment.
+            Payment will be settled at the clinic after consultation.
           </p>
         </div>
       </div>
 
       <ng-container *ngIf="vm$ | async as vm">
-        <div class="payment-mode-tabs">
-          <button
-            type="button"
-            [class.active]="vm.paymentMode === 'Online'"
-            (click)="setPaymentMode('Online')"
-          >
-            Online Payment
-          </button>
-          <button
-            type="button"
-            [class.active]="vm.paymentMode === 'PayAtClinic'"
-            (click)="setPaymentMode('PayAtClinic')"
-          >
-            Pay at Clinic
-          </button>
+        <div class="clinic-card clinic-card--accent-green">
+          <p class="section-heading">Clinic Payment Flow</p>
+          <ul class="payment-mode-list">
+            <li>Your appointment will be confirmed immediately after submission.</li>
+            <li>No online payment or proof upload is required.</li>
+            <li>The final amount due will only appear after the doctor completes the consultation.</li>
+          </ul>
         </div>
 
-        <ng-container *ngIf="vm.paymentMode === 'Online'; else payAtClinicTpl">
-          <div class="amount-due clinic-card clinic-card--accent-green">
-            <p class="amount-label">Amount Due</p>
-            <p class="amount-value">&#8369;{{ vm.totalDue }}</p>
-            <p class="amount-note">Complete payment then submit proof in the next step</p>
+        <div class="clinic-card summary-card">
+          <p class="section-heading">Final Check</p>
+          <div class="summary-row">
+            <span>Doctor</span>
+            <strong>{{ vm.doctorName }}</strong>
           </div>
-
-          <div class="payment-tabs">
-            <button type="button" [class.active]="activeTab === 'gcash'" (click)="activeTab = 'gcash'">
-              GCash
-            </button>
-            <button type="button" [class.active]="activeTab === 'maya'" (click)="activeTab = 'maya'">
-              Maya
-            </button>
-            <button type="button" [class.active]="activeTab === 'bank'" (click)="activeTab = 'bank'">
-              Bank Transfer
-            </button>
+          <div class="summary-row">
+            <span>Services</span>
+            <strong>{{ vm.servicesLabel }}</strong>
           </div>
-
-          <div class="payment-method-content" [ngSwitch]="activeTab">
-            <div *ngSwitchCase="'gcash'" class="payment-content clinic-card">
-              <div class="qr-placeholder">
-                <div class="qr-box">
-                  QR Code Placeholder
-                  <small>Scan with GCash app</small>
-                </div>
-              </div>
-              <p class="payment-account">
-                <strong>Account Name:</strong> {{ vm.paymentSettings.gcashAccountName }}
-              </p>
-              <div class="payment-number-row">
-                <strong>Number:</strong>
-                <span class="data-mono">{{ vm.paymentSettings.gcashNumber }}</span>
-                <button
-                  type="button"
-                  class="btn-icon"
-                  (click)="copyToClipboard(vm.paymentSettings.gcashNumber || '')"
-                >
-                  <ion-icon name="copy-outline"></ion-icon>
-                </button>
-              </div>
-            </div>
-
-            <div *ngSwitchCase="'maya'" class="payment-content clinic-card">
-              <div class="qr-placeholder">
-                <div class="qr-box">
-                  QR Code Placeholder
-                  <small>Scan with Maya app</small>
-                </div>
-              </div>
-              <p class="payment-account">
-                <strong>Account Name:</strong> {{ vm.paymentSettings.mayaAccountName }}
-              </p>
-              <div class="payment-number-row">
-                <strong>Number:</strong>
-                <span class="data-mono">{{ vm.paymentSettings.mayaNumber }}</span>
-                <button
-                  type="button"
-                  class="btn-icon"
-                  (click)="copyToClipboard(vm.paymentSettings.mayaNumber || '')"
-                >
-                  <ion-icon name="copy-outline"></ion-icon>
-                </button>
-              </div>
-            </div>
-
-            <div *ngSwitchCase="'bank'" class="payment-content clinic-card">
-              <p><strong>Bank:</strong> {{ vm.paymentSettings.bankName }}</p>
-              <p><strong>Account Name:</strong> {{ vm.paymentSettings.bankAccountName }}</p>
-              <div class="payment-number-row">
-                <strong>Account No.:</strong>
-                <span class="data-mono">{{ vm.paymentSettings.bankAccountNumber }}</span>
-                <button
-                  type="button"
-                  class="btn-icon"
-                  (click)="copyToClipboard(vm.paymentSettings.bankAccountNumber || '')"
-                >
-                  <ion-icon name="copy-outline"></ion-icon>
-                </button>
-              </div>
-            </div>
+          <div class="summary-row">
+            <span>Date</span>
+            <strong>{{ vm.selectedDate }}</strong>
           </div>
-        </ng-container>
-
-        <ng-template #payAtClinicTpl>
-          <div class="payment-mode-panel clinic-card clinic-card--accent-green">
-            <p class="section-heading">Pay at Clinic</p>
-            <p class="payment-mode-message">
-              You can settle the total due at the clinic on your appointment day. No online
-              payment proof is required.
-            </p>
-            <ul class="payment-mode-list">
-              <li>Please bring the exact amount due.</li>
-              <li>Staff will mark your payment when you arrive.</li>
-              <li>Your slot remains reserved until your visit.</li>
-            </ul>
+          <div class="summary-row">
+            <span>Time</span>
+            <strong>{{ vm.selectedSlot }} - {{ vm.selectedSlotEnd }}</strong>
           </div>
-        </ng-template>
+        </div>
+
+        <div class="clinic-card">
+          <label class="form-label" for="booking-notes">Notes for the clinic (optional)</label>
+          <textarea
+            id="booking-notes"
+            class="filter-input"
+            rows="4"
+            [(ngModel)]="notes"
+            placeholder="Add any visit notes or special instructions."
+          ></textarea>
+        </div>
       </ng-container>
 
       <div class="wizard-actions wizard-actions--split">
         <button type="button" class="btn-outline" (click)="goBack()">Back</button>
-        <button type="button" class="btn-primary" (click)="goNext()">
-          {{ (vm$ | async)?.paymentMode === 'PayAtClinic' ? 'Continue' : 'Continue to Proof' }}
+        <button type="button" class="btn-primary" [disabled]="isSubmitting" (click)="submitBooking()">
+          {{ isSubmitting ? 'Submitting...' : 'Confirm Booking' }}
         </button>
       </div>
     </section>
@@ -157,56 +79,126 @@ type BookingPaymentMode = 'Online' | 'PayAtClinic';
 })
 export class StepPaymentComponent {
   private readonly wizardService = inject(BookingWizardService);
+  private readonly bookingService = inject(BookingService);
+  private readonly authState = inject(AuthStateService);
+  private readonly publicService = inject(PublicService);
+  private readonly router = inject(Router);
   private readonly toastCtrl = inject(ToastController);
-  private readonly mockData = inject(MockDataService);
 
-  activeTab: PaymentTab = 'gcash';
+  notes = '';
+  isSubmitting = false;
 
   vm$ = this.wizardService.state$.pipe(
-    map((wizard) => {
-      const doctor = wizard.selectedDoctorId
-        ? this.mockData.getDoctors().find((item) => item.id === wizard.selectedDoctorId)
-        : null;
-      const service = wizard.selectedServiceId
-        ? this.mockData.getServices().find((item) => item.id === wizard.selectedServiceId)
-        : null;
+    switchMap((wizard) =>
+      combineLatest([
+        of(wizard),
+        this.publicService.getDoctors().pipe(catchError(() => of([]))),
+        wizard.selectedDoctorId
+          ? this.publicService.getDoctorServices(wizard.selectedDoctorId).pipe(catchError(() => of([])))
+          : of([])
+      ])
+    ),
+    map(([wizard, doctors, services]) => {
+      const doctor = wizard.selectedDoctorId ? doctors.find((item) => item.id === wizard.selectedDoctorId) : null;
+      const selectedServices = services.filter((service) => wizard.selectedServiceIds.includes(service.id));
 
       return {
-        totalDue: (doctor?.consultationFee ?? 0) + (service?.price ?? 0),
-        paymentSettings: this.mockData.getPaymentSettings(),
-        paymentMode: wizard.paymentMode as BookingPaymentMode
+        doctorName: doctor?.fullName ?? 'Doctor',
+        servicesLabel:
+          selectedServices.length > 0
+            ? selectedServices.map((service) => service.name).join(', ')
+            : `${wizard.selectedServiceIds.length} service${wizard.selectedServiceIds.length === 1 ? '' : 's'} selected`,
+        selectedDate: wizard.selectedDate ?? '-',
+        selectedSlot: wizard.selectedSlot ?? '-',
+        selectedSlotEnd: wizard.selectedSlotEnd ?? wizard.selectedSlot ?? '-'
       };
     })
   );
 
-  constructor() {
-    addIcons({ copyOutline });
-  }
-
-  setPaymentMode(paymentMode: BookingPaymentMode): void {
-    this.wizardService.selectPaymentMode(paymentMode);
-  }
-
-  async copyToClipboard(value: string): Promise<void> {
-    if (!value) {
+  async submitBooking(): Promise<void> {
+    if (this.isSubmitting) {
       return;
     }
 
-    await navigator.clipboard.writeText(value);
-    const toast = await this.toastCtrl.create({
-      message: 'Copied to clipboard!',
-      duration: 1500,
-      color: 'success',
-      position: 'top'
-    });
-    await toast.present();
-  }
+    if (!this.authState.snapshot) {
+      await this.presentToast('Please log in to book an appointment.');
+      return;
+    }
 
-  goNext(): void {
-    this.wizardService.nextStep();
+    const wizard = this.wizardService.snapshot;
+    if (
+      !wizard.selectedDoctorId ||
+      wizard.selectedServiceIds.length === 0 ||
+      !wizard.selectedDate ||
+      !wizard.selectedSlot ||
+      !wizard.selectedSlotEnd
+    ) {
+      await this.presentToast('Please complete all booking details before submitting.');
+      return;
+    }
+
+    const payload: CreateBookingRequest = {
+      doctorId: wizard.selectedDoctorId,
+      serviceIds: wizard.selectedServiceIds,
+      appointmentDate: wizard.selectedDate,
+      slotStartTime: wizard.selectedSlot,
+      slotEndTime: wizard.selectedSlotEnd,
+      notes: this.notes.trim() || undefined
+    };
+
+    this.isSubmitting = true;
+
+    try {
+      const booking = await firstValueFrom(this.bookingService.createBooking(payload));
+      this.wizardService.patchState({
+        bookingId: booking.id,
+        queueNumber: booking.queueNumber ?? null
+      });
+      await this.presentToast('Booking confirmed.', 'success');
+      await this.router.navigate(['/patient/bookings', booking.id]);
+      this.wizardService.reset();
+    } catch (error) {
+      await this.presentToast(extractApiErrorMessage(error, 'Failed to create booking.'));
+    } finally {
+      this.isSubmitting = false;
+    }
   }
 
   goBack(): void {
     this.wizardService.prevStep();
   }
+
+  private async presentToast(
+    message: string,
+    color: 'success' | 'danger' | 'warning' | 'medium' = 'danger'
+  ): Promise<void> {
+    const toast = await this.toastCtrl.create({
+      message,
+      duration: 2200,
+      color,
+      position: 'top'
+    });
+    await toast.present();
+  }
+}
+
+function extractApiErrorMessage(error: unknown, fallback: string): string {
+  if (typeof error === 'object' && error !== null && 'error' in error) {
+    const body = (error as { error?: unknown }).error;
+    if (typeof body === 'string' && body.trim()) {
+      return body;
+    }
+    if (typeof body === 'object' && body !== null && 'message' in body) {
+      const message = (body as { message?: unknown }).message;
+      if (typeof message === 'string' && message.trim()) {
+        return message;
+      }
+    }
+  }
+
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+
+  return fallback;
 }

@@ -7,6 +7,7 @@ import { addIcons } from 'ionicons';
 import { alertCircleOutline } from 'ionicons/icons';
 import { Booking, Doctor, Patient } from '../../../core/models';
 import { BookingService } from '../../../core/services/booking.service';
+import { ClinicDashboardRealtimeService } from '../../../core/services/clinic-dashboard-realtime.service';
 import { DoctorStateService } from '../../../core/services/doctor-state.service';
 import { PatientStateService } from '../../../core/services/patient-state.service';
 import { QueueTableComponent } from '../components/queue-table/queue-table.component';
@@ -78,6 +79,7 @@ import { QueueTableComponent } from '../components/queue-table/queue-table.compo
 })
 export class StaffDashboardPage implements OnInit {
   private readonly bookingService = inject(BookingService);
+  private readonly realtime = inject(ClinicDashboardRealtimeService);
   private readonly doctorState = inject(DoctorStateService);
   private readonly patientState = inject(PatientStateService);
   private readonly router = inject(Router);
@@ -139,6 +141,25 @@ export class StaffDashboardPage implements OnInit {
     this.patientState.isLoading$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((patientsLoading) => {
       this.patientsLoading = patientsLoading;
     });
+
+    void this.realtime.ensureConnected();
+    this.realtime.events$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((event) => {
+        if (
+          [
+            'BookingCreated',
+            'BookingCancelled',
+            'PatientCheckedIn',
+            'PatientCheckInUndone',
+            'DoctorCompletedConsultation',
+            'PaymentCompleted',
+            'PaymentWaived'
+          ].includes(event.eventName)
+        ) {
+          this.refreshDashboardBookings();
+        }
+      });
   }
 
   goToProofSubmitted(): void {
@@ -171,5 +192,11 @@ export class StaffDashboardPage implements OnInit {
         this.bookingService.markNoShow(event.bookingId);
         break;
     }
+  }
+
+  private refreshDashboardBookings(): void {
+    // These calls refresh the shared booking cache that the dashboard subscriptions already consume.
+    this.bookingService.getTodaysBookings();
+    this.bookingService.getPendingVerifications();
   }
 }

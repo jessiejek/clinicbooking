@@ -1,0 +1,29 @@
+/* Staff Payments Page Styles */
+.bookings-pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: var(--space-6);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--clinic-border);
+}
+
+.bookings-pagination__button {
+  min-width: 100px;
+}
+
+.bookings-pagination__page {
+  font-size: var(--text-sm);
+  color: var(--clinic-text-secondary);
+  font-weight: var(--font-medium);
+}
+
+.wizard-actions {
+  display: flex;
+  gap: var(--space-4);
+  margin-top: var(--space-6);
+}
+
+.wizard-actions--split {
+  justify-content: space-between;
+}

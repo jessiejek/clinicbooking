@@ -6,6 +6,7 @@ import { calendarOutline } from 'ionicons/icons';
 import { catchError, combineLatest, distinctUntilChanged, finalize, of, switchMap, timer } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { BookingWizardService } from '../../../../core/services/booking-wizard.service';
+import { ClinicDashboardRealtimeService } from '../../../../core/services/clinic-dashboard-realtime.service';
 import { TimeSlotPipe } from '../../../../shared/pipes/time-slot.pipe';
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
 import { AvailableSlot, PublicService } from '../../services/public.service';
@@ -80,6 +81,7 @@ import { AvailableSlot, PublicService } from '../../services/public.service';
 export class StepSlotSelectComponent implements OnInit {
   private readonly wizardService = inject(BookingWizardService);
   private readonly publicService = inject(PublicService);
+  private readonly realtime = inject(ClinicDashboardRealtimeService);
   private readonly toastCtrl = inject(ToastController);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -98,6 +100,7 @@ export class StepSlotSelectComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    void this.realtime.ensureConnected();
     this.selectedSlot$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((selectedSlot) => {
       this.latestSelectedSlot = selectedSlot;
     });
@@ -120,15 +123,7 @@ export class StepSlotSelectComponent implements OnInit {
           }
 
           this.isLoading = true;
-          return this.publicService.getAvailableSlots(doctorId, date).pipe(
-            catchError((error: unknown) => {
-              void this.presentToast(extractApiErrorMessage(error, 'Failed to load available slots.'));
-              return of([] as AvailableSlot[]);
-            }),
-            finalize(() => {
-              this.isLoading = false;
-            })
-          );
+          return this.loadAvailableSlots(doctorId, date);
         }),
         takeUntilDestroyed(this.destroyRef)
       )
@@ -142,6 +137,26 @@ export class StepSlotSelectComponent implements OnInit {
       .subscribe(() => {
         this.manilaClock = getManilaClock();
         this.clearInvalidSelectedSlot();
+      });
+
+    this.realtime.events$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((event) => {
+        if (
+          event.eventName === 'DoctorScheduleUpdated' &&
+          this.wizardService.snapshot.selectedDoctorId &&
+          this.wizardService.snapshot.selectedDate &&
+          (!event.doctorId || event.doctorId === this.wizardService.snapshot.selectedDoctorId)
+        ) {
+          this.isLoading = true;
+          this.loadAvailableSlots(
+            this.wizardService.snapshot.selectedDoctorId,
+            this.wizardService.snapshot.selectedDate
+          ).subscribe((slots) => {
+            this.slots = slots;
+            this.clearInvalidSelectedSlot();
+          });
+        }
       });
   }
 
@@ -243,6 +258,18 @@ export class StepSlotSelectComponent implements OnInit {
       position: 'top'
     });
     await toast.present();
+  }
+
+  private loadAvailableSlots(doctorId: string, date: string) {
+    return this.publicService.getAvailableSlots(doctorId, date).pipe(
+      catchError((error: unknown) => {
+        void this.presentToast(extractApiErrorMessage(error, 'Failed to load available slots.'));
+        return of([] as AvailableSlot[]);
+      }),
+      finalize(() => {
+        this.isLoading = false;
+      })
+    );
   }
 }
 

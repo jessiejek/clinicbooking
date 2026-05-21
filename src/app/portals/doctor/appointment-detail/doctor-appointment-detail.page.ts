@@ -90,7 +90,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
         <aside class="detail-side">
           <div class="clinic-card action-card">
             <button type="button" class="btn-primary" (click)="startConsultation(detail.booking.id)">Start Consultation</button>
-            <button type="button" class="btn-ghost" (click)="complete(detail.booking.id)">Mark Complete</button>
+            <button type="button" class="btn-ghost" (click)="complete(detail.booking.id)">Complete in Consultation</button>
             <button type="button" class="btn-ghost" (click)="noShow(detail.booking.id)">Mark No Show</button>
             <button type="button" class="btn-ghost" (click)="back()">Back to appointments</button>
           </div>
@@ -163,7 +163,7 @@ export class DoctorAppointmentDetailPage implements OnInit {
   }
 
   complete(bookingId: string): void {
-    this.bookingService.markComplete(bookingId);
+    void this.router.navigate(['/doctor/consultation', bookingId]);
   }
 
   noShow(bookingId: string): void {

@@ -1,13 +1,32 @@
 import { AsyncPipe, NgIf } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { ToastController } from '@ionic/angular/standalone';
-import { combineLatest, of } from 'rxjs';
-import { map, switchMap } from 'rxjs/operators';
-import { Consultation, Diagnosis, LabRequest, Prescription, PrescriptionItem, VitalSigns } from '../../../core/models';
+import {
+  IonButton,
+  IonButtons,
+  IonContent,
+  IonHeader,
+  IonModal,
+  IonTitle,
+  IonToolbar,
+  ToastController
+} from '@ionic/angular/standalone';
+import { combineLatest, Observable, of } from 'rxjs';
+import { catchError, map, switchMap, take } from 'rxjs/operators';
+import {
+  Booking,
+  Consultation,
+  Diagnosis,
+  LabRequest,
+  Patient,
+  Prescription,
+  PrescriptionItem,
+  VitalSigns
+} from '../../../core/models';
+import { ApiService } from '../../../core/services/api.service';
 import { AuthStateService } from '../../../core/services/auth-state.service';
-import { BookingService } from '../../../core/services/booking.service';
-import { DoctorStateService } from '../../../core/services/doctor-state.service';
+import { BookingService, DoctorCompleteBookingRequest } from '../../../core/services/booking.service';
 import { MedicalRecordsService, MedicalRecordsState } from '../../../core/services/medical-records.service';
 import { PatientStateService } from '../../../core/services/patient-state.service';
 import { BannerComponent } from '../../../shared/components/banner/banner.component';
@@ -15,10 +34,41 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
 import { FollowUpDraftView } from '../components/follow-up-form/follow-up-form.component';
 import { LabRequestDraftView } from '../components/lab-request-form/lab-request-form.component';
 import { SoapFormValue } from '../components/soap-form/soap-form.component';
+import { DoctorService } from '../services/doctor.service';
 import { ConsultationHeaderComponent } from './components/consultation-header.component';
 import { ConsultationOverviewComponent } from './components/consultation-overview.component';
 import { ConsultationWorkspaceComponent } from './components/consultation-workspace.component';
 import { ConsultationPageVm } from './doctor-consultation.types';
+
+type NullableString = string | null | undefined;
+
+interface PatientDto {
+  id: string;
+  patientCode?: NullableString;
+  firstName?: NullableString;
+  middleName?: NullableString;
+  lastName?: NullableString;
+  dateOfBirth?: NullableString;
+  sex?: NullableString;
+  civilStatus?: NullableString;
+  address?: NullableString;
+  city?: NullableString;
+  zipCode?: NullableString;
+  contactNumber?: NullableString;
+  email?: NullableString;
+  emergencyContactName?: NullableString;
+  emergencyContactNumber?: NullableString;
+  emergencyContactRelationship?: NullableString;
+  bloodType?: NullableString;
+  philHealthNumber?: NullableString;
+  hmoProvider?: NullableString;
+  hmoCardNumber?: NullableString;
+  userId?: NullableString;
+  isEmailVerified?: boolean | null;
+  isGuest?: boolean | null;
+  consentedAt?: NullableString;
+  consentVersion?: NullableString;
+}
 
 const EMPTY_RECORDS: MedicalRecordsState = {
   consultations: [],
@@ -37,7 +87,15 @@ const EMPTY_RECORDS: MedicalRecordsState = {
   selector: 'app-doctor-consultation-page',
   imports: [
     AsyncPipe,
+    FormsModule,
     NgIf,
+    IonButton,
+    IonButtons,
+    IonContent,
+    IonHeader,
+    IonModal,
+    IonTitle,
+    IonToolbar,
     EmptyStateComponent,
     BannerComponent,
     ConsultationHeaderComponent,
@@ -51,7 +109,7 @@ const EMPTY_RECORDS: MedicalRecordsState = {
         [patient]="vm.patient"
         [locked]="isLocked(vm)"
         (saveDraft)="saveDraft(vm)"
-        (complete)="completeConsultation(vm)"
+        (complete)="requestCompletion(vm)"
       ></app-consultation-header>
 
       <app-banner
@@ -83,6 +141,67 @@ const EMPTY_RECORDS: MedicalRecordsState = {
         (labRequestsChange)="onLabRequestsChange($event)"
         (followUpChange)="onFollowUpChange($event)"
       ></app-consultation-workspace>
+
+      <ion-modal [isOpen]="completeModalOpen" (didDismiss)="closeCompleteModal()">
+        <ng-template>
+          <ion-header>
+            <ion-toolbar>
+              <ion-title>Complete Consultation</ion-title>
+              <ion-buttons slot="end">
+                <ion-button fill="clear" (click)="closeCompleteModal()">Close</ion-button>
+              </ion-buttons>
+            </ion-toolbar>
+          </ion-header>
+          <ion-content class="ion-padding">
+            <div class="clinic-card completion-modal__summary">
+              <div class="section-heading">{{ vm.patient.firstName }} {{ vm.patient.lastName }}</div>
+              <p>{{ servicesLabel(vm.booking) }}</p>
+              <p>{{ vm.booking.appointmentDate }} &bull; {{ vm.booking.slotStartTime }} - {{ vm.booking.slotEndTime }}</p>
+            </div>
+
+            <div class="payment-mode-tabs">
+              <button type="button" [class.active]="!isProfessionalFeeWaived" (click)="setWaived(false)">
+                Charge PF
+              </button>
+              <button type="button" [class.active]="isProfessionalFeeWaived" (click)="setWaived(true)">
+                Waive PF
+              </button>
+            </div>
+
+            <div class="clinic-card completion-modal__card" *ngIf="!isProfessionalFeeWaived">
+              <label class="form-label" for="consultation-final-amount">Final Amount</label>
+              <input
+                id="consultation-final-amount"
+                class="completion-modal__input"
+                type="number"
+                min="0"
+                [(ngModel)]="finalAmount"
+              />
+            </div>
+
+            <div class="clinic-card completion-modal__card" *ngIf="isProfessionalFeeWaived">
+              <label class="form-label" for="consultation-waive-reason">Waived Reason</label>
+              <textarea
+                id="consultation-waive-reason"
+                class="completion-modal__input completion-modal__textarea"
+                rows="3"
+                [(ngModel)]="professionalFeeWaivedReason"
+              ></textarea>
+            </div>
+
+            <div class="clinic-card completion-modal__note">
+              Staff will see this booking in the payment queue after completion.
+            </div>
+
+            <div class="wizard-actions wizard-actions--split">
+              <button type="button" class="btn-outline" (click)="closeCompleteModal()">Cancel</button>
+              <button type="button" class="btn-primary" [disabled]="isSubmittingComplete" (click)="submitCompletion(vm)">
+                {{ isSubmittingComplete ? 'Saving...' : 'Complete Booking' }}
+              </button>
+            </div>
+          </ion-content>
+        </ng-template>
+      </ion-modal>
     </ng-container>
 
     <ng-template #notFound>
@@ -98,9 +217,10 @@ const EMPTY_RECORDS: MedicalRecordsState = {
   styleUrl: './doctor-consultation.page.scss'
 })
 export class DoctorConsultationPage implements OnInit {
+  private readonly apiService = inject(ApiService);
   private readonly authState = inject(AuthStateService);
   private readonly bookingService = inject(BookingService);
-  private readonly doctorState = inject(DoctorStateService);
+  private readonly doctorService = inject(DoctorService);
   private readonly medicalRecords = inject(MedicalRecordsService);
   private readonly patientState = inject(PatientStateService);
   private readonly route = inject(ActivatedRoute);
@@ -109,6 +229,12 @@ export class DoctorConsultationPage implements OnInit {
 
   private pendingConsultationId: string | null = null;
   private pendingPrescriptionId: string | null = null;
+
+  completeModalOpen = false;
+  isProfessionalFeeWaived = false;
+  finalAmount = 0;
+  professionalFeeWaivedReason = '';
+  isSubmittingComplete = false;
 
   soapValid = false;
   diagnosisValid = false;
@@ -130,23 +256,26 @@ export class DoctorConsultationPage implements OnInit {
     this.route.paramMap.pipe(map((paramMap) => paramMap.get('bookingId') ?? '')),
     this.authState.currentUser$
   ]).pipe(
-    switchMap(([bookingId, user]) =>
-      bookingId && user
-        ? combineLatest([
-            this.bookingService.getBookingById$(bookingId),
-            this.doctorState.getDoctorByUserId(user.id),
-            this.patientState.getPatients(),
-            this.medicalRecords.state$
-          ])
-        : of([undefined, undefined, [], EMPTY_RECORDS] as const)
-    ),
-    map(([booking, doctor, patients, records]) => {
-      if (!booking || !doctor || booking.doctorId !== doctor.id) {
-        return null;
+    switchMap(([bookingId, user]) => {
+      if (!bookingId || !user) {
+        return of([undefined, undefined, undefined, EMPTY_RECORDS] as const);
       }
 
-      const patient = patients.find((item) => item.id === booking.patientId);
-      if (!patient) {
+      return this.bookingService.getBookingById$(bookingId).pipe(
+        switchMap((booking) =>
+          booking
+            ? combineLatest([
+                of(booking),
+                this.doctorService.getMyProfile().pipe(catchError(() => of(undefined))),
+                this.resolvePatient$(booking),
+                this.medicalRecords.state$
+              ])
+            : of([undefined, undefined, undefined, EMPTY_RECORDS] as const)
+        )
+      );
+    }),
+    map(([booking, doctor, patient, records]) => {
+      if (!booking || !doctor || booking.doctorId !== doctor.id || !patient) {
         return null;
       }
 
@@ -178,9 +307,6 @@ export class DoctorConsultationPage implements OnInit {
   );
 
   ngOnInit(): void {
-    this.bookingService.refresh();
-    this.doctorState.refresh();
-    this.patientState.refresh();
     this.medicalRecords.refresh();
   }
 
@@ -214,15 +340,73 @@ export class DoctorConsultationPage implements OnInit {
     }
   }
 
-  completeConsultation(vm: ConsultationPageVm): void {
+  requestCompletion(vm: ConsultationPageVm): void {
     if (this.isLocked(vm) || !this.soapValid || !this.diagnosisValid || !this.vitalsValid) {
       void this.presentToast('Please complete chief complaint and a primary diagnosis before finishing.');
       return;
     }
-    this.persistConsultation(vm, 'Completed');
-    this.bookingService.markComplete(vm.booking.id);
-    void this.presentToast('Consultation completed.');
-    void this.router.navigate(['/doctor/appointments', vm.booking.id]);
+
+    this.openCompleteModal(vm.booking);
+  }
+
+  openCompleteModal(booking: Booking): void {
+    this.completeModalOpen = true;
+    this.isSubmittingComplete = false;
+    this.isProfessionalFeeWaived = booking.isProfessionalFeeWaived === true || booking.paymentStatus === 'Waived';
+    this.finalAmount = Math.max(0, booking.finalAmount ?? booking.consultationFeeSnapshot ?? 0);
+    this.professionalFeeWaivedReason = booking.professionalFeeWaivedReason ?? '';
+  }
+
+  closeCompleteModal(): void {
+    this.completeModalOpen = false;
+    this.isSubmittingComplete = false;
+  }
+
+  setWaived(value: boolean): void {
+    this.isProfessionalFeeWaived = value;
+    if (value) {
+      this.finalAmount = 0;
+    }
+  }
+
+  servicesLabel(booking: Booking): string {
+    return formatServicesLabel(booking);
+  }
+
+  submitCompletion(vm: ConsultationPageVm): void {
+    if (this.isSubmittingComplete) {
+      return;
+    }
+
+    if (!this.isProfessionalFeeWaived && (this.finalAmount < 0 || Number.isNaN(this.finalAmount))) {
+      void this.presentToast('Enter a valid final amount.');
+      return;
+    }
+
+    if (this.isProfessionalFeeWaived && !this.professionalFeeWaivedReason.trim()) {
+      void this.presentToast('A waived reason is required.');
+      return;
+    }
+
+    const payload: DoctorCompleteBookingRequest = {
+      finalAmount: this.isProfessionalFeeWaived ? 0 : this.finalAmount,
+      isProfessionalFeeWaived: this.isProfessionalFeeWaived,
+      professionalFeeWaivedReason: this.professionalFeeWaivedReason.trim() || undefined
+    };
+
+    this.isSubmittingComplete = true;
+    this.bookingService.doctorCompleteBooking(vm.booking.id, payload).subscribe({
+      next: async () => {
+        this.persistConsultation(vm, 'Completed');
+        this.closeCompleteModal();
+        await this.presentToast('Consultation completed.');
+        void this.router.navigate(['/doctor/appointments']);
+      },
+      error: async (error) => {
+        this.isSubmittingComplete = false;
+        await this.presentToast(extractApiErrorMessage(error, 'Failed to complete consultation.'));
+      }
+    });
   }
 
   isLocked(vm: ConsultationPageVm): boolean {
@@ -386,6 +570,18 @@ export class DoctorConsultationPage implements OnInit {
       : 'None recorded';
   }
 
+  private resolvePatient$(booking: Booking): Observable<Patient | undefined> {
+    return this.apiService.get<PatientDto>(`/patients/${encodeURIComponent(booking.patientId)}`).pipe(
+      map((patient) => mapPatientDetail(patient)),
+      catchError(() =>
+        this.patientState.getPatientById(booking.patientId).pipe(
+          take(1),
+          map((patient) => patient ?? buildFallbackPatient(booking))
+        )
+      )
+    );
+  }
+
   private async presentToast(message: string): Promise<void> {
     const toast = await this.toastController.create({
       message,
@@ -394,4 +590,83 @@ export class DoctorConsultationPage implements OnInit {
     });
     await toast.present();
   }
+}
+
+function mapPatientDetail(dto: PatientDto): Patient {
+  return {
+    id: dto.id,
+    patientCode: normalizeString(dto.patientCode) || dto.id,
+    firstName: normalizeString(dto.firstName) || '',
+    middleName: normalizeString(dto.middleName),
+    lastName: normalizeString(dto.lastName) || '',
+    dateOfBirth: normalizeString(dto.dateOfBirth) || '',
+    sex: normalizeString(dto.sex) || '',
+    civilStatus: normalizeString(dto.civilStatus),
+    address: normalizeString(dto.address),
+    city: normalizeString(dto.city),
+    zipCode: normalizeString(dto.zipCode),
+    contactNumber: normalizeString(dto.contactNumber),
+    email: normalizeString(dto.email),
+    emergencyContactName: normalizeString(dto.emergencyContactName),
+    emergencyContactNumber: normalizeString(dto.emergencyContactNumber),
+    emergencyContactRelationship: normalizeString(dto.emergencyContactRelationship),
+    bloodType: normalizeString(dto.bloodType),
+    philHealthNumber: normalizeString(dto.philHealthNumber),
+    hmoProvider: normalizeString(dto.hmoProvider),
+    hmoCardNumber: normalizeString(dto.hmoCardNumber),
+    userId: normalizeString(dto.userId),
+    isEmailVerified: dto.isEmailVerified ?? undefined,
+    isGuest: Boolean(dto.isGuest),
+    consentedAt: normalizeString(dto.consentedAt),
+    consentVersion: normalizeString(dto.consentVersion)
+  };
+}
+
+function buildFallbackPatient(booking: Booking): Patient {
+  const [firstName, ...lastNameParts] = booking.patientName?.trim().split(/\s+/).filter(Boolean) ?? [];
+
+  return {
+    id: booking.patientId,
+    patientCode: booking.patientId,
+    firstName: firstName ?? 'Patient',
+    lastName: lastNameParts.join(' '),
+    dateOfBirth: '',
+    sex: 'Not specified',
+    contactNumber: undefined,
+    email: undefined,
+    isGuest: false
+  };
+}
+
+function normalizeString(value: NullableString): string | undefined {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+function formatServicesLabel(booking: Booking): string {
+  if (booking.serviceNames?.length) {
+    return booking.serviceNames.join(', ');
+  }
+
+  const names = booking.services?.map((service) => service.name).filter((name) => name.trim().length > 0) ?? [];
+  if (names.length > 0) {
+    return names.join(', ');
+  }
+
+  return booking.serviceName?.trim() || 'Service';
+}
+
+function extractApiErrorMessage(error: unknown, fallback: string): string {
+  if (typeof error === 'object' && error !== null && 'message' in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === 'string' && message.trim()) {
+      return message;
+    }
+  }
+
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+
+  return fallback;
 }

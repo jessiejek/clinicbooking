@@ -1,21 +1,22 @@
 import { AsyncPipe, NgFor, NgIf } from '@angular/common';
 import { Component, DestroyRef, OnInit, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { IonIcon, IonSpinner, ToastController } from '@ionic/angular/standalone';
 import { Subscription, catchError, distinctUntilChanged, finalize, of, switchMap } from 'rxjs';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { addIcons } from 'ionicons';
 import {
   arrowBackOutline,
-  chevronForwardOutline,
-  checkmarkCircleOutline
+  checkmarkCircleOutline,
+  chevronForwardOutline
 } from 'ionicons/icons';
-import { BookingWizardService } from '../../../../core/services/booking-wizard.service';
 import { Doctor } from '../../../../core/models/doctor.models';
-import { DoctorDetail, DoctorSummary, PublicService } from '../../services/public.service';
+import { Service } from '../../../../core/models';
+import { ClinicDashboardRealtimeService } from '../../../../core/services/clinic-dashboard-realtime.service';
+import { BookingWizardService } from '../../../../core/services/booking-wizard.service';
 import { AvatarComponent } from '../../../../shared/components/avatar/avatar.component';
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
 import { StatusBadgeComponent } from '../../../../shared/components/status-badge/status-badge.component';
-import { PesoPipe } from '../../../../shared/pipes/peso.pipe';
+import { DoctorSummary, PublicService } from '../../services/public.service';
 
 @Component({
   selector: 'app-step-doctor-service',
@@ -28,17 +29,16 @@ import { PesoPipe } from '../../../../shared/pipes/peso.pipe';
     IonSpinner,
     AvatarComponent,
     StatusBadgeComponent,
-    EmptyStateComponent,
-    PesoPipe
+    EmptyStateComponent
   ],
   template: `
     <section class="wizard-panel">
       <div class="wizard-panel__header">
         <div>
           <p class="section-heading">Step 1</p>
-          <h2 class="wizard-title">Choose your doctor and service</h2>
+          <h2 class="wizard-title">Choose your doctor and services</h2>
           <p class="wizard-subtitle">
-            Start by selecting the doctor you want to see, then pick the service you need.
+            Select the doctor you want to see, then choose one or more services for the visit.
           </p>
         </div>
       </div>
@@ -79,7 +79,10 @@ import { PesoPipe } from '../../../../shared/pipes/peso.pipe';
             <ng-template #servicesTpl>
               <div class="service-list">
                 <div class="service-list__header">
-                  <h3>Select a service</h3>
+                  <div>
+                    <h3>Select one or more services</h3>
+                    <p class="wizard-subtitle">Payment will be settled at the clinic after consultation.</p>
+                  </div>
                 </div>
 
                 <ng-container *ngIf="selectedDoctorServices.length > 0; else noServiceState">
@@ -87,20 +90,21 @@ import { PesoPipe } from '../../../../shared/pipes/peso.pipe';
                     *ngFor="let service of selectedDoctorServices"
                     type="button"
                     class="service-option"
-                    [class.service-option--selected]="service.id === (selectedServiceId$ | async)"
-                    (click)="selectService(service.id)"
+                    [class.service-option--selected]="isServiceSelected(service.id)"
+                    (click)="toggleService(service.id)"
                   >
                     <div>
                       <div class="service-option__name">{{ service.name }}</div>
-                      <div class="service-option__desc">{{ service.description || 'Included in consultation' }}</div>
+                      <div class="service-option__desc">
+                        {{ service.description || 'Clinic service available for this doctor.' }}
+                      </div>
+                      <div class="service-option__meta" *ngIf="service.estimatedDurationMinutes">
+                        {{ service.estimatedDurationMinutes }} mins
+                      </div>
                     </div>
                     <div class="service-option__right">
-                      <span class="service-option__fee">{{ service.price | peso }}</span>
                       <div class="service-option__check">
-                        <ion-icon
-                          name="checkmark-circle-outline"
-                          *ngIf="service.id === (selectedServiceId$ | async)"
-                        ></ion-icon>
+                        <ion-icon name="checkmark-circle-outline" *ngIf="isServiceSelected(service.id)"></ion-icon>
                       </div>
                     </div>
                   </button>
@@ -109,7 +113,7 @@ import { PesoPipe } from '../../../../shared/pipes/peso.pipe';
                 <ng-template #noServiceState>
                   <app-empty-state
                     icon="medical-outline"
-                    title="No data found"
+                    title="No services available"
                     description="This doctor currently has no services assigned."
                   ></app-empty-state>
                 </ng-template>
@@ -134,7 +138,6 @@ import { PesoPipe } from '../../../../shared/pipes/peso.pipe';
                 <div class="doctor-card__name">{{ doctor.fullName }}</div>
                 <div class="doctor-card__spec">{{ doctor.specialization }}</div>
                 <app-status-badge [status]="doctor.status"></app-status-badge>
-                <div class="doctor-card__fee">{{ doctor.consultationFee | peso }}</div>
                 <div class="doctor-card__cta">
                   Select Doctor
                   <ion-icon name="chevron-forward-outline"></ion-icon>
@@ -146,7 +149,7 @@ import { PesoPipe } from '../../../../shared/pipes/peso.pipe';
           <ng-template #emptyState>
             <app-empty-state
               icon="medical-outline"
-              title="No data found"
+              title="No doctors available"
               description="No doctors are available right now."
             ></app-empty-state>
           </ng-template>
@@ -165,31 +168,27 @@ import { PesoPipe } from '../../../../shared/pipes/peso.pipe';
 export class StepDoctorServiceComponent implements OnInit {
   private readonly wizardService = inject(BookingWizardService);
   private readonly publicService = inject(PublicService);
+  private readonly realtime = inject(ClinicDashboardRealtimeService);
   private readonly toastCtrl = inject(ToastController);
   private readonly destroyRef = inject(DestroyRef);
   private readonly subscriptions = new Subscription();
 
   doctors: DoctorSummary[] = [];
+  selectedDoctorServices: Service[] = [];
   isLoading = true;
   selectedDoctorLoading = false;
   selectedDoctorError: string | null = null;
-  selectedDoctorDetail: DoctorDetail = undefined;
 
   selectedDoctorId$ = this.wizardService.selectedDoctorId$;
-  selectedServiceId$ = this.wizardService.selectedServiceId$;
   private latestSelectedDoctorId: string | null = null;
-  private latestSelectedServiceId: string | null = null;
+  private latestSelectedServiceIds: string[] = [];
 
   get selectedDoctor(): DoctorSummary | undefined {
     return this.doctors.find((doctor) => doctor.id === this.latestSelectedDoctorId);
   }
 
   get canContinue(): boolean {
-    return Boolean(this.latestSelectedDoctorId && this.latestSelectedServiceId);
-  }
-
-  get selectedDoctorServices() {
-    return this.selectedDoctorDetail?.services ?? [];
+    return Boolean(this.latestSelectedDoctorId && this.latestSelectedServiceIds.length > 0);
   }
 
   constructor() {
@@ -201,43 +200,38 @@ export class StepDoctorServiceComponent implements OnInit {
           distinctUntilChanged(),
           switchMap((doctorId) => {
             this.latestSelectedDoctorId = doctorId;
-            this.selectedDoctorDetail = undefined;
+            this.selectedDoctorServices = [];
             this.selectedDoctorError = null;
 
             if (!doctorId) {
               this.selectedDoctorLoading = false;
-              return of(undefined);
+              return of([]);
             }
 
             this.selectedDoctorLoading = true;
-            return this.publicService.refreshDoctorById(doctorId).pipe(
-              catchError((error: unknown) => {
-                this.selectedDoctorError = extractApiErrorMessage(error, 'Failed to load doctor services.');
-                void this.presentToast(this.selectedDoctorError);
-                return of(undefined);
-              }),
-              finalize(() => {
-                this.selectedDoctorLoading = false;
-              })
-            );
+            return this.loadDoctorServices(doctorId);
           }),
           takeUntilDestroyed(this.destroyRef)
         )
-        .subscribe((doctor) => {
-        this.selectedDoctorDetail = doctor;
-        if (doctor) {
-          this.selectedDoctorError = null;
-        }
-      })
+        .subscribe((services) => {
+          this.selectedDoctorServices = services;
+          if (services.length > 0) {
+            this.selectedDoctorError = null;
+          }
+        })
     );
+
     this.subscriptions.add(
-      this.selectedServiceId$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((serviceId) => {
-        this.latestSelectedServiceId = serviceId;
-      })
+      this.wizardService.selectedServiceIds$
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe((serviceIds) => {
+          this.latestSelectedServiceIds = serviceIds;
+        })
     );
   }
 
   ngOnInit(): void {
+    void this.realtime.ensureConnected();
     this.publicService
       .refreshDoctors()
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -252,6 +246,21 @@ export class StepDoctorServiceComponent implements OnInit {
           void this.presentToast(extractApiErrorMessage(error, 'Failed to load doctors.'));
         }
       });
+
+    this.realtime.events$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((event) => {
+        if (
+          event.eventName === 'DoctorServicesUpdated' &&
+          this.latestSelectedDoctorId &&
+          (!event.doctorId || event.doctorId === this.latestSelectedDoctorId)
+        ) {
+          this.selectedDoctorLoading = true;
+          this.loadDoctorServices(this.latestSelectedDoctorId).subscribe((services) => {
+            this.selectedDoctorServices = services;
+          });
+        }
+      });
   }
 
   ngOnDestroy(): void {
@@ -262,12 +271,16 @@ export class StepDoctorServiceComponent implements OnInit {
     this.wizardService.selectDoctor(doctor.id);
   }
 
-  selectService(serviceId: string): void {
-    this.wizardService.selectService(serviceId);
+  toggleService(serviceId: string): void {
+    this.wizardService.toggleService(serviceId);
   }
 
   changeDoctor(): void {
     this.wizardService.selectDoctor(null);
+  }
+
+  isServiceSelected(serviceId: string): boolean {
+    return this.latestSelectedServiceIds.includes(serviceId);
   }
 
   goNext(): void {
@@ -284,6 +297,19 @@ export class StepDoctorServiceComponent implements OnInit {
       position: 'top'
     });
     await toast.present();
+  }
+
+  private loadDoctorServices(doctorId: string) {
+    return this.publicService.getDoctorServices(doctorId).pipe(
+      catchError((error: unknown) => {
+        this.selectedDoctorError = extractApiErrorMessage(error, 'Failed to load doctor services.');
+        void this.presentToast(this.selectedDoctorError);
+        return of([]);
+      }),
+      finalize(() => {
+        this.selectedDoctorLoading = false;
+      })
+    );
   }
 }
 

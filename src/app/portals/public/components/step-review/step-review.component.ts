@@ -1,15 +1,14 @@
-import { AsyncPipe, DatePipe, NgIf } from '@angular/common';
+import { AsyncPipe, DatePipe, NgFor, NgIf } from '@angular/common';
 import { Component, inject } from '@angular/core';
-import { catchError, combineLatest, map, of } from 'rxjs';
+import { catchError, combineLatest, map, of, switchMap } from 'rxjs';
 import { BookingWizardService } from '../../../../core/services/booking-wizard.service';
-import { PesoPipe } from '../../../../shared/pipes/peso.pipe';
 import { TimeSlotPipe } from '../../../../shared/pipes/time-slot.pipe';
 import { PublicService } from '../../services/public.service';
 
 @Component({
   selector: 'app-step-review',
   standalone: true,
-  imports: [NgIf, AsyncPipe, DatePipe, PesoPipe, TimeSlotPipe],
+  imports: [NgIf, NgFor, AsyncPipe, DatePipe, TimeSlotPipe],
   template: `
     <section class="wizard-panel">
       <div class="wizard-panel__header">
@@ -43,30 +42,24 @@ import { PublicService } from '../../services/public.service';
           </div>
 
           <div class="summary-row">
-            <span>Service</span>
-            <strong>{{ vm.serviceName }}</strong>
+            <span>Services</span>
+            <strong>{{ vm.serviceSummary }}</strong>
           </div>
-          <div class="summary-subrow">{{ vm.serviceDescription }}</div>
+
+          <div class="summary-services" *ngIf="vm.services.length > 1">
+            <div class="summary-services__item" *ngFor="let service of vm.services">
+              {{ service.name }}
+            </div>
+          </div>
 
           <div class="divider"></div>
 
-          <div class="summary-row">
-            <span>Consultation Fee</span>
-            <strong>{{ vm.consultationFee | peso }}</strong>
-          </div>
-          <div class="summary-row">
-            <span>Service Fee</span>
-            <strong>{{ vm.serviceFee | peso }}</strong>
-          </div>
-          <div class="summary-row summary-row--total">
-            <span>Total Due</span>
-            <strong class="fee-total">{{ vm.totalFee | peso }}</strong>
-          </div>
+          <p class="wizard-subtitle">Payment will be settled at the clinic after consultation.</p>
         </div>
 
         <div class="wizard-actions wizard-actions--split">
           <button type="button" class="btn-outline" (click)="goBack()">Back</button>
-          <button type="button" class="btn-primary" (click)="onConfirmAndProceed()">Confirm and Proceed</button>
+          <button type="button" class="btn-primary" (click)="onConfirmAndProceed()">Continue</button>
         </div>
       </ng-container>
     </section>
@@ -77,32 +70,32 @@ export class StepReviewComponent {
   private readonly wizardService = inject(BookingWizardService);
   private readonly publicService = inject(PublicService);
 
-  vm$ = combineLatest([
-    this.wizardService.state$,
-    this.publicService.getDoctors().pipe(catchError(() => of([]))),
-    this.publicService.getServices().pipe(catchError(() => of([])))
-  ]).pipe(
+  vm$ = this.wizardService.state$.pipe(
+    switchMap((wizard) =>
+      combineLatest([
+        of(wizard),
+        this.publicService.getDoctors().pipe(catchError(() => of([]))),
+        wizard.selectedDoctorId
+          ? this.publicService.getDoctorServices(wizard.selectedDoctorId).pipe(catchError(() => of([])))
+          : of([])
+      ])
+    ),
     map(([wizard, doctors, services]) => {
-      const doctor = wizard.selectedDoctorId
-        ? doctors.find((item) => item.id === wizard.selectedDoctorId)
-        : null;
-      const service = wizard.selectedServiceId
-        ? services.find((item) => item.id === wizard.selectedServiceId)
-        : null;
-      const consultationFee = doctor?.consultationFee ?? 0;
-      const serviceFee = service?.price ?? 0;
+      const doctor = wizard.selectedDoctorId ? doctors.find((item) => item.id === wizard.selectedDoctorId) : null;
+      const selectedServices = services.filter((service) => wizard.selectedServiceIds.includes(service.id));
+      const fallbackServiceNames = wizard.selectedServiceIds;
 
       return {
         doctorName: doctor?.fullName ?? '-',
         doctorSpecialization: doctor?.specialization ?? '',
-        serviceName: service?.name ?? '-',
-        serviceDescription: service?.description ?? 'Included in consultation',
+        services: selectedServices,
+        serviceSummary:
+          selectedServices.length > 0
+            ? selectedServices.map((service) => service.name).join(', ')
+            : `${fallbackServiceNames.length} service${fallbackServiceNames.length === 1 ? '' : 's'} selected`,
         selectedDate: wizard.selectedDate,
         selectedSlot: wizard.selectedSlot,
-        selectedSlotEnd: wizard.selectedSlotEnd,
-        consultationFee,
-        serviceFee,
-        totalFee: consultationFee + serviceFee
+        selectedSlotEnd: wizard.selectedSlotEnd
       };
     })
   );
@@ -114,5 +107,4 @@ export class StepReviewComponent {
   goBack(): void {
     this.wizardService.prevStep();
   }
-
 }

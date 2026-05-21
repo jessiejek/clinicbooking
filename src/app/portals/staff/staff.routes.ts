@@ -6,7 +6,8 @@ import { PortalLayoutComponent } from '../../shared/components/portal-layout/por
 
 export const STAFF_NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', route: '/staff/dashboard', icon: 'grid-outline', section: 'Main' },
-  { label: 'Bookings', route: '/staff/bookings', icon: 'calendar-outline' },
+  { label: 'Today Bookings', route: '/staff/bookings', icon: 'calendar-outline' },
+  { label: 'Payments', route: '/staff/payments', icon: 'cash-outline' },
   { label: 'Walk-In', route: '/staff/walk-in', icon: 'walk-outline' },
   { label: 'Patients', route: '/staff/patients', icon: 'people-outline', section: 'Records' },
   { label: 'Doctor Status', route: '/staff/doctor-status', icon: 'medical-outline', section: 'Tools' },
@@ -30,6 +31,11 @@ export const STAFF_ROUTES: Routes = [
         path: 'bookings',
         loadComponent: () => import('./bookings/staff-bookings.page').then((m) => m.StaffBookingsPage),
         data: { title: 'Bookings' }
+      },
+      {
+        path: 'payments',
+        loadComponent: () => import('./payments/staff-payments.page').then((m) => m.StaffPaymentsPage),
+        data: { title: 'Payments' }
       },
       {
         path: 'bookings/:id',

@@ -1,174 +1,328 @@
-import { NgFor, NgIf } from '@angular/common';
+import { DatePipe, NgFor, NgIf } from '@angular/common';
 import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
+import { ToastController } from '@ionic/angular/standalone';
+import { Booking } from '../../../core/models';
+import {
+  BookingService,
+  PagedResult,
+  StaffTodayBookingsFilters
+} from '../../../core/services/booking.service';
+import { ClinicDashboardRealtimeService } from '../../../core/services/clinic-dashboard-realtime.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Booking, Doctor, Patient } from '../../../core/models';
-import { BookingService } from '../../../core/services/booking.service';
-import { DoctorStateService } from '../../../core/services/doctor-state.service';
-import { PatientStateService } from '../../../core/services/patient-state.service';
-import { QueueTableComponent } from '../components/queue-table/queue-table.component';
+import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
+import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
+import { PublicService } from '../../public/services/public.service';
+
+type StaffTodayStatus = 'all' | 'Confirmed' | 'CheckedIn' | 'Completed' | 'NoShow' | 'Cancelled';
 
 @Component({
   selector: 'app-staff-bookings-page',
   standalone: true,
-  imports: [NgFor, NgIf, FormsModule, QueueTableComponent],
+  imports: [DatePipe, NgFor, NgIf, FormsModule, PageHeaderComponent, EmptyStateComponent, StatusBadgeComponent],
   template: `
-    <section class="page-shell">
-      <div class="page-shell__header">
-        <div>
-          <h2 class="page-title">Bookings</h2>
-          <p class="page-subtitle">Filter bookings and manage queue actions.</p>
-        </div>
-      </div>
+    <app-page-header title="Today Bookings" subtitle="Check in confirmed patients and monitor today’s queue"></app-page-header>
 
-      <div class="filter-bar clinic-card">
-        <select class="filter-input" [(ngModel)]="doctorFilter">
-          <option value="all">All Doctors</option>
-          <option *ngFor="let doctor of doctors" [value]="doctor.id">{{ doctor.fullName }}</option>
-        </select>
-        <select class="filter-input" [(ngModel)]="statusFilter">
-          <option value="all">All Statuses</option>
-          <option *ngFor="let status of statuses" [value]="status">{{ status }}</option>
-        </select>
-        <input class="filter-input" type="date" [(ngModel)]="dateFilter" />
-        <input
-          class="filter-input"
-          type="search"
-          placeholder="Search patient or booking ID"
-          [(ngModel)]="searchQuery"
-        />
-        <button type="button" class="btn-ghost" (click)="clearFilters()">Clear Filters</button>
-      </div>
+    <section class="clinic-card filter-bar">
+      <select class="filter-input" [(ngModel)]="doctorFilter" (ngModelChange)="onFiltersChanged()">
+        <option value="">All Doctors</option>
+        <option *ngFor="let doctor of doctors" [value]="doctor.id">{{ doctor.fullName }}</option>
+      </select>
 
-      <div class="clinic-card">
-        <app-queue-table
-          [bookings]="filteredBookings"
-          [doctors]="doctors"
-          [patients]="patients"
-          [isLoading]="isLoading"
-          [showWaiveRefund]="false"
-          (rowClicked)="openBooking($event)"
-          (actionTaken)="onQueueAction($event)"
-        ></app-queue-table>
-      </div>
+      <select class="filter-input" [(ngModel)]="statusFilter" (ngModelChange)="onFiltersChanged()">
+        <option *ngFor="let status of statuses" [value]="status.value">{{ status.label }}</option>
+      </select>
+
+      <button type="button" class="btn-ghost" (click)="refresh()" [disabled]="isLoading">Refresh</button>
     </section>
+
+    <div class="clinic-card" *ngIf="isLoading">Loading today’s bookings...</div>
+
+    <ng-container *ngIf="!isLoading">
+      <section class="clinic-card" *ngIf="bookings.length > 0; else emptyState">
+        <table class="clinic-table">
+          <thead>
+            <tr>
+              <th>Patient</th>
+              <th>Doctor</th>
+              <th>Services</th>
+              <th>Date / Time</th>
+              <th>Queue</th>
+              <th>Status</th>
+              <th>Payment</th>
+              <th>Mode</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let booking of bookings">
+              <td>{{ booking.patientName || 'Patient' }}</td>
+              <td>{{ booking.doctorName || 'Doctor' }}</td>
+              <td>{{ servicesLabel(booking) }}</td>
+              <td>
+                <div>{{ booking.appointmentDate | date : 'MMM d, y' }}</div>
+                <div class="table-time">{{ timeRangeLabel(booking) }}</div>
+              </td>
+              <td>{{ booking.queueNumber !== null ? '#' + booking.queueNumber : '-' }}</td>
+              <td><app-status-badge [status]="booking.status"></app-status-badge></td>
+              <td><app-status-badge [status]="booking.paymentStatus"></app-status-badge></td>
+              <td>{{ booking.paymentMode }}</td>
+              <td>
+                <div class="action-row">
+                  <button
+                    *ngIf="booking.status === 'Confirmed'"
+                    type="button"
+                    class="btn-primary"
+                    (click)="checkIn(booking)"
+                    [disabled]="actionBookingId === booking.id"
+                  >
+                    Check In
+                  </button>
+                  <button
+                    *ngIf="booking.status === 'CheckedIn'"
+                    type="button"
+                    class="btn-outline"
+                    (click)="undoCheckIn(booking)"
+                    [disabled]="actionBookingId === booking.id"
+                  >
+                    Undo Check-In
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="bookings-pagination" *ngIf="totalPages > 1">
+          <button class="btn-ghost bookings-pagination__button" type="button" (click)="previousPage()" [disabled]="currentPage <= 1 || isLoading">
+            Previous
+          </button>
+          <span class="bookings-pagination__page">Page {{ currentPage }} of {{ totalPages }}</span>
+          <button class="btn-ghost bookings-pagination__button" type="button" (click)="nextPage()" [disabled]="currentPage >= totalPages || isLoading">
+            Next
+          </button>
+        </div>
+      </section>
+    </ng-container>
+
+    <ng-template #emptyState>
+      <app-empty-state
+        icon="calendar-outline"
+        title="No bookings found"
+        description="There are no today bookings for the selected filters."
+      ></app-empty-state>
+    </ng-template>
   `,
   styleUrl: './staff-bookings.page.scss'
 })
 export class StaffBookingsPage implements OnInit {
   private readonly bookingService = inject(BookingService);
-  private readonly doctorState = inject(DoctorStateService);
-  private readonly patientState = inject(PatientStateService);
-  private readonly router = inject(Router);
+  private readonly realtime = inject(ClinicDashboardRealtimeService);
+  private readonly publicService = inject(PublicService);
   private readonly route = inject(ActivatedRoute);
+  private readonly toastCtrl = inject(ToastController);
   private readonly destroyRef = inject(DestroyRef);
 
+  doctors: Array<{ id: string; fullName: string }> = [];
   bookings: Booking[] = [];
-  doctors: Doctor[] = [];
-  patients: Patient[] = [];
-  bookingsLoading = false;
-  doctorsLoading = false;
-  patientsLoading = false;
-  doctorFilter = 'all';
-  statusFilter = 'all';
-  dateFilter = '';
-  searchQuery = '';
-  statuses = ['Pending', 'Confirmed', 'Completed', 'Cancelled', 'OnHold', 'ProofSubmitted', 'NoShow', 'Rescheduled'];
+  isLoading = false;
+  actionBookingId: string | null = null;
+  doctorFilter = '';
+  statusFilter: StaffTodayStatus = 'all';
+  currentPage = 1;
+  pageSize = 20;
+  totalPages = 1;
 
-  get isLoading(): boolean {
-    return this.bookingsLoading || this.doctorsLoading || this.patientsLoading;
-  }
+  readonly statuses: Array<{ label: string; value: StaffTodayStatus }> = [
+    { label: 'All Statuses', value: 'all' },
+    { label: 'Confirmed', value: 'Confirmed' },
+    { label: 'Checked In', value: 'CheckedIn' },
+    { label: 'Completed', value: 'Completed' },
+    { label: 'No Show', value: 'NoShow' },
+    { label: 'Cancelled', value: 'Cancelled' }
+  ];
 
   ngOnInit(): void {
     const initialStatus = this.route.snapshot.queryParamMap.get('status');
-    if (initialStatus) {
-      this.statusFilter = initialStatus;
+    if (initialStatus && this.statuses.some((status) => status.value === initialStatus)) {
+      this.statusFilter = initialStatus as StaffTodayStatus;
     }
 
-    this.bookingService
-      .getBookings()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((bookings) => (this.bookings = bookings));
-    this.doctorState
-      .getDoctors()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((doctors) => (this.doctors = doctors));
-    this.patientState
-      .getPatients()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((patients) => (this.patients = patients));
-    this.bookingService.isLoading$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((bookingsLoading) => {
-      this.bookingsLoading = bookingsLoading;
+    this.publicService.getDoctors().subscribe({
+      next: (doctors) => {
+        this.doctors = doctors.map((doctor) => ({ id: doctor.id, fullName: doctor.fullName }));
+      },
+      error: () => {
+        this.doctors = [];
+      }
     });
-    this.doctorState.isLoading$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((doctorsLoading) => {
-      this.doctorsLoading = doctorsLoading;
-    });
-    this.patientState.isLoading$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((patientsLoading) => {
-      this.patientsLoading = patientsLoading;
-    });
-  }
 
-  get filteredBookings(): Booking[] {
-    const q = this.searchQuery.trim().toLowerCase();
-    return [...this.bookings]
-      .sort((a, b) => {
-        const aQueue = a.queueNumber ?? Number.MAX_SAFE_INTEGER;
-        const bQueue = b.queueNumber ?? Number.MAX_SAFE_INTEGER;
-        if (aQueue !== bQueue) {
-          return aQueue - bQueue;
+    this.loadBookings();
+    void this.realtime.ensureConnected();
+    this.realtime.events$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((event) => {
+        if (
+          [
+            'BookingCreated',
+            'BookingCancelled',
+            'PatientCheckedIn',
+            'PatientCheckInUndone',
+            'DoctorCompletedConsultation',
+            'PaymentCompleted'
+          ].includes(event.eventName)
+        ) {
+          this.loadBookings();
         }
-        return `${a.appointmentDate} ${a.slotStartTime}`.localeCompare(`${b.appointmentDate} ${b.slotStartTime}`);
-      })
-      .filter((booking) => (this.doctorFilter === 'all' ? true : booking.doctorId === this.doctorFilter))
-      .filter((booking) => (this.statusFilter === 'all' ? true : booking.status === this.statusFilter))
-      .filter((booking) => (this.dateFilter ? booking.appointmentDate === this.dateFilter : true))
-      .filter((booking) => {
-        if (!q) {
-          return true;
-        }
-        const patient = this.patientName(booking.patientId).toLowerCase();
-        return booking.id.toLowerCase().includes(q) || patient.includes(q);
       });
   }
 
-  clearFilters(): void {
-    this.doctorFilter = 'all';
-    this.statusFilter = 'all';
-    this.dateFilter = '';
-    this.searchQuery = '';
+  onFiltersChanged(): void {
+    this.currentPage = 1;
+    this.loadBookings();
   }
 
-  openBooking(id: string): void {
-    void this.router.navigate(['/staff/bookings', id]);
+  refresh(): void {
+    this.loadBookings();
   }
 
-  onQueueAction(event: { action: string; bookingId: string }): void {
-    // Booking lifecycle actions mirror the demo clinic workflow used by admin/staff queues.
-    switch (event.action) {
-      case 'confirm':
-        this.bookingService.confirmBooking(event.bookingId);
-        break;
-      case 'reject':
-        this.bookingService.rejectBooking(event.bookingId, 'Rejected by staff.');
-        break;
-      case 'paid':
-        this.bookingService.confirmPayment(event.bookingId);
-        break;
-      case 'waive-pf':
-        this.bookingService.waivePayment(event.bookingId, 'Professional fee waived by staff.');
-        break;
-      case 'complete':
-        this.bookingService.markComplete(event.bookingId);
-        break;
-      case 'noshow':
-        this.bookingService.markNoShow(event.bookingId);
-        break;
+  previousPage(): void {
+    if (this.currentPage <= 1 || this.isLoading) {
+      return;
+    }
+
+    this.currentPage -= 1;
+    this.loadBookings();
+  }
+
+  nextPage(): void {
+    if (this.currentPage >= this.totalPages || this.isLoading) {
+      return;
+    }
+
+    this.currentPage += 1;
+    this.loadBookings();
+  }
+
+  checkIn(booking: Booking): void {
+    this.actionBookingId = booking.id;
+    this.bookingService.checkInBooking(booking.id, {}).subscribe({
+      next: async () => {
+        this.actionBookingId = null;
+        this.loadBookings();
+        await this.presentToast('Patient checked in.', 'success');
+      },
+      error: async (error) => {
+        this.actionBookingId = null;
+        await this.presentToast(extractApiErrorMessage(error, 'Failed to check in booking.'), 'danger');
+      }
+    });
+  }
+
+  undoCheckIn(booking: Booking): void {
+    this.actionBookingId = booking.id;
+    this.bookingService.undoCheckInBooking(booking.id).subscribe({
+      next: async () => {
+        this.actionBookingId = null;
+        this.loadBookings();
+        await this.presentToast('Check-in undone.', 'success');
+      },
+      error: async (error) => {
+        this.actionBookingId = null;
+        await this.presentToast(extractApiErrorMessage(error, 'Failed to undo check-in.'), 'danger');
+      }
+    });
+  }
+
+  servicesLabel(booking: Booking): string {
+    return servicesLabel(booking);
+  }
+
+  timeRangeLabel(booking: Booking): string {
+    return timeRangeLabel(booking);
+  }
+
+  private loadBookings(): void {
+    const filters: StaffTodayBookingsFilters = {
+      doctorId: this.doctorFilter || undefined,
+      status: this.statusFilter === 'all' ? undefined : this.statusFilter,
+      page: this.currentPage,
+      pageSize: this.pageSize
+    };
+
+    this.isLoading = true;
+    this.bookingService.getStaffTodayBookings(filters).subscribe({
+      next: (result: PagedResult<Booking>) => {
+        this.bookings = result.items;
+        this.currentPage = result.page;
+        this.pageSize = result.pageSize;
+        this.totalPages = Math.max(1, Math.ceil(result.totalCount / result.pageSize));
+        this.isLoading = false;
+      },
+      error: async (error) => {
+        this.bookings = [];
+        this.totalPages = 1;
+        this.isLoading = false;
+        await this.presentToast(extractApiErrorMessage(error, 'Failed to load today bookings.'), 'danger');
+      }
+    });
+  }
+
+  private async presentToast(
+    message: string,
+    color: 'success' | 'danger' | 'warning' = 'success'
+  ): Promise<void> {
+    const toast = await this.toastCtrl.create({
+      message,
+      duration: 2200,
+      color,
+      position: 'top'
+    });
+    await toast.present();
+  }
+}
+
+function servicesLabel(booking: Booking): string {
+  if (booking.serviceNames?.length) {
+    return booking.serviceNames.join(', ');
+  }
+
+  const names = booking.services?.map((service) => service.name).filter((name) => name.trim().length > 0) ?? [];
+  if (names.length > 0) {
+    return names.join(', ');
+  }
+
+  return booking.serviceName?.trim() || 'Service';
+}
+
+function timeRangeLabel(booking: Booking): string {
+  const start = booking.slotStartTime?.trim() ?? '';
+  const end = booking.slotEndTime?.trim() ?? '';
+
+  if (!start) {
+    return 'Time not available';
+  }
+
+  if (!end || end === start) {
+    return start;
+  }
+
+  return `${start} - ${end}`;
+}
+
+function extractApiErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+
+  if (typeof error === 'object' && error !== null && 'message' in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === 'string' && message.trim()) {
+      return message;
     }
   }
 
-  patientName(patientId: string): string {
-    const patient = this.patients.find((item) => item.id === patientId);
-    return patient ? `${patient.firstName} ${patient.lastName}` : 'Unknown Patient';
-  }
+  return fallback;
 }
