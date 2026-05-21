@@ -39,6 +39,40 @@ export interface BookingServiceItem {
   price?: number;
 }
 
+export interface BookingPatientInfo {
+  id: string;
+  patientCode?: string;
+  firstName?: string;
+  middleName?: string;
+  lastName?: string;
+  fullName?: string;
+  dateOfBirth?: string;
+  sex?: string;
+  contactNumber?: string;
+  email?: string;
+  isGuest?: boolean;
+}
+
+export interface BookingDoctorInfo {
+  id: string;
+  userId?: string;
+  fullName?: string;
+  specialization?: string;
+  consultationFee?: number;
+  status?: string;
+  profilePhotoUrl?: string;
+}
+
+export interface BookingCatalogService {
+  id: string;
+  name?: string;
+  description?: string;
+  category?: ServiceCategory | string;
+  price?: number;
+  estimatedDurationMinutes?: number;
+  isActive?: boolean;
+}
+
 export interface Payment {
   id: string;
   bookingId: string;
@@ -99,6 +133,9 @@ export interface Booking {
   doctorCompletedAt?: string;
   isProfessionalFeeWaived?: boolean;
   professionalFeeWaivedReason?: string;
+  patient?: BookingPatientInfo;
+  doctor?: BookingDoctorInfo;
+  service?: BookingCatalogService;
   payment?: Payment;
 }
 

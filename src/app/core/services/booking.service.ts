@@ -946,24 +946,32 @@ export class BookingService {
     }
 
     const services = normalizeBookingServices(source['services']);
+    const patient = this.normalizeBookingPatient(source['patient']) ?? fallbackRecord.patient;
+    const doctor = this.normalizeBookingDoctor(source['doctor']) ?? fallbackRecord.doctor;
+    const catalogService = this.normalizeBookingCatalogService(source['service']) ?? fallbackRecord.service;
     const serviceNamesFromSource = normalizeStringArray(source['serviceNames']);
     const serviceIdsFromSource = normalizeStringArray(source['serviceIds']);
     const firstService = services[0];
     const serviceId =
       trimOptionalString(source['serviceId']) ??
       serviceIdsFromSource[0] ??
+      catalogService?.id ??
       firstService?.id ??
       trimOptionalString(fallbackRecord.serviceId) ??
       '';
     const serviceName =
       trimOptionalString(source['serviceName']) ??
       serviceNamesFromSource[0] ??
+      trimOptionalString(catalogService?.name) ??
       firstService?.name ??
       trimOptionalString(fallbackRecord.serviceName);
     const serviceIds =
       serviceIdsFromSource.length > 0
-        ? serviceIdsFromSource
-        : services.map((service) => service.id).filter((value) => value.length > 0);
+          ? serviceIdsFromSource
+        : [
+            ...services.map((service) => service.id).filter((value) => value.length > 0),
+            ...(catalogService?.id ? [catalogService.id] : [])
+          ].filter((value, index, values) => values.indexOf(value) === index);
     const serviceNames =
       serviceNamesFromSource.length > 0
         ? serviceNamesFromSource
@@ -971,6 +979,7 @@ export class BookingService {
             ...services
               .map((service) => service.name)
               .filter((value): value is string => typeof value === 'string' && value.trim().length > 0),
+            ...(catalogService?.name ? [catalogService.name] : []),
             ...(serviceName ? [serviceName] : [])
           ].filter((value, index, values) => values.indexOf(value) === index);
 
@@ -994,9 +1003,16 @@ export class BookingService {
     return {
       id,
       patientId: trimOptionalString(source['patientId']) ?? trimOptionalString(fallbackRecord.patientId) ?? '',
-      patientName: trimOptionalString(source['patientName']) ?? trimOptionalString(fallbackRecord.patientName),
+      patientName:
+        trimOptionalString(source['patientName']) ??
+        trimOptionalString(patient?.fullName) ??
+        composePersonName(patient) ??
+        trimOptionalString(fallbackRecord.patientName),
       doctorId: trimOptionalString(source['doctorId']) ?? trimOptionalString(fallbackRecord.doctorId) ?? '',
-      doctorName: trimOptionalString(source['doctorName']) ?? trimOptionalString(fallbackRecord.doctorName),
+      doctorName:
+        trimOptionalString(source['doctorName']) ??
+        trimOptionalString(doctor?.fullName) ??
+        trimOptionalString(fallbackRecord.doctorName),
       serviceId,
       serviceIds:
         serviceIds.length > 0
@@ -1049,7 +1065,78 @@ export class BookingService {
         fallbackRecord.isProfessionalFeeWaived,
       professionalFeeWaivedReason:
         trimOptionalString(source['professionalFeeWaivedReason']) ?? fallbackRecord.professionalFeeWaivedReason,
+      patient,
+      doctor,
+      service: catalogService,
       payment: payment ?? fallbackRecord.payment
+    };
+  }
+
+  private normalizeBookingPatient(payload: unknown): Booking['patient'] | undefined {
+    if (!isRecord(payload)) {
+      return undefined;
+    }
+
+    const id = trimOptionalString(payload['id']);
+    if (!id) {
+      return undefined;
+    }
+
+    return {
+      id,
+      patientCode: trimOptionalString(payload['patientCode']),
+      firstName: trimOptionalString(payload['firstName']),
+      middleName: trimOptionalString(payload['middleName']),
+      lastName: trimOptionalString(payload['lastName']),
+      fullName: trimOptionalString(payload['fullName']),
+      dateOfBirth: trimOptionalString(payload['dateOfBirth']),
+      sex: trimOptionalString(payload['sex']),
+      contactNumber: trimOptionalString(payload['contactNumber']),
+      email: trimOptionalString(payload['email']),
+      isGuest: normalizeBooleanOrUndefined(payload['isGuest'])
+    };
+  }
+
+  private normalizeBookingDoctor(payload: unknown): Booking['doctor'] | undefined {
+    if (!isRecord(payload)) {
+      return undefined;
+    }
+
+    const id = trimOptionalString(payload['id']);
+    if (!id) {
+      return undefined;
+    }
+
+    return {
+      id,
+      userId: trimOptionalString(payload['userId']),
+      fullName: trimOptionalString(payload['fullName']),
+      specialization: trimOptionalString(payload['specialization']),
+      consultationFee: normalizeNullableNumberPreserveUndefined(payload['consultationFee']) ?? undefined,
+      status: trimOptionalString(payload['status']),
+      profilePhotoUrl: trimOptionalString(payload['profilePhotoUrl'])
+    };
+  }
+
+  private normalizeBookingCatalogService(payload: unknown): Booking['service'] | undefined {
+    if (!isRecord(payload)) {
+      return undefined;
+    }
+
+    const id = trimOptionalString(payload['id']);
+    if (!id) {
+      return undefined;
+    }
+
+    return {
+      id,
+      name: trimOptionalString(payload['name']),
+      description: trimOptionalString(payload['description']),
+      category: trimOptionalString(payload['category']),
+      price: normalizeNullableNumberPreserveUndefined(payload['price']) ?? undefined,
+      estimatedDurationMinutes:
+        normalizeNullableNumberPreserveUndefined(payload['estimatedDurationMinutes']) ?? undefined,
+      isActive: normalizeBooleanOrUndefined(payload['isActive'])
     };
   }
 
@@ -1460,6 +1547,25 @@ function normalizeStringArray(value: unknown): string[] {
   return value
     .map((item) => (typeof item === 'string' ? item.trim() : ''))
     .filter((item) => item.length > 0);
+}
+
+function composePersonName(
+  value:
+    | {
+        firstName?: string;
+        middleName?: string;
+        lastName?: string;
+      }
+    | undefined
+): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const parts = [value.firstName, value.middleName, value.lastName]
+    .map((item) => trimOptionalString(item))
+    .filter((item): item is string => Boolean(item));
+  return parts.length > 0 ? parts.join(' ') : undefined;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

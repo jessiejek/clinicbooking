@@ -10,6 +10,8 @@ import {
   Prescription,
   VaccinationRecord
 } from '../../../core/models';
+import { FollowUpDraftView } from '../components/follow-up-form/follow-up-form.component';
+import { LabRequestDraftView } from '../components/lab-request-form/lab-request-form.component';
 import { SoapFormValue } from '../components/soap-form/soap-form.component';
 
 export interface ConsultationPageVm {
@@ -24,5 +26,7 @@ export interface ConsultationPageVm {
   labResults: LabResult[];
   vaccinations: VaccinationRecord[];
   followUps: FollowUp[];
+  labRequestDrafts: LabRequestDraftView[];
+  followUpDraft: FollowUpDraftView | null;
   recentConsultations: Consultation[];
 }

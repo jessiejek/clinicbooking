@@ -51,6 +51,7 @@ export interface FollowUpDraftView {
   styleUrl: './follow-up-form.component.scss'
 })
 export class FollowUpFormComponent implements OnChanges {
+  @Input() value: FollowUpDraftView | null = null;
   @Input() locked = false;
   @Output() followUpChange = new EventEmitter<FollowUpDraftView | null>();
 
@@ -70,6 +71,18 @@ export class FollowUpFormComponent implements OnChanges {
   }
 
   ngOnChanges(changes: SimpleChanges): void {
+    if (changes['value']) {
+      this.form.patchValue(
+        {
+          followUpDate: this.value?.followUpDate ?? '',
+          reason: this.value?.reason ?? '',
+          reminderEnabled: this.value?.reminderEnabled ?? false
+        },
+        { emitEvent: false }
+      );
+      this.emitValue();
+    }
+
     if (changes['locked']) {
       if (this.locked) {
         this.form.disable({ emitEvent: false });

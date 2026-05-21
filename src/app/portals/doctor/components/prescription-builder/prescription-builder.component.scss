@@ -51,6 +51,37 @@
   --background: transparent;
 }
 
+.field-picker {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.field-picker__label {
+  color: var(--clinic-text-primary);
+  font-size: 0.875rem;
+}
+
+.field-picker__control {
+  min-height: 56px;
+}
+
+.picker-trigger {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--clinic-border);
+  border-radius: var(--radius-md);
+  background: var(--white);
+  color: var(--clinic-text-primary);
+  text-align: left;
+  padding: 0.8rem 0.9rem;
+  cursor: pointer;
+}
+
+.picker-trigger:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
 .controlled-row {
   display: flex;
   align-items: center;

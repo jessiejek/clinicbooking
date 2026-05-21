@@ -28,6 +28,34 @@
   align-items: center;
 }
 
+.booking-row {
+  cursor: pointer;
+}
+
+.booking-link {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: var(--clinic-text-primary);
+  font: inherit;
+  font-weight: var(--font-semibold);
+  cursor: pointer;
+  text-align: left;
+}
+
+.booking-link:hover,
+.booking-link:focus-visible {
+  text-decoration: underline;
+}
+
+.action-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
 @media (max-width: 960px) {
   .filter-bar {
     grid-template-columns: 1fr 1fr;

@@ -1,7 +1,7 @@
 import { DatePipe, NgFor, NgIf } from '@angular/common';
 import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { ToastController } from '@ionic/angular/standalone';
 import { Booking } from '../../../core/models';
 import {
@@ -57,8 +57,20 @@ type StaffTodayStatus = 'all' | 'Confirmed' | 'CheckedIn' | 'Completed' | 'NoSho
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let booking of bookings">
-              <td>{{ booking.patientName || 'Patient' }}</td>
+            <tr
+              *ngFor="let booking of bookings"
+              class="booking-row"
+              tabindex="0"
+              role="button"
+              [attr.aria-label]="'Open booking for ' + (booking.patientName || 'patient')"
+              (click)="openBooking(booking.id)"
+              (keydown.enter)="openBooking(booking.id)"
+            >
+              <td>
+                <button type="button" class="booking-link" (click)="openBooking(booking.id, $event)">
+                  {{ booking.patientName || 'Patient' }}
+                </button>
+              </td>
               <td>{{ booking.doctorName || 'Doctor' }}</td>
               <td>{{ servicesLabel(booking) }}</td>
               <td>
@@ -80,7 +92,7 @@ type StaffTodayStatus = 'all' | 'Confirmed' | 'CheckedIn' | 'Completed' | 'NoSho
                     *ngIf="booking.status === 'Confirmed'"
                     type="button"
                     class="btn-primary"
-                    (click)="checkIn(booking)"
+                    (click)="checkIn(booking, $event)"
                     [disabled]="actionBookingId === booking.id"
                   >
                     Check In
@@ -89,7 +101,7 @@ type StaffTodayStatus = 'all' | 'Confirmed' | 'CheckedIn' | 'Completed' | 'NoSho
                     *ngIf="booking.status === 'CheckedIn'"
                     type="button"
                     class="btn-outline"
-                    (click)="undoCheckIn(booking)"
+                    (click)="undoCheckIn(booking, $event)"
                     [disabled]="actionBookingId === booking.id"
                   >
                     Undo Check-In
@@ -127,6 +139,7 @@ export class StaffBookingsPage implements OnInit {
   private readonly realtime = inject(ClinicDashboardRealtimeService);
   private readonly publicService = inject(PublicService);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly toastCtrl = inject(ToastController);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -211,7 +224,13 @@ export class StaffBookingsPage implements OnInit {
     this.loadBookings();
   }
 
-  checkIn(booking: Booking): void {
+  openBooking(bookingId: string, event?: Event): void {
+    event?.stopPropagation();
+    void this.router.navigate(['/staff/bookings', bookingId]);
+  }
+
+  checkIn(booking: Booking, event?: Event): void {
+    event?.stopPropagation();
     this.actionBookingId = booking.id;
     this.bookingService.checkInBooking(booking.id, {}).subscribe({
       next: async () => {
@@ -226,7 +245,8 @@ export class StaffBookingsPage implements OnInit {
     });
   }
 
-  undoCheckIn(booking: Booking): void {
+  undoCheckIn(booking: Booking, event?: Event): void {
+    event?.stopPropagation();
     this.actionBookingId = booking.id;
     this.bookingService.undoCheckInBooking(booking.id).subscribe({
       next: async () => {

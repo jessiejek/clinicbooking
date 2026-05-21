@@ -24,11 +24,11 @@ import { PageHeaderComponent } from '../../../../shared/components/page-header/p
         </p>
       </div>
       <div class="consultation-header__actions">
-        <button type="button" class="btn-ghost" [disabled]="locked" (click)="saveDraft.emit()">
-          Save Draft
+        <button type="button" class="btn-ghost" [disabled]="saveDisabled" (click)="saveDraft.emit()">
+          {{ isSavingDraft ? 'Saving Draft...' : 'Save Draft' }}
         </button>
-        <button type="button" class="btn-primary" [disabled]="locked" (click)="complete.emit()">
-          Complete Consultation
+        <button type="button" class="btn-primary" [disabled]="completeDisabled" (click)="completeTransaction.emit()">
+          {{ isCompleting ? 'Completing...' : 'Complete Transaction' }}
         </button>
       </div>
     </section>
@@ -92,9 +92,13 @@ export class ConsultationHeaderComponent {
   @Input({ required: true }) booking!: Booking;
   @Input({ required: true }) patient!: Patient;
   @Input() locked = false;
+  @Input() saveDisabled = false;
+  @Input() completeDisabled = false;
+  @Input() isSavingDraft = false;
+  @Input() isCompleting = false;
 
   @Output() saveDraft = new EventEmitter<void>();
-  @Output() complete = new EventEmitter<void>();
+  @Output() completeTransaction = new EventEmitter<void>();
 
   get patientName(): string {
     return [this.patient.firstName, this.patient.lastName].filter(Boolean).join(' ') || 'Patient';

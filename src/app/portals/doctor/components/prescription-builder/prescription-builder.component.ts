@@ -21,18 +21,19 @@ import {
   MedicationRouteMaster,
   MedicationUomMaster
 } from './prescription-masters';
+import { MedicationPickerModalComponent, MedicationPickerOption } from './medication-picker-modal.component';
 import {
   IonBadge,
-  IonButton,
   IonCheckbox,
   IonInput,
   IonItem,
   IonLabel,
   IonList,
-  IonSelect,
-  IonSelectOption,
-  IonTextarea
+  IonTextarea,
+  ModalController
 } from '@ionic/angular/standalone';
+
+type PickerField = 'dosageForm' | 'unitOfMeasure' | 'frequencyCode' | 'route';
 
 @Component({
   selector: 'app-prescription-builder',
@@ -42,14 +43,11 @@ import {
     NgIf,
     ReactiveFormsModule,
     IonBadge,
-    IonButton,
     IonCheckbox,
     IonInput,
     IonItem,
     IonLabel,
     IonList,
-    IonSelect,
-    IonSelectOption,
     IonTextarea
   ],
   template: `
@@ -89,18 +87,17 @@ import {
               <ion-label position="stacked">Generic Name</ion-label>
               <ion-input formControlName="genericName" [disabled]="locked"></ion-input>
             </ion-item>
-            <ion-item class="field">
-              <ion-label position="stacked">Dosage Form</ion-label>
-              <ion-select formControlName="dosageForm" interface="popover" [disabled]="locked">
-                <ion-select-option value="Tablet">Tablet</ion-select-option>
-                <ion-select-option value="Capsule">Capsule</ion-select-option>
-                <ion-select-option value="Syrup">Syrup</ion-select-option>
-                <ion-select-option value="Injection">Injection</ion-select-option>
-                <ion-select-option value="Cream">Cream</ion-select-option>
-                <ion-select-option value="Drops">Drops</ion-select-option>
-                <ion-select-option value="Others">Others</ion-select-option>
-              </ion-select>
-            </ion-item>
+            <div class="field-picker">
+              <label class="field-picker__label">Dosage Form</label>
+              <button
+                type="button"
+                class="picker-trigger field-picker__control"
+                [disabled]="locked"
+                (click)="openPicker(i, 'dosageForm')"
+              >
+                {{ dosageFormLabel(i) }}
+              </button>
+            </div>
             <ion-item class="field">
               <ion-label position="stacked">Strength</ion-label>
               <ion-input formControlName="strength" [disabled]="locked"></ion-input>
@@ -108,52 +105,46 @@ import {
           </div>
 
           <div class="item-grid item-grid--triple">
-            <ion-item class="field">
-              <ion-label position="stacked">Unit of Measure</ion-label>
-              <ion-select
-                formControlName="unitOfMeasure"
-                interface="popover"
+            <div class="field-picker">
+              <label class="field-picker__label">Unit of Measure</label>
+              <button
+                type="button"
+                class="picker-trigger field-picker__control"
                 [disabled]="locked"
-                (ionChange)="syncUnitOfMeasure(i)"
+                (click)="openPicker(i, 'unitOfMeasure')"
               >
-                <ion-select-option *ngFor="let option of unitOfMeasureOptions" [value]="option.unit_of_measure">
-                  {{ option.unit_of_measure }}{{ option.description ? ' - ' + option.description : '' }}
-                </ion-select-option>
-              </ion-select>
-            </ion-item>
+                {{ unitOfMeasureLabel(i) }}
+              </button>
+            </div>
             <ion-item class="field">
               <ion-label position="stacked">Quantity</ion-label>
               <ion-input type="number" formControlName="quantity" [disabled]="locked"></ion-input>
             </ion-item>
-            <ion-item class="field">
-              <ion-label position="stacked">Frequency</ion-label>
-              <ion-select
-                formControlName="frequencyCode"
-                interface="popover"
+            <div class="field-picker">
+              <label class="field-picker__label">Frequency</label>
+              <button
+                type="button"
+                class="picker-trigger field-picker__control"
                 [disabled]="locked"
-                (ionChange)="syncFrequency(i)"
+                (click)="openPicker(i, 'frequencyCode')"
               >
-                <ion-select-option *ngFor="let option of frequencyOptions" [value]="option.dosage_no">
-                  {{ option.dosage_desc }}
-                </ion-select-option>
-              </ion-select>
-            </ion-item>
+                {{ frequencyLabel(i) }}
+              </button>
+            </div>
           </div>
 
           <div class="item-grid">
-            <ion-item class="field">
-              <ion-label position="stacked">Route</ion-label>
-              <ion-select
-                formControlName="route"
-                interface="popover"
+            <div class="field-picker">
+              <label class="field-picker__label">Route</label>
+              <button
+                type="button"
+                class="picker-trigger field-picker__control"
                 [disabled]="locked"
-                (ionChange)="syncRoute(i)"
+                (click)="openPicker(i, 'route')"
               >
-                <ion-select-option *ngFor="let option of routeOptions" [value]="option.route_code">
-                  {{ option.route_code }} - {{ option.route_description }}
-                </ion-select-option>
-              </ion-select>
-            </ion-item>
+                {{ routeLabel(i) }}
+              </button>
+            </div>
             <ion-item class="field">
               <ion-label position="stacked">Duration</ion-label>
               <ion-input formControlName="duration" [disabled]="locked"></ion-input>
@@ -192,6 +183,7 @@ export class PrescriptionBuilderComponent implements OnChanges {
   private readonly fb = inject(FormBuilder);
   private readonly mockData = inject(MockDataService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly modalCtrl = inject(ModalController);
 
   readonly form = this.fb.group({
     items: this.fb.array([])
@@ -204,6 +196,7 @@ export class PrescriptionBuilderComponent implements OnChanges {
   readonly frequencyOptions = [...MEDICATION_FREQUENCY_MASTERS].sort(
     (a, b) => a.priority_order - b.priority_order || a.arrangement_count - b.arrangement_count
   );
+  readonly dosageFormOptions = ['Tablet', 'Capsule', 'Syrup', 'Injection', 'Cream', 'Drops', 'Others'];
 
   suggestions: MockDrug[] = [];
   activeSuggestionIndex = -1;
@@ -298,6 +291,90 @@ export class PrescriptionBuilderComponent implements OnChanges {
     this.emitValue();
   }
 
+  async openPicker(index: number, field: PickerField): Promise<void> {
+    if (this.locked) {
+      return;
+    }
+
+    const modal = await this.modalCtrl.create({
+      component: MedicationPickerModalComponent,
+      componentProps: {
+        title: this.resolvePickerTitle(field),
+        options: this.buildPickerOptions(field)
+      }
+    });
+
+    await modal.present();
+
+    const { data, role } = await modal.onDidDismiss<{ option?: MedicationPickerOption }>();
+    if (role !== 'select' || !data?.option) {
+      return;
+    }
+
+    this.applyPickerOption(index, field, data.option);
+  }
+
+  private applyPickerOption(index: number, field: PickerField, option: MedicationPickerOption): void {
+    const group = this.itemControls.at(index);
+    if (!group) {
+      return;
+    }
+
+    switch (field) {
+      case 'dosageForm':
+        group.patchValue({ dosageForm: option.value }, { emitEvent: false });
+        break;
+      case 'unitOfMeasure':
+        group.patchValue({ unitOfMeasure: option.value }, { emitEvent: false });
+        this.syncUnitOfMeasure(index);
+        break;
+      case 'frequencyCode':
+        group.patchValue({ frequencyCode: option.value }, { emitEvent: false });
+        this.syncFrequency(index);
+        break;
+      case 'route':
+        group.patchValue({ route: option.value }, { emitEvent: false });
+        this.syncRoute(index);
+        break;
+    }
+
+    this.emitValue();
+  }
+
+  dosageFormLabel(index: number): string {
+    return this.resolveGroupValue(index, 'dosageForm', 'Select dosage form');
+  }
+
+  unitOfMeasureLabel(index: number): string {
+    const group = this.itemControls.at(index);
+    const code = (group?.get('unitOfMeasure')?.value as string | undefined)?.trim();
+    const description = (group?.get('unitOfMeasureDescription')?.value as string | undefined)?.trim();
+
+    if (!code) {
+      return 'Select unit of measure';
+    }
+
+    return description ? `${code} - ${description}` : code;
+  }
+
+  frequencyLabel(index: number): string {
+    const group = this.itemControls.at(index);
+    const frequency = (group?.get('frequency')?.value as string | undefined)?.trim();
+    return frequency || 'Select frequency';
+  }
+
+  routeLabel(index: number): string {
+    const group = this.itemControls.at(index);
+    const code = (group?.get('route')?.value as string | undefined)?.trim();
+    const description = (group?.get('routeDescription')?.value as string | undefined)?.trim();
+
+    if (!code) {
+      return 'Select route';
+    }
+
+    return description ? `${code} - ${description}` : code;
+  }
+
   applySuggestion(index: number, drug: MockDrug): void {
     const group = this.itemControls.at(index);
     if (!group || this.locked) {
@@ -370,6 +447,53 @@ export class PrescriptionBuilderComponent implements OnChanges {
       instructions: [item?.instructions ?? ''],
       isControlledSubstance: [item?.isControlledSubstance ?? false]
     });
+  }
+
+  private resolvePickerTitle(field: PickerField): string {
+    switch (field) {
+      case 'dosageForm':
+        return 'Select Dosage Form';
+      case 'unitOfMeasure':
+        return 'Select Unit of Measure';
+      case 'frequencyCode':
+        return 'Select Frequency';
+      case 'route':
+        return 'Select Route';
+    }
+  }
+
+  private buildPickerOptions(field: PickerField): MedicationPickerOption[] {
+    switch (field) {
+      case 'dosageForm':
+        return this.dosageFormOptions.map((option) => ({
+          value: option,
+          label: option,
+          searchText: option.toLowerCase()
+        }));
+      case 'unitOfMeasure':
+        return this.unitOfMeasureOptions.map((option) => ({
+          value: option.unit_of_measure,
+          label: option.description ? `${option.unit_of_measure} - ${option.description}` : option.unit_of_measure,
+          searchText: `${option.unit_of_measure} ${option.description}`.trim().toLowerCase()
+        }));
+      case 'frequencyCode':
+        return this.frequencyOptions.map((option) => ({
+          value: normalizeMasterCode(option.dosage_no),
+          label: option.dosage_desc,
+          searchText: `${option.dosage_no} ${option.dosage_desc} ${option.dosage_freq ?? ''}`.toLowerCase()
+        }));
+      case 'route':
+        return this.routeOptions.map((option) => ({
+          value: option.route_code,
+          label: `${option.route_code} - ${option.route_description}`,
+          searchText: `${option.route_code} ${option.route_description}`.toLowerCase()
+        }));
+    }
+  }
+
+  private resolveGroupValue(index: number, controlName: string, fallback: string): string {
+    const value = (this.itemControls.at(index)?.get(controlName)?.value as string | undefined)?.trim();
+    return value || fallback;
   }
 
   private lookupDrugs(query: string): MockDrug[] {

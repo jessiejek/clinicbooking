@@ -1,58 +1,30 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NgIf } from '@angular/common';
-import {
-  IonButton,
-  IonButtons,
-  IonContent,
-  IonHeader,
-  IonModal,
-  IonTextarea,
-  IonTitle,
-  IonToolbar
-} from '@ionic/angular/standalone';
 
 @Component({
   selector: 'app-confirm-modal',
   standalone: true,
-  imports: [
-    NgIf,
-    FormsModule,
-    IonModal,
-    IonHeader,
-    IonToolbar,
-    IonTitle,
-    IonButtons,
-    IonButton,
-    IonContent,
-    IonTextarea
-  ],
+  imports: [NgIf, FormsModule],
   template: `
-    <ion-modal [isOpen]="isOpen" (didDismiss)="cancelled.emit()">
-      <ion-header>
-        <ion-toolbar>
-          <ion-title>{{ title }}</ion-title>
-          <ion-buttons slot="end">
-            <ion-button fill="clear" (click)="cancelled.emit()">Close</ion-button>
-          </ion-buttons>
-        </ion-toolbar>
-      </ion-header>
-      <ion-content class="ion-padding">
-        <p style="margin: 0 0 var(--space-4) 0; color: var(--clinic-text-secondary)">
-          {{ message }}
-        </p>
-        <div *ngIf="requireReason" style="margin-bottom: var(--space-4)">
-          <label style="display: block; font-size: var(--text-sm); margin-bottom: var(--space-2)">{{
-            reasonLabel
-          }}</label>
-          <ion-textarea
-            [(ngModel)]="reason"
-            [rows]="4"
-            [placeholder]="reasonLabel"
-          ></ion-textarea>
+    <div class="confirm-modal__backdrop" *ngIf="isOpen" (click)="cancel()">
+      <section class="confirm-modal clinic-card" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+        <div class="confirm-modal__header">
+          <h3 class="confirm-modal__title">{{ title }}</h3>
+          <button class="btn-ghost" type="button" (click)="cancel()">Close</button>
         </div>
-        <div style="display: flex; gap: var(--space-3); justify-content: flex-end">
-          <button class="btn-ghost" type="button" (click)="cancelled.emit()">
+        <p class="confirm-modal__message">{{ message }}</p>
+        <div *ngIf="requireReason" class="confirm-modal__field">
+          <label class="confirm-modal__label">{{ reasonLabel }}</label>
+          <textarea
+            class="filter-input confirm-modal__textarea"
+            rows="4"
+            [(ngModel)]="reason"
+            [placeholder]="reasonLabel"
+          ></textarea>
+        </div>
+        <div class="confirm-modal__actions">
+          <button class="btn-ghost" type="button" (click)="cancel()">
             {{ cancelLabel }}
           </button>
           <button
@@ -65,8 +37,8 @@ import {
             {{ confirmLabel }}
           </button>
         </div>
-      </ion-content>
-    </ion-modal>
+      </section>
+    </div>
   `,
   styleUrl: './confirm-modal.component.scss'
 })
@@ -89,7 +61,14 @@ export class ConfirmModalComponent {
     return this.reason.trim();
   }
 
+  cancel(): void {
+    this.reason = '';
+    this.cancelled.emit();
+  }
+
   onConfirm(): void {
-    this.confirmed.emit(this.requireReason ? this.reasonTrimmed : undefined);
+    const reason = this.requireReason ? this.reasonTrimmed : undefined;
+    this.reason = '';
+    this.confirmed.emit(reason);
   }
 }

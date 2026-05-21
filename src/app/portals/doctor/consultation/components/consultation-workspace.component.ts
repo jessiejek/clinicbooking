@@ -63,6 +63,7 @@ import { ConsultationPageVm } from '../doctor-consultation.types';
         ></app-prescription-builder>
 
         <app-lab-request-form
+          [value]="vm.labRequestDrafts"
           [locked]="locked"
           (requestsChange)="labRequestsChange.emit($event)"
         ></app-lab-request-form>
@@ -76,6 +77,7 @@ import { ConsultationPageVm } from '../doctor-consultation.types';
         </div>
 
         <app-follow-up-form
+          [value]="vm.followUpDraft"
           [locked]="locked"
           (followUpChange)="followUpChange.emit($event)"
         ></app-follow-up-form>

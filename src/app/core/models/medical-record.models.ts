@@ -42,6 +42,8 @@ export interface Consultation {
   historyOfPresentIllness?: string;
   peGeneralFindings?: string;
   visitSummaryUrl?: string;
+  prescriptions?: Prescription[];
+  labRequests?: LabRequest[];
 }
 
 export interface VitalSigns {

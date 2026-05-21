@@ -78,6 +78,7 @@ export interface LabRequestDraftView {
   styleUrl: './lab-request-form.component.scss'
 })
 export class LabRequestFormComponent implements OnChanges {
+  @Input() value: LabRequestDraftView[] = [];
   @Input() locked = false;
   @Output() requestsChange = new EventEmitter<LabRequestDraftView[]>();
 
@@ -103,6 +104,11 @@ export class LabRequestFormComponent implements OnChanges {
   }
 
   ngOnChanges(changes: SimpleChanges): void {
+    if (changes['value']) {
+      this.requests = this.value.map((request) => ({ ...request }));
+      this.requestsChange.emit([...this.requests]);
+    }
+
     if (changes['locked']) {
       if (this.locked) {
         this.form.disable({ emitEvent: false });
