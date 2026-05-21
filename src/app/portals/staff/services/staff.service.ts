@@ -18,12 +18,15 @@ interface PatientDto {
   sex?: NullableString;
   contactNumber?: NullableString;
   email?: NullableString;
+  userId?: NullableString;
+  hasAccount?: boolean | null;
   isGuest?: boolean | null;
 }
 
 interface PagedResultDto<T> {
   items: T[];
-  total: number;
+  totalCount?: number;
+  total?: number;
   page: number;
   pageSize: number;
   totalPages: number;
@@ -54,9 +57,12 @@ export class StaffService {
 }
 
 function mapPagedPatientSummaries(result: PagedResultDto<PatientDto>): PagedResult<PatientSummary> {
+  const totalCount = normalizeNumber(result.totalCount ?? result.total);
+
   return {
     items: result.items.map((item) => mapPatientSummary(item)),
-    total: normalizeNumber(result.total),
+    totalCount,
+    total: totalCount,
     page: normalizeNumber(result.page) || 1,
     pageSize: normalizeNumber(result.pageSize) || result.items.length || 20,
     totalPages: normalizeNumber(result.totalPages)
@@ -79,6 +85,8 @@ function mapPatientSummary(dto: PatientDto): PatientSummary {
     sex: normalizeString(dto.sex) || '',
     contactNumber: normalizeString(dto.contactNumber),
     email: normalizeString(dto.email),
+    userId: normalizeString(dto.userId),
+    hasAccount: normalizeBoolean(dto.hasAccount),
     isGuest: Boolean(dto.isGuest)
   };
 }
@@ -117,4 +125,8 @@ function normalizeString(value: NullableString): string | undefined {
 
 function normalizeNumber(value: number | null | undefined): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+}
+
+function normalizeBoolean(value: boolean | null | undefined): boolean | undefined {
+  return typeof value === 'boolean' ? value : undefined;
 }

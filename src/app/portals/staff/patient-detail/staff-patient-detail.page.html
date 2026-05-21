@@ -11,7 +11,11 @@
       <div class="page-subtitle data-mono" *ngIf="patient">{{ patient.patientCode }}</div>
     </div>
 
-    <app-status-badge *ngIf="patient" [status]="patientStatusLabel"></app-status-badge>
+    <app-status-badge
+      *ngIf="patient"
+      [status]="patientStatusLabel"
+      [labelOverride]="patientStatusLabelText"
+    ></app-status-badge>
   </div>
 
   <div class="loading-panel" *ngIf="isLoading">
@@ -96,7 +100,7 @@
           </div>
           <div class="detail-item">
             <dt>Login Account Status</dt>
-            <dd>{{ patientStatusLabel }}</dd>
+            <dd>{{ patientStatusLabelText }}</dd>
           </div>
           <div class="detail-item" *ngIf="patient.userId">
             <dt>User ID</dt>

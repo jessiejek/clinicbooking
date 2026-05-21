@@ -64,7 +64,10 @@ import { StaffService } from '../services/staff.service';
                 <td>{{ patient.contactNumber || 'No phone provided' }}</td>
                 <td>{{ patient.email || 'No email provided' }}</td>
                 <td>
-                  <app-status-badge [status]="patientAccountStatus(patient)"></app-status-badge>
+                  <app-status-badge
+                    [status]="patientAccountStatus(patient)"
+                    [labelOverride]="patientAccountLabel(patient)"
+                  ></app-status-badge>
                 </td>
               </tr>
             </tbody>
@@ -86,7 +89,10 @@ import { StaffService } from '../services/staff.service';
                 <strong>{{ patientDisplayName(patient) }}</strong>
                 <span class="data-mono">{{ patient.patientCode }}</span>
               </div>
-              <app-status-badge [status]="patientAccountStatus(patient)"></app-status-badge>
+              <app-status-badge
+                [status]="patientAccountStatus(patient)"
+                [labelOverride]="patientAccountLabel(patient)"
+              ></app-status-badge>
             </div>
 
             <dl class="patient-mobile-card__details">
@@ -131,7 +137,7 @@ export class StaffPatientsPage implements OnInit {
   readonly pageSize = 20;
   searchControl = new FormControl('', { nonNullable: true });
   patients: PatientSummary[] = [];
-  total = 0;
+  totalCount = 0;
   currentPage = 1;
   totalPages = 1;
   isLoading = false;
@@ -151,7 +157,7 @@ export class StaffPatientsPage implements OnInit {
   }
 
   get rangeStart(): number {
-    if (this.total === 0) {
+    if (this.totalCount === 0) {
       return 0;
     }
 
@@ -159,19 +165,19 @@ export class StaffPatientsPage implements OnInit {
   }
 
   get rangeEnd(): number {
-    if (this.total === 0) {
+    if (this.totalCount === 0) {
       return 0;
     }
 
-    return Math.min(this.total, this.rangeStart + this.patients.length - 1);
+    return Math.min(this.totalCount, this.rangeStart + this.patients.length - 1);
   }
 
   get countLabel(): string {
-    if (this.total === 0) {
+    if (this.totalCount === 0) {
       return 'Showing 0 of 0 patients';
     }
 
-    return `Showing ${this.rangeStart}-${this.rangeEnd} of ${this.total} patients`;
+    return `Showing ${this.rangeStart}-${this.rangeEnd} of ${this.totalCount} patients`;
   }
 
   openDetail(id: string): void {
@@ -182,16 +188,27 @@ export class StaffPatientsPage implements OnInit {
     return patient.fullName || [patient.firstName, patient.middleName, patient.lastName].filter(Boolean).join(' ') || 'Patient';
   }
 
-  patientAccountStatus(patient: PatientSummary): 'LinkedAccount' | 'Guest' | 'NoAccount' {
-    if (patient.userId) {
+  patientAccountStatus(patient: PatientSummary): 'LinkedAccount' | 'NoAccount' | 'AccountUnknown' {
+    if (patient.hasAccount === true || Boolean(patient.userId?.trim())) {
       return 'LinkedAccount';
     }
 
-    if (patient.isGuest) {
-      return 'Guest';
+    if (patient.hasAccount === false) {
+      return 'NoAccount';
     }
 
-    return 'NoAccount';
+    return 'AccountUnknown';
+  }
+
+  patientAccountLabel(patient: PatientSummary): string {
+    switch (this.patientAccountStatus(patient)) {
+      case 'LinkedAccount':
+        return 'Account Linked';
+      case 'NoAccount':
+        return 'No Account';
+      default:
+        return 'Account Unknown';
+    }
   }
 
   private loadPatients(page: number): void {
@@ -216,7 +233,7 @@ export class StaffPatientsPage implements OnInit {
           }
 
           this.patients = result.items;
-          this.total = result.total;
+          this.totalCount = result.totalCount ?? result.total ?? 0;
           this.currentPage = Math.max(1, result.page || nextPage);
           this.totalPages = Math.max(1, result.totalPages || 1);
         },
@@ -226,7 +243,7 @@ export class StaffPatientsPage implements OnInit {
           }
 
           this.patients = [];
-          this.total = 0;
+          this.totalCount = 0;
           this.currentPage = 1;
           this.totalPages = 1;
         }

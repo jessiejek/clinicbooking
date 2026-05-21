@@ -125,14 +125,19 @@
   text-align: right;
 }
 
-.patients-card ::ng-deep .badge--guest {
-  background: var(--color-warning-100);
-  color: #92400e;
-}
-
-.patients-card ::ng-deep .badge--registered {
+.patients-card ::ng-deep .badge--linked-account {
   background: var(--color-success-100);
   color: #14532d;
+}
+
+.patients-card ::ng-deep .badge--no-account {
+  background: var(--color-neutral-100);
+  color: var(--color-neutral-600);
+}
+
+.patients-card ::ng-deep .badge--account-unknown {
+  background: var(--color-neutral-100);
+  color: var(--color-neutral-600);
 }
 
 @media (max-width: 720px) {

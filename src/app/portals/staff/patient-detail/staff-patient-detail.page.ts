@@ -87,16 +87,27 @@ export class StaffPatientDetailPage implements OnInit {
     return parts.length > 0 ? parts.join(' ') : 'Patient';
   }
 
-  get patientStatusLabel(): 'LinkedAccount' | 'Guest' | 'NoAccount' {
-    if (this.patient?.userId) {
+  get patientStatusLabel(): 'LinkedAccount' | 'NoAccount' | 'AccountUnknown' {
+    if (this.patient?.hasAccount === true || Boolean(this.patient?.userId?.trim())) {
       return 'LinkedAccount';
     }
 
-    if (this.patient?.isGuest) {
-      return 'Guest';
+    if (this.patient?.hasAccount === false) {
+      return 'NoAccount';
     }
 
-    return 'NoAccount';
+    return 'AccountUnknown';
+  }
+
+  get patientStatusLabelText(): string {
+    switch (this.patientStatusLabel) {
+      case 'LinkedAccount':
+        return 'Account Linked';
+      case 'NoAccount':
+        return 'No Account';
+      default:
+        return 'Account Unknown';
+    }
   }
 
   private loadPatient(): void {

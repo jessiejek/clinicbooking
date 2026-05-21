@@ -62,10 +62,13 @@ import { AdminPatientsService } from '../services/admin-patients.service';
           <p>{{ patient.contactNumber || 'No phone provided' }}</p>
           <p>{{ patient.email || 'No email provided' }}</p>
           <div class="section-heading" style="margin-top: var(--space-4);">Login Account</div>
-          <app-status-badge [status]="patientAccountStatus(patient)"></app-status-badge>
-          <p *ngIf="patient.userId" class="data-mono" style="margin-top: var(--space-2);">User ID: {{ patient.userId }}</p>
-          <p *ngIf="!patient.userId && patient.isGuest" style="margin-top: var(--space-2);">Guest patient profile</p>
-          <p *ngIf="!patient.userId && !patient.isGuest" style="margin-top: var(--space-2);">No linked login account</p>
+          <app-status-badge
+            [status]="patientAccountStatus(patient)"
+            [labelOverride]="patientAccountLabel(patient)"
+          ></app-status-badge>
+          <p *ngIf="patientAccountStatus(patient) === 'LinkedAccount' && patient.userId" class="data-mono" style="margin-top: var(--space-2);">User ID: {{ patient.userId }}</p>
+          <p *ngIf="patientAccountStatus(patient) === 'NoAccount'" style="margin-top: var(--space-2);">No linked login account</p>
+          <p *ngIf="patientAccountStatus(patient) === 'AccountUnknown'" style="margin-top: var(--space-2);">Account linkage unknown</p>
         </div>
 
         <div class="clinic-card">
@@ -201,15 +204,26 @@ export class PatientDetailPage implements OnInit {
     this.medicalRecords.getFollowUpsByPatientId(id).subscribe((followUps) => (this.followUps = followUps));
   }
 
-  patientAccountStatus(patient: Patient): 'LinkedAccount' | 'Guest' | 'NoAccount' {
-    if (patient.userId) {
+  patientAccountStatus(patient: Patient): 'LinkedAccount' | 'NoAccount' | 'AccountUnknown' {
+    if (patient.hasAccount === true || Boolean(patient.userId?.trim())) {
       return 'LinkedAccount';
     }
 
-    if (patient.isGuest) {
-      return 'Guest';
+    if (patient.hasAccount === false) {
+      return 'NoAccount';
     }
 
-    return 'NoAccount';
+    return 'AccountUnknown';
+  }
+
+  patientAccountLabel(patient: Patient): string {
+    switch (this.patientAccountStatus(patient)) {
+      case 'LinkedAccount':
+        return 'Account Linked';
+      case 'NoAccount':
+        return 'No Account';
+      default:
+        return 'Account Unknown';
+    }
   }
 }

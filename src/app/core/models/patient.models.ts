@@ -10,6 +10,7 @@ export interface PatientSummary {
   contactNumber?: string;
   email?: string;
   userId?: string;
+  hasAccount?: boolean;
   isGuest: boolean;
 }
 
@@ -35,6 +36,7 @@ export interface PatientDetail {
   hmoProvider?: string;
   hmoCardNumber?: string;
   userId?: string;
+  hasAccount?: boolean;
   isEmailVerified?: boolean;
   isGuest: boolean;
   consentedAt?: string;
@@ -67,6 +69,7 @@ export type UpdatePatientRequest = Partial<CreatePatientRequest>;
 
 export interface PagedResult<T> {
   items: T[];
+  totalCount?: number;
   total: number;
   page: number;
   pageSize: number;
