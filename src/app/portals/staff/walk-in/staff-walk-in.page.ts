@@ -44,6 +44,7 @@ interface WalkInPatient {
   contactNumber?: string;
   email?: string;
   userId?: string;
+  hasAccount?: boolean;
   isGuest: boolean;
 }
 
@@ -159,12 +160,16 @@ type BookingControl = 'doctorId' | 'serviceId' | 'appointmentDate';
               aria-label="Search patients"
             ></ion-searchbar>
 
+            <div class="search-summary" *ngIf="hasLoadedPatients && !isSearchingPatients && !searchErrorMessage && searchResults.length > 0">
+              Showing {{ searchResults.length }} of {{ patientTotalCount || searchResults.length }} patients
+            </div>
+
             <ng-container *ngIf="!searchErrorMessage">
               <div class="search-tip" *ngIf="showSearchPrompt" style="color:var(--clinic-text-secondary);font-size:var(--text-sm);line-height:var(--leading-normal);">
                 Search for an existing patient to continue.
               </div>
 
-              <div class="patient-results" *ngIf="hasSearchQuery && !isSearchingPatients && searchResults.length > 0" style="display:grid;gap:var(--space-3);">
+              <div class="patient-results" *ngIf="!isSearchingPatients && searchResults.length > 0" style="display:grid;gap:var(--space-3);">
                 <button
                   type="button"
                   class="mobile-card patient-result"
@@ -178,7 +183,7 @@ type BookingControl = 'doctorId' | 'serviceId' | 'appointmentDate';
                       <div class="mobile-card__name">{{ patientDisplayName(patient) }}</div>
                       <div class="mobile-card__code data-mono">{{ patient.patientCode }}</div>
                     </div>
-                    <app-status-badge [status]="patientAccountStatus(patient)"></app-status-badge>
+                    <app-status-badge [status]="patientAccountStatus(patient)" [labelOverride]="patientAccountLabel(patient)"></app-status-badge>
                   </div>
 
                   <div class="mobile-card__row">
@@ -194,6 +199,15 @@ type BookingControl = 'doctorId' | 'serviceId' | 'appointmentDate';
                   <span class="data-mono">Select patient</span>
                 </button>
               </div>
+
+              <app-empty-state
+                *ngIf="showInitialEmpty"
+                icon="people-outline"
+                title="No patients found"
+                description="Register a new patient quickly to continue."
+                ctaLabel="Quick Register"
+                (ctaClick)="openQuickRegister()"
+              ></app-empty-state>
 
               <app-empty-state
                 *ngIf="showSearchEmpty"
@@ -341,7 +355,7 @@ type BookingControl = 'doctorId' | 'serviceId' | 'appointmentDate';
                 class="selected-patient-strip__actions"
                 style="display:flex;align-items:center;justify-content:flex-end;gap:var(--space-2);flex-wrap:wrap;"
               >
-                <app-status-badge [status]="patientAccountStatus(selectedPatient)"></app-status-badge>
+                <app-status-badge [status]="patientAccountStatus(selectedPatient)" [labelOverride]="patientAccountLabel(selectedPatient)"></app-status-badge>
                 <button type="button" class="btn-outline" (click)="clearSelectedPatient()">Change Patient</button>
               </div>
             </div>
@@ -451,7 +465,7 @@ type BookingControl = 'doctorId' | 'serviceId' | 'appointmentDate';
                 class="selected-patient-strip__actions"
                 style="display:flex;align-items:center;justify-content:flex-end;gap:var(--space-2);flex-wrap:wrap;"
               >
-                <app-status-badge [status]="patientAccountStatus(selectedPatient)"></app-status-badge>
+                <app-status-badge [status]="patientAccountStatus(selectedPatient)" [labelOverride]="patientAccountLabel(selectedPatient)"></app-status-badge>
                 <button type="button" class="btn-outline" (click)="clearSelectedPatient()">Change Patient</button>
               </div>
             </div>
@@ -465,6 +479,7 @@ type BookingControl = 'doctorId' | 'serviceId' | 'appointmentDate';
                   <app-status-badge
                     *ngIf="selectedPatient"
                     [status]="patientAccountStatus(selectedPatient)"
+                    [labelOverride]="patientAccountLabel(selectedPatient)"
                   ></app-status-badge>
                 </div>
               </div>
@@ -534,7 +549,7 @@ type BookingControl = 'doctorId' | 'serviceId' | 'appointmentDate';
                 <div class="summary-card__title">{{ patientDisplayName(selectedPatient) }}</div>
                 <div class="summary-card__meta">
                   <span class="data-mono">{{ selectedPatient.patientCode }}</span>
-                  <app-status-badge [status]="patientAccountStatus(selectedPatient)"></app-status-badge>
+                  <app-status-badge [status]="patientAccountStatus(selectedPatient)" [labelOverride]="patientAccountLabel(selectedPatient)"></app-status-badge>
                 </div>
                 <div class="summary-card__details">
                   <span>{{ patientContactLabel(selectedPatient) }}</span>
@@ -633,6 +648,11 @@ export class StaffWalkInPage implements OnInit {
   showQuickRegister = false;
   searchResults: WalkInPatient[] = [];
   searchErrorMessage: string | null = null;
+  patientTotalCount = 0;
+  patientCurrentPage = 1;
+  patientPageSize = 20;
+  patientTotalPages = 0;
+  hasLoadedPatients = false;
 
   private searchRequestToken = 0;
   private servicesRequestToken = 0;
@@ -640,6 +660,7 @@ export class StaffWalkInPage implements OnInit {
 
   ngOnInit(): void {
     this.loadDoctors();
+    this.loadPatients('');
 
     this.searchControl.valueChanges
       .pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
@@ -668,11 +689,15 @@ export class StaffWalkInPage implements OnInit {
   }
 
   get showSearchPrompt(): boolean {
-    return !this.hasSearchQuery && !this.selectedPatient;
+    return !this.hasSearchQuery && !this.selectedPatient && !this.hasLoadedPatients && !this.isSearchingPatients && !this.searchErrorMessage;
   }
 
   get showSearchEmpty(): boolean {
-    return this.hasSearchQuery && !this.isSearchingPatients && !this.searchErrorMessage && this.searchResults.length === 0;
+    return this.hasSearchQuery && this.hasLoadedPatients && !this.isSearchingPatients && !this.searchErrorMessage && this.searchResults.length === 0;
+  }
+
+  get showInitialEmpty(): boolean {
+    return !this.hasSearchQuery && this.hasLoadedPatients && !this.isSearchingPatients && !this.searchErrorMessage && this.searchResults.length === 0;
   }
 
   get selectedDoctor(): Doctor | null {
@@ -780,20 +805,31 @@ export class StaffWalkInPage implements OnInit {
     return parts.length ? parts.join(' ') : 'Patient';
   }
 
-  patientAccountStatus(patient: WalkInPatient | null | undefined): 'LinkedAccount' | 'Guest' | 'NoAccount' {
+  patientAccountStatus(patient: WalkInPatient | null | undefined): 'LinkedAccount' | 'NoAccount' | 'AccountUnknown' {
     if (!patient) {
-      return 'NoAccount';
+      return 'AccountUnknown';
     }
 
-    if (patient.userId) {
+    if (patient.hasAccount === true || Boolean(patient.userId?.trim())) {
       return 'LinkedAccount';
     }
 
-    if (patient.isGuest) {
-      return 'Guest';
+    if (patient.hasAccount === false) {
+      return 'NoAccount';
     }
 
-    return 'NoAccount';
+    return 'AccountUnknown';
+  }
+
+  patientAccountLabel(patient: WalkInPatient | null | undefined): string {
+    switch (this.patientAccountStatus(patient)) {
+      case 'LinkedAccount':
+        return 'Account Linked';
+      case 'NoAccount':
+        return 'No Account';
+      default:
+        return 'Account Unknown';
+    }
   }
 
   patientContactLabel(patient: WalkInPatient | null | undefined): string {
@@ -834,7 +870,7 @@ export class StaffWalkInPage implements OnInit {
   }
 
   retrySearch(): void {
-    this.searchPatients(this.searchControl.value);
+    this.loadPatients(this.searchControl.value);
   }
 
   selectPatient(patient: WalkInPatient): void {
@@ -853,6 +889,7 @@ export class StaffWalkInPage implements OnInit {
     this.showQuickRegister = false;
     this.searchControl.setValue('', { emitEvent: false });
     this.currentWalkInStep = 1;
+    this.loadPatients('');
   }
 
   onSlotSelected(slot: { slot: string; slotEnd: string }): void {
@@ -957,21 +994,21 @@ export class StaffWalkInPage implements OnInit {
   }
 
   private searchPatients(query: string): void {
+    this.loadPatients(query);
+  }
+
+  private loadPatients(query: string): void {
     const trimmed = query.trim();
     this.searchErrorMessage = null;
     this.showQuickRegister = false;
-
-    if (!trimmed) {
-      this.searchResults = [];
-      this.isSearchingPatients = false;
-      return;
-    }
+    const fallbackErrorMessage = trimmed ? 'Unable to search patients right now.' : 'Unable to load patients right now.';
 
     const token = ++this.searchRequestToken;
     this.isSearchingPatients = true;
+    this.hasLoadedPatients = false;
 
     this.staffService
-      .getPatients(1, 8, trimmed)
+      .getPatients(1, this.patientPageSize, trimmed)
       .pipe(
         finalize(() => {
           if (token === this.searchRequestToken) {
@@ -987,6 +1024,11 @@ export class StaffWalkInPage implements OnInit {
           }
 
           this.searchResults = result.items.map((patient) => mapSearchPatient(patient));
+          this.patientTotalCount = result.totalCount ?? result.total ?? this.searchResults.length;
+          this.patientCurrentPage = result.page || 1;
+          this.patientPageSize = result.pageSize || this.patientPageSize;
+          this.patientTotalPages = result.totalPages || 0;
+          this.hasLoadedPatients = true;
         },
         error: async (error) => {
           if (token !== this.searchRequestToken) {
@@ -994,7 +1036,11 @@ export class StaffWalkInPage implements OnInit {
           }
 
           this.searchResults = [];
-          this.searchErrorMessage = extractApiErrorMessage(error, 'Unable to search patients right now.');
+          this.searchErrorMessage = extractApiErrorMessage(error, fallbackErrorMessage);
+          this.patientTotalCount = 0;
+          this.patientCurrentPage = 1;
+          this.patientTotalPages = 0;
+          this.hasLoadedPatients = true;
           await this.presentToast(this.searchErrorMessage, 'danger');
         }
       });
@@ -1157,6 +1203,7 @@ function mapSearchPatient(patient: PatientSummary): WalkInPatient {
     contactNumber: trimText(patient.contactNumber),
     email: trimText(patient.email),
     userId: trimText(patient.userId),
+    hasAccount: Boolean(patient.hasAccount),
     isGuest: Boolean(patient.isGuest)
   };
 }
@@ -1174,6 +1221,7 @@ function mapCreatedPatient(patient: PatientDetail): WalkInPatient {
     contactNumber: trimText(patient.contactNumber),
     email: trimText(patient.email),
     userId: trimText(patient.userId),
+    hasAccount: Boolean(patient.hasAccount),
     isGuest: Boolean(patient.isGuest)
   };
 }

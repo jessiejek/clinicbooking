@@ -4,6 +4,7 @@ import { map, Observable } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
 import {
   AuthSessionDto,
+  CreatePatientPortalAccountRequest,
   CreatePatientRequest,
   PagedResult,
   PatientDetail,
@@ -107,6 +108,15 @@ export class AdminPatientsService {
   updatePatient(id: string, dto: UpdatePatientRequest): Observable<PatientDetail> {
     return this.apiService
       .put<PatientDto>(`/patients/${encodeURIComponent(id)}`, dto)
+      .pipe(map((patient) => mapPatientDetail(patient)));
+  }
+
+  createPatientPortalAccount(id: string, dto: CreatePatientPortalAccountRequest): Observable<PatientDetail> {
+    return this.apiService
+      .post<PatientDto>(`/patients/${encodeURIComponent(id)}/portal-account`, {
+        email: dto.email.trim(),
+        temporaryPassword: dto.temporaryPassword
+      })
       .pipe(map((patient) => mapPatientDetail(patient)));
   }
 

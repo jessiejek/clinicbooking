@@ -1,16 +1,18 @@
 import { NgFor, NgIf } from '@angular/common';
 import { Component, DestroyRef, OnInit, inject } from '@angular/core';
+import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
-import { finalize } from 'rxjs';
+import { finalize, firstValueFrom } from 'rxjs';
+import { IonLabel, ToastController, IonSegment, IonSegmentButton } from '@ionic/angular/standalone';
 import { Booking, PatientDetail } from '../../../core/models';
 import { BookingService } from '../../../core/services/booking.service';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { SkeletonComponent } from '../../../shared/components/skeleton/skeleton.component';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
-import { IonLabel, IonSegment, IonSegmentButton } from '@ionic/angular/standalone';
 import { StaffService } from '../services/staff.service';
+import { passwordStrengthValidator } from '../../../shared/validators/password-strength.validator';
 
 @Component({
   selector: 'app-staff-patient-detail-page',
@@ -18,13 +20,14 @@ import { StaffService } from '../services/staff.service';
   imports: [
     NgFor,
     NgIf,
+    ReactiveFormsModule,
     AvatarComponent,
     EmptyStateComponent,
     SkeletonComponent,
     StatusBadgeComponent,
+    IonLabel,
     IonSegment,
-    IonSegmentButton,
-    IonLabel
+    IonSegmentButton
   ],
   templateUrl: './staff-patient-detail.page.html',
   styleUrl: './staff-patient-detail.page.scss'
@@ -35,12 +38,20 @@ export class StaffPatientDetailPage implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly fb = inject(FormBuilder);
+  private readonly toastCtrl = inject(ToastController);
 
   patient: PatientDetail | null = null;
   bookings: Booking[] = [];
   selectedTab: 'overview' | 'bookings' | 'records' = 'overview';
   isLoading = true;
   errorMessage = '';
+  isCreatingPortalAccount = false;
+  portalAccountForm = this.fb.nonNullable.group({
+    email: ['', [Validators.required, Validators.email]],
+    temporaryPassword: ['', [Validators.required, passwordStrengthValidator]],
+    confirmTemporaryPassword: ['', Validators.required]
+  }, { validators: [portalAccountPasswordsMatchValidator] });
 
   private patientId = '';
   private requestVersion = 0;
@@ -141,6 +152,11 @@ export class StaffPatientDetailPage implements OnInit {
           }
 
           this.patient = patient;
+          this.portalAccountForm.patchValue({
+            email: patient.email ?? '',
+            temporaryPassword: '',
+            confirmTemporaryPassword: ''
+          });
           this.loadBookings();
         },
         error: () => {
@@ -151,8 +167,48 @@ export class StaffPatientDetailPage implements OnInit {
           this.patient = null;
           this.bookings = [];
           this.errorMessage = 'We could not load this patient record.';
+          this.portalAccountForm.reset({
+            email: '',
+            temporaryPassword: '',
+            confirmTemporaryPassword: ''
+          });
         }
       });
+  }
+
+  async createPortalAccount(): Promise<void> {
+    if (!this.patient || this.portalAccountForm.invalid) {
+      this.portalAccountForm.markAllAsTouched();
+      return;
+    }
+
+    const values = this.portalAccountForm.getRawValue();
+    this.isCreatingPortalAccount = true;
+
+    try {
+      await firstValueFrom(
+        this.staffService.createPatientPortalAccount(this.patient.id, {
+          email: values.email,
+          temporaryPassword: values.temporaryPassword
+        })
+      );
+
+      await this.presentToast('Portal account created successfully.');
+      this.loadPatient();
+    } catch (error) {
+      await this.presentToast(extractApiErrorMessage(error, 'Failed to create portal account.'), 'danger');
+    } finally {
+      this.isCreatingPortalAccount = false;
+    }
+  }
+
+  showPortalAccountError(controlName: 'email' | 'temporaryPassword' | 'confirmTemporaryPassword'): boolean {
+    const control = this.portalAccountForm.get(controlName);
+    return Boolean(control && control.invalid && (control.touched || control.dirty));
+  }
+
+  get portalAccountPasswordMismatch(): boolean {
+    return Boolean(this.portalAccountForm.hasError('passwordMismatch'));
   }
 
   private loadBookings(): void {
@@ -172,4 +228,51 @@ export class StaffPatientDetailPage implements OnInit {
         }
       });
   }
+
+  private async presentToast(message: string, color: 'success' | 'danger' = 'success'): Promise<void> {
+    const toast = await this.toastCtrl.create({
+      message,
+      duration: 2000,
+      color,
+      position: 'top'
+    });
+    await toast.present();
+  }
+}
+
+function extractApiErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+
+  if (typeof error === 'string' && error.trim()) {
+    return error.trim();
+  }
+
+  if (error && typeof error === 'object') {
+    const response = error as {
+      error?: { message?: string; detail?: string; title?: string };
+      message?: string;
+      detail?: string;
+      title?: string;
+    };
+
+    const message = response.error?.message || response.error?.detail || response.error?.title || response.message || response.detail || response.title;
+    if (message && message.trim()) {
+      return message.trim();
+    }
+  }
+
+  return fallback;
+}
+
+function portalAccountPasswordsMatchValidator(control: AbstractControl): ValidationErrors | null {
+  const temporaryPassword = control.get('temporaryPassword')?.value;
+  const confirmTemporaryPassword = control.get('confirmTemporaryPassword')?.value;
+
+  if (!temporaryPassword || !confirmTemporaryPassword) {
+    return null;
+  }
+
+  return temporaryPassword === confirmTemporaryPassword ? null : { passwordMismatch: true };
 }

@@ -3,7 +3,7 @@ import { Observable, delay, map, of } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
 import { BookingService } from '../../../core/services/booking.service';
 import { MockDataService } from '../../../core/services/mock-data.service';
-import { PagedResult, PatientDetail, PatientSummary } from '../../../core/models';
+import { CreatePatientPortalAccountRequest, PagedResult, PatientDetail, PatientSummary } from '../../../core/models';
 
 type NullableString = string | null | undefined;
 
@@ -49,6 +49,13 @@ export class StaffService {
 
   getPatientById(id: string): Observable<PatientDetail> {
     return this.apiService.get<PatientDetail>(`/patients/${encodeURIComponent(id)}`);
+  }
+
+  createPatientPortalAccount(patientId: string, dto: CreatePatientPortalAccountRequest): Observable<PatientDetail> {
+    return this.apiService.post<PatientDetail>(`/patients/${encodeURIComponent(patientId)}/portal-account`, {
+      email: dto.email.trim(),
+      temporaryPassword: dto.temporaryPassword
+    });
   }
 
   getBookings = () => this.bookingService.getBookings();

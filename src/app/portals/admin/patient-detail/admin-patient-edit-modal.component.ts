@@ -409,7 +409,7 @@ export class AdminPatientEditModalComponent {
     } catch (error) {
       if (!this.patient?.userId && this.pendingAccountUserId) {
         await this.presentToast(
-          'Login account was created, but the patient profile or link was not saved yet. Please save the patient record again.',
+          'Login account was created, but the patient profile update did not save yet. Please save the patient record again if needed.',
           'danger'
         );
       } else {
@@ -498,8 +498,13 @@ export class AdminPatientEditModalComponent {
   }
 
   private async resolveAccountUserId(values: PatientEditFormValue): Promise<string | null> {
-    if (this.patient?.userId) {
-      return this.patient.userId;
+    const patient = this.patient;
+    if (!patient) {
+      throw new Error('Patient record was not found.');
+    }
+
+    if (patient.userId) {
+      return patient.userId;
     }
 
     if (this.pendingAccountUserId) {
@@ -510,16 +515,18 @@ export class AdminPatientEditModalComponent {
       return null;
     }
 
-    const accountPayload = {
-      firstName: this.requiredValue(values.firstName),
-      middleName: this.optionalValue(values.middleName),
-      lastName: this.requiredValue(values.lastName),
-      email: this.requiredValue(values.email),
-      password: values.accountPassword,
-      avatarUrl: this.optionalValue(values.accountAvatarUrl)
-    };
+    const createdPatient = await firstValueFrom(
+      this.adminPatientsService.createPatientPortalAccount(patient.id, {
+        email: this.requiredValue(values.email),
+        temporaryPassword: values.accountPassword
+      })
+    );
 
-    const userId = await firstValueFrom(this.adminPatientsService.registerPatientAccount(accountPayload));
+    const userId = createdPatient.userId?.trim();
+    if (!userId) {
+      throw new Error('Portal account was created but no linked user id was returned.');
+    }
+
     this.pendingAccountUserId = userId;
     this.syncAccountState();
     return userId;

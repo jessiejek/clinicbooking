@@ -109,6 +109,60 @@
         </dl>
       </article>
 
+      <article class="clinic-card detail-card detail-card--full" *ngIf="!patient.hasAccount && !patient.userId">
+        <div class="section-heading">Create Portal Account</div>
+        <p class="portal-account-card__description">
+          Link this patient to the portal with a temporary password. The patient can change it after first login.
+        </p>
+
+        <form class="portal-account-form" [formGroup]="portalAccountForm" novalidate (ngSubmit)="createPortalAccount()">
+          <div class="portal-account-grid">
+            <label class="modal-field" [class.is-invalid]="showPortalAccountError('email')">
+              <span class="portal-account-field__label">Email *</span>
+              <input class="portal-account-input" type="email" formControlName="email" autocomplete="email" placeholder="Patient email" />
+              <small *ngIf="showPortalAccountError('email')">A valid email is required.</small>
+            </label>
+
+            <label class="modal-field" [class.is-invalid]="showPortalAccountError('temporaryPassword')">
+              <span class="portal-account-field__label">Temporary Password *</span>
+              <input
+                class="portal-account-input"
+                type="password"
+                formControlName="temporaryPassword"
+                autocomplete="new-password"
+                placeholder="Temporary password"
+              />
+              <small *ngIf="showPortalAccountError('temporaryPassword')">Enter a strong temporary password.</small>
+            </label>
+
+            <label class="modal-field" [class.is-invalid]="showPortalAccountError('confirmTemporaryPassword') || portalAccountPasswordMismatch">
+              <span class="portal-account-field__label">Confirm Temporary Password *</span>
+              <input
+                class="portal-account-input"
+                type="password"
+                formControlName="confirmTemporaryPassword"
+                autocomplete="new-password"
+                placeholder="Confirm temporary password"
+              />
+              <small *ngIf="showPortalAccountError('confirmTemporaryPassword')">Confirmation is required.</small>
+              <small *ngIf="portalAccountPasswordMismatch && !showPortalAccountError('confirmTemporaryPassword')">
+                Passwords do not match.
+              </small>
+            </label>
+          </div>
+
+          <div class="portal-account-actions">
+            <button
+              type="submit"
+              class="btn-primary portal-account-submit"
+              [disabled]="isCreatingPortalAccount || portalAccountForm.invalid"
+            >
+              {{ isCreatingPortalAccount ? 'Creating...' : 'Create Portal Account' }}
+            </button>
+          </div>
+        </form>
+      </article>
+
       <article class="clinic-card detail-card">
         <div class="section-heading">Contact & Address</div>
         <dl class="detail-list">

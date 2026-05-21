@@ -67,6 +67,11 @@ export interface CreatePatientRequest {
 
 export type UpdatePatientRequest = Partial<CreatePatientRequest>;
 
+export interface CreatePatientPortalAccountRequest {
+  email: string;
+  temporaryPassword: string;
+}
+
 export interface PagedResult<T> {
   items: T[];
   totalCount?: number;
