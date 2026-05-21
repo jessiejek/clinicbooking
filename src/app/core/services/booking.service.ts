@@ -114,20 +114,14 @@ export interface StaffForPaymentItem {
   bookingId: string;
   paymentId: string;
   patientName: string;
-  doctorId: string;
   doctorName: string;
-  serviceId: string;
-  serviceName?: string;
-  serviceNames: string[];
-  services: BookingServiceItem[];
+  services: string[];
   appointmentDate: string;
   slotStartTime: string;
-  slotEndTime: string;
   queueNumber: number | null;
   amountDue: number;
   doctorCompletedAt?: string;
   paymentStatus: PaymentStatus;
-  paymentMode: PaymentMode;
   status: BookingStatus;
 }
 
@@ -491,6 +485,40 @@ export class BookingService {
       .subscribe();
   }
 
+  waivePayment$(bookingId: string, reason: string): Observable<void> {
+    const previous = this.getBookingById(bookingId);
+    if (previous) {
+      this.patchBooking(bookingId, { paymentStatus: 'Waived' });
+    }
+
+    return defer(() => {
+      this.beginLoading();
+      return this.getPayment(bookingId).pipe(
+        take(1),
+        switchMap((payment) => {
+          if (!payment?.id) {
+            return throwError(() => new Error('Payment record not found.'));
+          }
+
+          return this.apiService.patch<unknown>(`/payments/${encodeURIComponent(payment.id)}/waive`, {
+            reason
+          });
+        }),
+        tap(() => {
+          void this.requestBookingById(bookingId, false).subscribe();
+        }),
+        map(() => void 0),
+        catchError((error: unknown) => {
+          if (previous) {
+            this.upsertBooking(previous);
+          }
+          return throwError(() => new Error(extractApiErrorMessage(error, 'Failed to waive payment.')));
+        }),
+        finalize(() => this.endLoading())
+      );
+    });
+  }
+
   getReceipt(paymentId: string): Observable<ReceiptData> {
     return defer(() => {
       this.beginLoading();
@@ -505,35 +533,12 @@ export class BookingService {
   }
 
   waivePayment(bookingId: string, reason: string): void {
-    const previous = this.getBookingById(bookingId);
-    if (previous) {
-      this.patchBooking(bookingId, { paymentStatus: 'Waived' });
-    }
-
-    this.beginLoading();
-    this.getPayment(bookingId)
+    void this.waivePayment$(bookingId, reason)
       .pipe(
-        take(1),
-        switchMap((payment) => {
-          if (!payment?.id) {
-            return throwError(() => new Error('Payment record not found.'));
-          }
-
-          return this.apiService.patch<unknown>(`/payments/${encodeURIComponent(payment.id)}/waive`, {
-            reason
-          });
-        }),
-        tap(() => {
-          void this.requestBookingById(bookingId, false).subscribe();
-        }),
         catchError((error: unknown) => {
-          if (previous) {
-            this.upsertBooking(previous);
-          }
           console.error('Failed to waive payment.', error);
-          return of(null);
-        }),
-        finalize(() => this.endLoading())
+          return of(void 0);
+        })
       )
       .subscribe();
   }
@@ -747,13 +752,19 @@ export class BookingService {
         map((response) => {
           const booking = this.normalizeBooking(response, {
             doctorId: dto.doctorId,
-            serviceId: dto.serviceId ?? dto.serviceIds?.[0] ?? '',
-            serviceIds: dto.serviceIds,
+            serviceId: dto.serviceIds?.[0] ?? trimOptionalString(dto.serviceId) ?? '',
+            serviceIds: normalizeStringArray(dto.serviceIds).length > 0
+              ? normalizeStringArray(dto.serviceIds)
+              : trimOptionalString(dto.serviceId)
+                ? [trimOptionalString(dto.serviceId)!]
+                : [],
             appointmentDate: dto.appointmentDate,
             slotStartTime: dto.slotStartTime,
             slotEndTime: dto.slotEndTime,
             paymentMode: dto.paymentMode ?? 'PayAtClinic',
-            isWalkIn
+            isWalkIn,
+            status: 'Confirmed',
+            paymentStatus: 'Unpaid'
           });
 
           if (!booking) {
@@ -834,20 +845,11 @@ export class BookingService {
     };
 
     const serviceIds = normalizeStringArray(dto.serviceIds);
+    const legacyServiceId = trimOptionalString(dto.serviceId);
     if (serviceIds.length > 0) {
       payload['serviceIds'] = serviceIds;
-    } else if (dto.serviceId) {
-      payload['serviceId'] = trimRequiredString(dto.serviceId);
-    }
-
-    const patientId = trimOptionalString(dto.patientId);
-    if (patientId) {
-      payload['patientId'] = patientId;
-    }
-
-    const paymentMode = normalizePaymentMode(dto.paymentMode);
-    if (paymentMode) {
-      payload['paymentMode'] = paymentMode;
+    } else if (legacyServiceId) {
+      payload['serviceIds'] = [legacyServiceId];
     }
 
     const notes = trimOptionalString(dto.notes);
@@ -856,6 +858,16 @@ export class BookingService {
     }
 
     if (isWalkIn) {
+      const patientId = trimOptionalString(dto.patientId);
+      if (patientId) {
+        payload['patientId'] = patientId;
+      }
+
+      const paymentMode = normalizePaymentMode(dto.paymentMode);
+      if (paymentMode) {
+        payload['paymentMode'] = paymentMode;
+      }
+
       payload['isWalkIn'] = true;
     }
 
@@ -900,38 +912,18 @@ export class BookingService {
       return undefined;
     }
 
-    const services = normalizeBookingServices(payload['services']);
-    const serviceNames = normalizeStringArray(payload['serviceNames']);
-    const firstService = services[0];
-    const firstServiceName =
-      trimOptionalString(payload['serviceName']) ?? serviceNames[0] ?? firstService?.name;
-
     return {
       bookingId,
       paymentId,
       patientName: trimOptionalString(payload['patientName']) ?? 'Patient',
-      doctorId: trimOptionalString(payload['doctorId']) ?? '',
       doctorName: trimOptionalString(payload['doctorName']) ?? 'Doctor',
-      serviceId: trimOptionalString(payload['serviceId']) ?? firstService?.id ?? '',
-      serviceName: firstServiceName,
-      serviceNames:
-        serviceNames.length > 0
-          ? serviceNames
-          : firstServiceName
-            ? [firstServiceName]
-            : services.map((service) => service.name).filter((name): name is string => Boolean(name)),
-      services,
+      services: normalizeStringArray(payload['services']),
       appointmentDate: trimOptionalString(payload['appointmentDate']) ?? '',
       slotStartTime: trimOptionalString(payload['slotStartTime']) ?? '',
-      slotEndTime:
-        trimOptionalString(payload['slotEndTime']) ??
-        trimOptionalString(payload['slotStartTime']) ??
-        '',
       queueNumber: normalizeNullableNumber(payload['queueNumber']),
       amountDue: normalizeNumber(payload['amountDue']),
       doctorCompletedAt: trimOptionalString(payload['doctorCompletedAt']),
       paymentStatus: normalizePaymentStatus(payload['paymentStatus']) ?? 'Unpaid',
-      paymentMode: normalizePaymentMode(payload['paymentMode']) ?? 'PayAtClinic',
       status: normalizeBookingStatus(payload['status']) ?? 'Completed'
     };
   }
@@ -1450,8 +1442,8 @@ function normalizeBookingServices(value: unknown): BookingServiceItem[] {
       }
 
       return {
-        id: trimOptionalString(item['id']) ?? '',
-        name: trimOptionalString(item['name']) ?? '',
+        id: trimOptionalString(item['id']) ?? trimOptionalString(item['serviceId']) ?? '',
+        name: trimOptionalString(item['serviceName']) ?? trimOptionalString(item['name']) ?? '',
         description: trimOptionalString(item['description']),
         estimatedDurationMinutes: normalizeNullableNumber(item['estimatedDurationMinutes']) ?? undefined,
         price: normalizeNullableNumber(item['price']) ?? undefined

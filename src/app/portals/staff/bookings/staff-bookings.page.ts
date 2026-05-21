@@ -66,7 +66,12 @@ type StaffTodayStatus = 'all' | 'Confirmed' | 'CheckedIn' | 'Completed' | 'NoSho
                 <div class="table-time">{{ timeRangeLabel(booking) }}</div>
               </td>
               <td>{{ booking.queueNumber !== null ? '#' + booking.queueNumber : '-' }}</td>
-              <td><app-status-badge [status]="booking.status"></app-status-badge></td>
+              <td>
+                <app-status-badge
+                  [status]="booking.status"
+                  [labelOverride]="bookingStatusLabel(booking.status)"
+                ></app-status-badge>
+              </td>
               <td><app-status-badge [status]="booking.paymentStatus"></app-status-badge></td>
               <td>{{ booking.paymentMode }}</td>
               <td>
@@ -137,8 +142,8 @@ export class StaffBookingsPage implements OnInit {
 
   readonly statuses: Array<{ label: string; value: StaffTodayStatus }> = [
     { label: 'All Statuses', value: 'all' },
-    { label: 'Confirmed', value: 'Confirmed' },
-    { label: 'Checked In', value: 'CheckedIn' },
+    { label: 'Booked', value: 'Confirmed' },
+    { label: 'Confirmed', value: 'CheckedIn' },
     { label: 'Completed', value: 'Completed' },
     { label: 'No Show', value: 'NoShow' },
     { label: 'Cancelled', value: 'Cancelled' }
@@ -238,6 +243,35 @@ export class StaffBookingsPage implements OnInit {
 
   servicesLabel(booking: Booking): string {
     return servicesLabel(booking);
+  }
+
+  bookingStatusLabel(status: StaffTodayStatus | Booking['status']): string {
+    switch (status) {
+      case 'Confirmed':
+        return 'Booked';
+      case 'CheckedIn':
+        return 'Confirmed';
+      case 'Completed':
+        return 'Completed';
+      case 'Cancelled':
+        return 'Cancelled';
+      case 'NoShow':
+        return 'No Show';
+      case 'Pending':
+        return 'Pending';
+      case 'ProofSubmitted':
+        return 'Proof Submitted';
+      case 'OnHold':
+        return 'On Hold';
+      case 'Expired':
+        return 'Expired';
+      case 'Rescheduled':
+        return 'Rescheduled';
+      case 'InProgress':
+        return 'In Progress';
+      default:
+        return String(status);
+    }
   }
 
   timeRangeLabel(booking: Booking): string {

@@ -20,7 +20,9 @@ import {
 import { ClinicDashboardRealtimeService } from '../../../core/services/clinic-dashboard-realtime.service';
 import { ReceiptData } from '../../../core/models';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { ConfirmModalComponent } from '../../../shared/components/confirm-modal/confirm-modal.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
+import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 import { ReceiptModalComponent } from '../../../shared/components/receipt-modal/receipt-modal.component';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
@@ -43,6 +45,8 @@ type CollectPaymentMethod = 'Cash' | 'GCash' | 'Maya' | 'BankTransfer';
     IonToolbar,
     PageHeaderComponent,
     EmptyStateComponent,
+    StatusBadgeComponent,
+    ConfirmModalComponent,
     ReceiptModalComponent
   ],
   template: `
@@ -51,40 +55,111 @@ type CollectPaymentMethod = 'Cash' | 'GCash' | 'Maya' | 'BankTransfer';
     <div class="clinic-card" *ngIf="isLoading">Loading payment queue...</div>
 
     <ng-container *ngIf="!isLoading">
-      <section class="clinic-card" *ngIf="items.length > 0; else emptyState">
-        <table class="clinic-table">
-          <thead>
-            <tr>
-              <th>Patient</th>
-              <th>Doctor</th>
-              <th>Services</th>
-              <th>Date / Time</th>
-              <th>Queue</th>
-              <th>Amount Due</th>
-              <th>Doctor Completed</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let item of items">
-              <td>{{ item.patientName }}</td>
-              <td>{{ item.doctorName }}</td>
-              <td>{{ servicesLabel(item) }}</td>
-              <td>
-                <div>{{ item.appointmentDate | date : 'MMM d, y' }}</div>
-                <div class="table-time">{{ item.slotStartTime }}</div>
-              </td>
-              <td>{{ item.queueNumber !== null ? '#' + item.queueNumber : '-' }}</td>
-              <td>PHP {{ item.amountDue }}</td>
-              <td>{{ item.doctorCompletedAt ? (item.doctorCompletedAt | date : 'MMM d, y h:mm a') : '-' }}</td>
-              <td>
+      <section class="clinic-card payment-card" *ngIf="items.length > 0; else emptyState">
+        <div class="table-wrap">
+          <table class="clinic-table payment-table">
+            <thead>
+              <tr>
+                <th>Patient</th>
+                <th>Doctor</th>
+                <th>Services</th>
+                <th>Date / Time</th>
+                <th>Queue</th>
+                <th>Status</th>
+                <th>Payment</th>
+                <th>Amount Due</th>
+                <th>Doctor Completed</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let item of items">
+                <td class="payment-table__cell payment-table__cell--patient"><strong>{{ patientLabel(item) }}</strong></td>
+                <td class="payment-table__cell payment-table__cell--doctor">{{ doctorLabel(item) }}</td>
+                <td class="payment-table__cell payment-table__cell--services">{{ servicesLabel(item) }}</td>
+                <td class="payment-table__cell payment-table__cell--time">
+                  <div>{{ item.appointmentDate | date : 'MMM d, y' }}</div>
+                  <div class="table-time">{{ item.slotStartTime }}</div>
+                </td>
+                <td class="payment-table__cell payment-table__cell--queue data-mono">{{ queueLabel(item) }}</td>
+                <td class="payment-table__cell payment-table__cell--status">
+                  <app-status-badge [status]="item.status"></app-status-badge>
+                </td>
+                <td class="payment-table__cell payment-table__cell--payment">
+                  <app-status-badge [status]="item.paymentStatus"></app-status-badge>
+                </td>
+                <td class="payment-table__cell payment-table__cell--amount">PHP {{ item.amountDue }}</td>
+                <td class="payment-table__cell payment-table__cell--completed">
+                  {{ item.doctorCompletedAt ? (item.doctorCompletedAt | date : 'MMM d, y h:mm a') : '-' }}
+                </td>
+                <td class="payment-table__cell payment-table__cell--actions">
+                  <ng-container *ngIf="canTakePaymentAction(item); else noDesktopAction">
+                    <div class="payment-actions">
+                      <button type="button" class="btn-primary" (click)="openPaymentModal(item)">
+                        Confirm Payment
+                      </button>
+                      <button type="button" class="btn-outline" (click)="openWaiveModal(item)">
+                        Waive PF
+                      </button>
+                    </div>
+                  </ng-container>
+                  <ng-template #noDesktopAction>-</ng-template>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="payment-mobile-list">
+          <article class="payment-mobile-card" *ngFor="let item of items">
+            <div class="payment-mobile-card__header">
+              <div class="payment-mobile-card__identity">
+                <span class="payment-mobile-card__queue data-mono">{{ queueLabel(item) }}</span>
+                <strong>{{ patientLabel(item) }}</strong>
+              </div>
+
+              <div class="payment-mobile-card__badges">
+                <app-status-badge [status]="item.status"></app-status-badge>
+                <app-status-badge [status]="item.paymentStatus"></app-status-badge>
+              </div>
+            </div>
+
+            <dl class="payment-mobile-card__details">
+              <div>
+                <dt>Doctor</dt>
+                <dd>{{ doctorLabel(item) }}</dd>
+              </div>
+              <div>
+                <dt>Services</dt>
+                <dd>{{ servicesLabel(item) }}</dd>
+              </div>
+              <div>
+                <dt>Time</dt>
+                <dd class="data-mono">{{ item.appointmentDate | date : 'MMM d, y' }} {{ item.slotStartTime }}</dd>
+              </div>
+              <div>
+                <dt>Amount Due</dt>
+                <dd>PHP {{ item.amountDue }}</dd>
+              </div>
+              <div>
+                <dt>Completed</dt>
+                <dd>{{ item.doctorCompletedAt ? (item.doctorCompletedAt | date : 'MMM d, y h:mm a') : '-' }}</dd>
+              </div>
+            </dl>
+
+            <div class="payment-actions payment-mobile-card__actions">
+              <ng-container *ngIf="canTakePaymentAction(item); else noMobileAction">
                 <button type="button" class="btn-primary" (click)="openPaymentModal(item)">
-                  Collect Payment
+                  Confirm Payment
                 </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+                <button type="button" class="btn-outline" (click)="openWaiveModal(item)">
+                  Waive PF
+                </button>
+              </ng-container>
+              <ng-template #noMobileAction>-</ng-template>
+            </div>
+          </article>
+        </div>
 
         <div class="bookings-pagination" *ngIf="totalPages > 1">
           <button class="btn-ghost bookings-pagination__button" type="button" (click)="previousPage()" [disabled]="currentPage <= 1 || isLoading">
@@ -101,7 +176,7 @@ type CollectPaymentMethod = 'Cash' | 'GCash' | 'Maya' | 'BankTransfer';
     <ng-template #emptyState>
       <app-empty-state
         icon="cash-outline"
-        title="No payments waiting"
+        title="No queue items for now."
         description="Completed bookings with an unpaid professional fee will appear here."
       ></app-empty-state>
     </ng-template>
@@ -146,15 +221,28 @@ type CollectPaymentMethod = 'Cash' | 'GCash' | 'Maya' | 'BankTransfer';
             <textarea class="filter-input" rows="3" [(ngModel)]="notes"></textarea>
           </div>
 
-          <div class="wizard-actions wizard-actions--split">
-            <button type="button" class="btn-outline" (click)="closePaymentModal()">Cancel</button>
-            <button type="button" class="btn-primary" [disabled]="isSubmitting" (click)="confirmPayment()">
-              {{ isSubmitting ? 'Collecting...' : 'Confirm Payment' }}
+        <div class="wizard-actions wizard-actions--split">
+          <button type="button" class="btn-outline" (click)="closePaymentModal()">Cancel</button>
+          <button type="button" class="btn-primary" [disabled]="isSubmitting" (click)="confirmPayment()">
+              {{ isSubmitting ? 'Confirming...' : 'Confirm Payment' }}
             </button>
           </div>
         </ion-content>
       </ng-template>
     </ion-modal>
+
+    <app-confirm-modal
+      *ngIf="waiveModalOpen"
+      [isOpen]="waiveModalOpen"
+      title="Waive PF"
+      message="Waive the professional fee for this completed consultation?"
+      confirmLabel="Waive PF"
+      [isDanger]="true"
+      [requireReason]="true"
+      reasonLabel="Waive reason"
+      (confirmed)="confirmWaive($event)"
+      (cancelled)="closeWaiveModal()"
+    ></app-confirm-modal>
 
     <app-receipt-modal [isOpen]="receiptModalOpen" [data]="receiptData" (closed)="receiptModalOpen = false"></app-receipt-modal>
   `,
@@ -179,6 +267,8 @@ export class StaffPaymentsPage implements OnInit {
   referenceNumber = '';
   notes = '';
   isSubmitting = false;
+  waiveModalOpen = false;
+  waiveTarget: StaffForPaymentItem | null = null;
 
   receiptModalOpen = false;
   receiptData: ReceiptData | null = null;
@@ -218,6 +308,12 @@ export class StaffPaymentsPage implements OnInit {
   }
 
   openPaymentModal(item: StaffForPaymentItem): void {
+    if (!this.canTakePaymentAction(item)) {
+      return;
+    }
+
+    this.waiveModalOpen = false;
+    this.waiveTarget = null;
     this.selectedItem = item;
     this.paymentModalOpen = true;
     this.paymentMethod = 'Cash';
@@ -232,8 +328,26 @@ export class StaffPaymentsPage implements OnInit {
     this.isSubmitting = false;
   }
 
+  openWaiveModal(item: StaffForPaymentItem): void {
+    if (!this.canTakePaymentAction(item)) {
+      return;
+    }
+
+    this.paymentModalOpen = false;
+    this.selectedItem = null;
+    this.waiveTarget = item;
+    this.waiveModalOpen = true;
+    this.isSubmitting = false;
+  }
+
+  closeWaiveModal(): void {
+    this.waiveModalOpen = false;
+    this.waiveTarget = null;
+    this.isSubmitting = false;
+  }
+
   confirmPayment(): void {
-    if (!this.selectedItem || this.isSubmitting) {
+    if (!this.selectedItem || !this.canTakePaymentAction(this.selectedItem) || this.isSubmitting) {
       return;
     }
 
@@ -244,10 +358,18 @@ export class StaffPaymentsPage implements OnInit {
 
     const payload: ConfirmPaymentRequest = {
       paymentMethod: this.paymentMethod,
-      amountReceived: this.amountReceived,
-      referenceNumber: this.referenceNumber.trim(),
-      notes: this.notes.trim()
+      amountReceived: this.amountReceived
     };
+
+    const referenceNumber = this.referenceNumber.trim();
+    if (referenceNumber) {
+      payload.referenceNumber = referenceNumber;
+    }
+
+    const notes = this.notes.trim();
+    if (notes) {
+      payload.notes = notes;
+    }
 
     this.isSubmitting = true;
     this.bookingService.confirmPayment(this.selectedItem.paymentId, payload).subscribe({
@@ -265,17 +387,69 @@ export class StaffPaymentsPage implements OnInit {
     });
   }
 
+  confirmWaive(reason?: string): void {
+    if (!this.waiveTarget || !this.canTakePaymentAction(this.waiveTarget) || this.isSubmitting) {
+      return;
+    }
+
+    const waiveReason = (reason ?? '').trim();
+    if (waiveReason.length < 10) {
+      void this.presentToast('Please provide a waiver reason.', 'warning');
+      return;
+    }
+
+    this.isSubmitting = true;
+    this.bookingService.waivePayment$(this.waiveTarget.bookingId, waiveReason).subscribe({
+      next: async () => {
+        this.closeWaiveModal();
+        this.loadQueue();
+        await this.presentToast('PF waived.', 'success');
+      },
+      error: async (error) => {
+        this.isSubmitting = false;
+        await this.presentToast(extractApiErrorMessage(error, 'Failed to waive PF.'), 'danger');
+      }
+    });
+  }
+
+  canTakePaymentAction(item: StaffForPaymentItem): boolean {
+    return item.status === 'Completed' && item.paymentStatus === 'Unpaid' && Boolean(item.paymentId);
+  }
+
+  patientLabel(item: StaffForPaymentItem): string {
+    return firstText(item.patientName, personLabel(getNestedValue(item, 'patient'))) || 'Unknown Patient';
+  }
+
+  doctorLabel(item: StaffForPaymentItem): string {
+    return firstText(item.doctorName, personLabel(getNestedValue(item, 'doctor'))) || 'Doctor not assigned';
+  }
+
   servicesLabel(item: StaffForPaymentItem): string {
-    if (item.serviceNames.length > 0) {
-      return item.serviceNames.join(', ');
+    const fromServices = normalizeTextArray(item.services);
+    if (fromServices.length > 0) {
+      return fromServices.join(', ');
     }
 
-    const names = item.services.map((service) => service.name).filter((name) => name.trim().length > 0);
-    if (names.length > 0) {
-      return names.join(', ');
+    const fromServiceNames = normalizeTextArray(getNestedValue(item, 'serviceNames'));
+    if (fromServiceNames.length > 0) {
+      return fromServiceNames.join(', ');
     }
 
-    return item.serviceName ?? 'Service';
+    const serviceName = trimText(getNestedValue(item, 'serviceName'));
+    if (serviceName) {
+      return serviceName;
+    }
+
+    const nestedServiceName = nestedText(getNestedValue(item, 'service'), ['name']);
+    if (nestedServiceName) {
+      return nestedServiceName;
+    }
+
+    return 'No service listed';
+  }
+
+  queueLabel(item: StaffForPaymentItem): string {
+    return item.queueNumber !== null ? `#${item.queueNumber}` : '-';
   }
 
   private loadQueue(): void {
@@ -324,4 +498,69 @@ function extractApiErrorMessage(error: unknown, fallback: string): string {
   }
 
   return fallback;
+}
+
+function trimText(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function firstText(...values: unknown[]): string {
+  for (const value of values) {
+    const text = trimText(value);
+    if (text) {
+      return text;
+    }
+  }
+
+  return '';
+}
+
+function personLabel(value: unknown): string {
+  if (!isRecord(value)) {
+    return '';
+  }
+
+  const direct = trimText(value['fullName']) || trimText(value['name']);
+  if (direct) {
+    return direct;
+  }
+
+  const firstName = trimText(value['firstName']);
+  const middleName = trimText(value['middleName']);
+  const lastName = trimText(value['lastName']);
+  const parts = [firstName, middleName, lastName].filter((part) => part.length > 0);
+  return parts.join(' ').trim();
+}
+
+function nestedText(value: unknown, keys: string[]): string {
+  if (!isRecord(value)) {
+    return '';
+  }
+
+  for (const key of keys) {
+    const text = trimText(value[key]);
+    if (text) {
+      return text;
+    }
+  }
+
+  return '';
+}
+
+function normalizeTextArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.map((item) => trimText(item)).filter((item): item is string => Boolean(item))
+    : [];
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function getNestedValue(record: unknown, key: string): unknown {
+  if (!isRecord(record)) {
+    return undefined;
+  }
+
+  return record[key];
 }

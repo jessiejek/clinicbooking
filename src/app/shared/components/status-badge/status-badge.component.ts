@@ -13,6 +13,7 @@ import { BookingStatus, DoctorStatus, PaymentStatus } from '../../../core/models
 })
 export class StatusBadgeComponent {
   @Input({ required: true }) status!: BookingStatus | PaymentStatus | DoctorStatus | string;
+  @Input() labelOverride?: string;
 
   get cssClass(): string {
     const raw = String(this.status);
@@ -26,6 +27,11 @@ export class StatusBadgeComponent {
   }
 
   get displayLabel(): string {
+    const override = typeof this.labelOverride === 'string' ? this.labelOverride.trim() : '';
+    if (override) {
+      return override;
+    }
+
     const raw = String(this.status);
     const map: Record<string, string> = {
       ProofSubmitted: 'Proof Submitted',
@@ -35,6 +41,7 @@ export class StatusBadgeComponent {
       CheckedIn: 'Checked In',
       InClinic: 'In Clinic',
       ForPayment: 'For Payment',
+      Waived: 'PF Waived',
       PFWaived: 'PF Waived',
       CompletedPaid: 'Completed / Paid'
     };

@@ -1,34 +1,36 @@
-import { NgFor, NgIf } from '@angular/common';
-import { Component, EventEmitter, Input, Output, inject } from '@angular/core';
-import { IonIcon } from '@ionic/angular/standalone';
-import { addIcons } from 'ionicons';
-import { ellipsisVertical } from 'ionicons/icons';
-import { Booking, Doctor, Patient, Service, ReceiptData } from '../../../../core/models';
-import { MockDataService } from '../../../../core/services/mock-data.service';
-import { ClinicSettingsService } from '../../../../core/services/clinic-settings.service';
-import { AuthStateService } from '../../../../core/services/auth-state.service';
+import { NgClass, NgFor, NgIf } from '@angular/common';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Booking, Doctor, Patient, Service } from '../../../../core/models';
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
 import { SkeletonComponent } from '../../../../shared/components/skeleton/skeleton.component';
 import { StatusBadgeComponent } from '../../../../shared/components/status-badge/status-badge.component';
-import { ReceiptModalComponent } from '../../../../shared/components/receipt-modal/receipt-modal.component';
+
+type QueueActionType = 'check-in' | 'undo-check-in' | 'collect-payment';
+
+interface QueueActionConfig {
+  action: QueueActionType;
+  label: string;
+  buttonClass: 'btn-primary' | 'btn-outline';
+}
 
 @Component({
   selector: 'app-queue-table',
   standalone: true,
-  imports: [NgFor, NgIf, IonIcon, EmptyStateComponent, SkeletonComponent, StatusBadgeComponent, ReceiptModalComponent],
+  imports: [NgClass, NgFor, NgIf, EmptyStateComponent, SkeletonComponent, StatusBadgeComponent],
   template: `
     <div class="queue-table-shell">
       <div class="table-wrap" *ngIf="!isLoading && sortedBookings.length > 0">
         <table class="clinic-table queue-table">
           <thead>
             <tr>
-              <th>Queue#</th>
-              <th>Patient Name</th>
+              <th>Patient</th>
               <th>Doctor</th>
-              <th>Service</th>
+              <th>Services</th>
               <th>Time</th>
+              <th>Queue #</th>
               <th>Status</th>
               <th>Payment</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -36,73 +38,41 @@ import { ReceiptModalComponent } from '../../../../shared/components/receipt-mod
               *ngFor="let booking of sortedBookings"
               tabindex="0"
               role="button"
-              [attr.aria-label]="'Open booking ' + (booking.queueNumber ?? booking.id) + ' for ' + patientName(booking.patientId)"
+              [attr.aria-label]="'Open booking for ' + patientLabel(booking)"
               (click)="rowClicked.emit(booking.id)"
               (keydown.enter)="rowClicked.emit(booking.id)"
             >
-              <td class="data-mono">{{ booking.queueNumber ?? '-' }}</td>
-              <td>{{ patientName(booking.patientId) }}</td>
-              <td>{{ doctorName(booking.doctorId) }}</td>
-              <td>{{ serviceName(booking.serviceId) }}</td>
-              <td class="data-mono">{{ booking.slotStartTime }} - {{ booking.slotEndTime }}</td>
-              <td>
-                <div class="badge-with-action">
-                  <app-status-badge [status]="booking.status"></app-status-badge>
-                  <div class="queue-actions">
-                    <button
-                      type="button"
-                      class="btn-icon queue-actions__toggle"
-                      (click)="toggleStatusMenu(booking.id, $event)"
-                      aria-label="Open status actions"
-                    >
-                      <ion-icon name="ellipsis-vertical"></ion-icon>
-                    </button>
-                    <div class="queue-actions__menu queue-actions__menu--left" *ngIf="activeStatusMenuBookingId === booking.id">
-                      <button *ngIf="booking.status !== 'Completed'" type="button" class="queue-actions__item" (click)="takeAction('confirm', booking.id, $event)">Confirm</button>
-                      <button *ngIf="booking.status !== 'Completed'" type="button" class="queue-actions__item" (click)="takeAction('reject', booking.id, $event)">Reject</button>
-                      <button *ngIf="booking.status !== 'Completed'" type="button" class="queue-actions__item" (click)="takeAction('complete', booking.id, $event)">Mark Complete</button>
-                      <button *ngIf="booking.status !== 'Completed'" type="button" class="queue-actions__item" (click)="takeAction('noshow', booking.id, $event)">Mark No Show</button>
-                      <button *ngIf="booking.status === 'Completed'" type="button" class="queue-actions__item" (click)="openReceipt(booking, $event)">Print Receipt</button>
-                    </div>
-                  </div>
-                </div>
+              <td class="queue-table__cell queue-table__cell--patient">
+                <strong>{{ patientLabel(booking) }}</strong>
               </td>
-              <td>
-                <div class="badge-with-action">
-                  <app-status-badge [status]="booking.paymentStatus"></app-status-badge>
-                  <div class="queue-actions">
+              <td class="queue-table__cell queue-table__cell--doctor">{{ doctorLabel(booking) }}</td>
+              <td class="queue-table__cell queue-table__cell--services">{{ serviceLabel(booking) }}</td>
+              <td class="queue-table__cell queue-table__cell--time data-mono">{{ timeLabel(booking) }}</td>
+              <td class="queue-table__cell queue-table__cell--queue data-mono">{{ queueLabel(booking) }}</td>
+              <td class="queue-table__cell queue-table__cell--status">
+                <app-status-badge
+                  [status]="booking.status"
+                  [labelOverride]="queueStatusLabel(booking.status)"
+                ></app-status-badge>
+              </td>
+              <td class="queue-table__cell queue-table__cell--payment">
+                <app-status-badge [status]="booking.paymentStatus"></app-status-badge>
+              </td>
+              <td class="queue-table__cell queue-table__cell--actions">
+                <div class="action-row">
+                  <ng-container *ngIf="actionConfig(booking) as action; else noDesktopAction">
                     <button
-                      *ngIf="hasPaymentActions(booking)"
                       type="button"
-                      class="btn-icon queue-actions__toggle"
-                      (click)="togglePaymentMenu(booking.id, $event)"
-                      aria-label="Open payment actions"
+                      class="queue-action-button"
+                      [ngClass]="action.buttonClass"
+                      (click)="takeAction(action.action, booking.id, $event)"
                     >
-                      <ion-icon name="ellipsis-vertical"></ion-icon>
+                      {{ action.label }}
                     </button>
-                    <div class="queue-actions__menu queue-actions__menu--left" *ngIf="activePaymentMenuBookingId === booking.id">
-                      <button
-                        *ngIf="canMarkAsPaid(booking)"
-                        type="button"
-                        class="queue-actions__item"
-                        (click)="takeAction('paid', booking.id, $event)"
-                      >
-                        Mark as Paid
-                      </button>
-                      <button
-                        *ngIf="canWaivePf(booking)"
-                        type="button"
-                        class="queue-actions__item"
-                        (click)="takeAction('waive-pf', booking.id, $event)"
-                      >
-                        Waive PF
-                      </button>
-                      <ng-container *ngIf="showWaiveRefund">
-                        <button type="button" class="queue-actions__item" (click)="takeAction('waive', booking.id, $event)">Waive</button>
-                        <button type="button" class="queue-actions__item" (click)="takeAction('refund', booking.id, $event)">Refund</button>
-                      </ng-container>
-                    </div>
-                  </div>
+                  </ng-container>
+                  <ng-template #noDesktopAction>
+                    <span class="queue-actions__empty">-</span>
+                  </ng-template>
                 </div>
               </td>
             </tr>
@@ -116,79 +86,55 @@ import { ReceiptModalComponent } from '../../../../shared/components/receipt-mod
           *ngFor="let booking of sortedBookings"
           tabindex="0"
           role="button"
-          [attr.aria-label]="'Open booking ' + (booking.queueNumber ?? booking.id) + ' for ' + patientName(booking.patientId)"
+          [attr.aria-label]="'Open booking for ' + patientLabel(booking)"
           (click)="rowClicked.emit(booking.id)"
           (keydown.enter)="rowClicked.emit(booking.id)"
         >
           <div class="queue-mobile-card__header">
             <div class="queue-mobile-card__identity">
-              <span class="queue-mobile-card__queue data-mono">#{{ booking.queueNumber ?? '-' }}</span>
-              <strong>{{ patientName(booking.patientId) }}</strong>
-            </div>
-          </div>
-
-          <div class="queue-mobile-card__badges">
-            <div class="badge-with-action">
-              <app-status-badge [status]="booking.status"></app-status-badge>
-              <div class="queue-actions">
-                <button
-                  type="button"
-                  class="btn-icon queue-actions__toggle"
-                  (click)="toggleStatusMenu(booking.id, $event)"
-                  aria-label="Open status actions"
-                >
-                  <ion-icon name="ellipsis-vertical"></ion-icon>
-                </button>
-                <div class="queue-actions__menu queue-actions__menu--left" *ngIf="activeStatusMenuBookingId === booking.id">
-                  <button *ngIf="booking.status !== 'Completed'" type="button" class="queue-actions__item" (click)="takeAction('confirm', booking.id, $event)">Confirm</button>
-                  <button *ngIf="booking.status !== 'Completed'" type="button" class="queue-actions__item" (click)="takeAction('reject', booking.id, $event)">Reject</button>
-                  <button *ngIf="booking.status !== 'Completed'" type="button" class="queue-actions__item" (click)="takeAction('complete', booking.id, $event)">Mark Complete</button>
-                  <button *ngIf="booking.status !== 'Completed'" type="button" class="queue-actions__item" (click)="takeAction('noshow', booking.id, $event)">Mark No Show</button>
-                  <button *ngIf="booking.status === 'Completed'" type="button" class="queue-actions__item" (click)="openReceipt(booking, $event)">Print Receipt</button>
-                </div>
-              </div>
+              <span class="queue-mobile-card__queue data-mono">{{ queueLabel(booking) }}</span>
+              <strong>{{ patientLabel(booking) }}</strong>
             </div>
 
-            <div class="badge-with-action">
+            <div class="queue-mobile-card__badges">
+              <app-status-badge
+                [status]="booking.status"
+                [labelOverride]="queueStatusLabel(booking.status)"
+              ></app-status-badge>
               <app-status-badge [status]="booking.paymentStatus"></app-status-badge>
-              <div class="queue-actions">
-                <button
-                  *ngIf="hasPaymentActions(booking)"
-                  type="button"
-                  class="btn-icon queue-actions__toggle"
-                  (click)="togglePaymentMenu(booking.id, $event)"
-                  aria-label="Open payment actions"
-                >
-                  <ion-icon name="ellipsis-vertical"></ion-icon>
-                </button>
-                <div class="queue-actions__menu queue-actions__menu--left" *ngIf="activePaymentMenuBookingId === booking.id">
-                  <button *ngIf="canMarkAsPaid(booking)" type="button" class="queue-actions__item" (click)="takeAction('paid', booking.id, $event)">Mark as Paid</button>
-                  <button *ngIf="canWaivePf(booking)" type="button" class="queue-actions__item" (click)="takeAction('waive-pf', booking.id, $event)">Waive PF</button>
-                  <ng-container *ngIf="showWaiveRefund">
-                    <button type="button" class="queue-actions__item" (click)="takeAction('waive', booking.id, $event)">Waive</button>
-                    <button type="button" class="queue-actions__item" (click)="takeAction('refund', booking.id, $event)">Refund</button>
-                  </ng-container>
-                </div>
-              </div>
             </div>
           </div>
-
-
 
           <dl class="queue-mobile-card__details">
             <div>
               <dt>Doctor</dt>
-              <dd>{{ doctorName(booking.doctorId) }}</dd>
+              <dd>{{ doctorLabel(booking) }}</dd>
             </div>
             <div>
-              <dt>Service</dt>
-              <dd>{{ serviceName(booking.serviceId) }}</dd>
+              <dt>Services</dt>
+              <dd>{{ serviceLabel(booking) }}</dd>
             </div>
             <div>
               <dt>Time</dt>
-              <dd class="data-mono">{{ booking.slotStartTime }} - {{ booking.slotEndTime }}</dd>
+              <dd class="data-mono">{{ timeLabel(booking) }}</dd>
             </div>
           </dl>
+
+          <div class="action-row queue-mobile-card__actions">
+            <ng-container *ngIf="actionConfig(booking) as action; else noMobileAction">
+              <button
+                type="button"
+                class="queue-action-button"
+                [ngClass]="action.buttonClass"
+                (click)="takeAction(action.action, booking.id, $event)"
+              >
+                {{ action.label }}
+              </button>
+            </ng-container>
+            <ng-template #noMobileAction>
+              <span class="queue-actions__empty">-</span>
+            </ng-template>
+          </div>
         </article>
       </div>
 
@@ -197,41 +143,22 @@ import { ReceiptModalComponent } from '../../../../shared/components/receipt-mod
       <app-empty-state
         *ngIf="!isLoading && sortedBookings.length === 0"
         icon="calendar-outline"
-        title="No appointments scheduled for today."
-        description="The queue will appear here when bookings are created."
+        title="No queue items for now."
+        description="Booked and confirmed bookings will appear here during the day."
       ></app-empty-state>
-
-      <app-receipt-modal
-        [isOpen]="receiptModalOpen"
-        [data]="receiptData"
-        (closed)="receiptModalOpen = false"
-      ></app-receipt-modal>
     </div>
   `,
   styleUrl: './queue-table.component.scss'
 })
 export class QueueTableComponent {
-  private readonly mockData = inject(MockDataService);
-  private readonly clinicSettings = inject(ClinicSettingsService);
-  private readonly authState = inject(AuthStateService);
-
   @Input() bookings: Booking[] = [];
   @Input() doctors: Doctor[] = [];
   @Input() patients: Patient[] = [];
+  @Input() services: Service[] = [];
   @Input() isLoading = false;
-  @Input() showWaiveRefund = false;
 
   @Output() actionTaken = new EventEmitter<{ action: string; bookingId: string; reason?: string }>();
   @Output() rowClicked = new EventEmitter<string>();
-
-  activeStatusMenuBookingId: string | null = null;
-  activePaymentMenuBookingId: string | null = null;
-  receiptModalOpen = false;
-  receiptData: ReceiptData | null = null;
-
-  constructor() {
-    addIcons({ ellipsisVertical });
-  }
 
   get sortedBookings(): Booking[] {
     return [...this.bookings].sort((a, b) => {
@@ -244,96 +171,209 @@ export class QueueTableComponent {
     });
   }
 
-  patientName(patientId: string): string {
-    const patient = this.patients.find((item) => item.id === patientId);
-    return patient ? `${patient.firstName} ${patient.lastName}` : 'Unknown Patient';
+  patientLabel(booking: Booking): string {
+    const patient = this.patients.find((item) => item.id === booking.patientId);
+    return firstText(
+      booking.patientName,
+      personLabel(patient),
+      personLabel(getNestedValue(booking, 'patient'))
+    ) || 'Unknown Patient';
   }
 
-  doctorName(doctorId: string): string {
-    return this.doctors.find((item) => item.id === doctorId)?.fullName ?? 'Unknown Doctor';
+  doctorLabel(booking: Booking): string {
+    const doctor = this.doctors.find((item) => item.id === booking.doctorId);
+    return firstText(
+      booking.doctorName,
+      personLabel(doctor),
+      personLabel(getNestedValue(booking, 'doctor'))
+    ) || 'Doctor not assigned';
   }
 
-  serviceName(serviceId: string): string {
-    const service = this.mockData.getServiceById(serviceId) as Service | undefined;
-    return service?.name ?? 'Unknown Service';
+  serviceLabel(booking: Booking): string {
+    const fromServices = booking.services
+      ?.map((service) => trimText(service.name))
+      .filter((name): name is string => Boolean(name)) ?? [];
+    if (fromServices.length > 0) {
+      return fromServices.join(', ');
+    }
+
+    const fromServiceNames = normalizeTextArray(booking.serviceNames);
+    if (fromServiceNames.length > 0) {
+      return fromServiceNames.join(', ');
+    }
+
+    const serviceName = trimText(booking.serviceName);
+    if (serviceName) {
+      return serviceName;
+    }
+
+    const nestedServiceName = nestedText(getNestedValue(booking, 'service'), ['name']);
+    if (nestedServiceName) {
+      return nestedServiceName;
+    }
+
+    const catalogNames = this.resolveCatalogServiceNames(booking.serviceIds ?? (booking.serviceId ? [booking.serviceId] : []));
+    if (catalogNames.length > 0) {
+      return catalogNames.join(', ');
+    }
+
+    return 'No service listed';
   }
 
-  canMarkAsPaid(booking: Booking): boolean {
-    return (
-      booking.paymentStatus === 'Unpaid' &&
-      !['Cancelled', 'NoShow', 'Expired'].includes(booking.status)
-    );
+  timeLabel(booking: Booking): string {
+    const start = trimText(booking.slotStartTime);
+    const end = trimText(booking.slotEndTime);
+
+    if (!start) {
+      return 'Time not available';
+    }
+
+    if (!end || end === start) {
+      return start;
+    }
+
+    return `${start} - ${end}`;
   }
 
-  canWaivePf(booking: Booking): boolean {
-    return this.canMarkAsPaid(booking);
+  queueLabel(booking: Booking): string {
+    return booking.queueNumber !== null ? `#${booking.queueNumber}` : '-';
   }
 
-  hasPaymentActions(booking: Booking): boolean {
-    return this.canMarkAsPaid(booking) || this.canWaivePf(booking) || this.showWaiveRefund;
+  queueStatusLabel(status: string): string {
+    switch (status) {
+      case 'Confirmed':
+        return 'BOOKED';
+      case 'CheckedIn':
+        return 'CONFIRMED';
+      case 'Completed':
+        return 'COMPLETED';
+      case 'Cancelled':
+        return 'CANCELLED';
+      case 'NoShow':
+        return 'NO SHOW';
+      case 'Pending':
+        return 'PENDING';
+      case 'ProofSubmitted':
+        return 'PROOF SUBMITTED';
+      case 'OnHold':
+        return 'ON HOLD';
+      case 'Expired':
+        return 'EXPIRED';
+      case 'Rescheduled':
+        return 'RESCHEDULED';
+      case 'InProgress':
+        return 'IN PROGRESS';
+      default:
+        return status;
+    }
   }
 
-  toggleStatusMenu(bookingId: string, event: Event): void {
+  actionConfig(booking: Booking): QueueActionConfig | null {
+    if (booking.status === 'Confirmed') {
+      return {
+        action: 'check-in',
+        label: 'Check In',
+        buttonClass: 'btn-primary'
+      };
+    }
+
+    if (booking.status === 'CheckedIn') {
+      return {
+        action: 'undo-check-in',
+        label: 'Undo Check-In',
+        buttonClass: 'btn-outline'
+      };
+    }
+
+    if (booking.status === 'Completed' && booking.paymentStatus === 'Unpaid') {
+      return {
+        action: 'collect-payment',
+        label: 'Collect Payment',
+        buttonClass: 'btn-primary'
+      };
+    }
+
+    return null;
+  }
+
+  takeAction(action: QueueActionType, bookingId: string, event: Event): void {
     event.stopPropagation();
-    this.activeStatusMenuBookingId = this.activeStatusMenuBookingId === bookingId ? null : bookingId;
-    this.activePaymentMenuBookingId = null;
-  }
-
-  togglePaymentMenu(bookingId: string, event: Event): void {
-    event.stopPropagation();
-    this.activePaymentMenuBookingId = this.activePaymentMenuBookingId === bookingId ? null : bookingId;
-    this.activeStatusMenuBookingId = null;
-  }
-
-  takeAction(action: string, bookingId: string, event: Event): void {
-    event.stopPropagation();
-    this.activeStatusMenuBookingId = null;
-    this.activePaymentMenuBookingId = null;
     this.actionTaken.emit({ action, bookingId });
   }
 
-  openReceipt(booking: Booking, event: Event): void {
-    event.stopPropagation();
-    this.activeStatusMenuBookingId = null;
-    this.activePaymentMenuBookingId = null;
-    this.receiptData = this.buildReceiptData(booking);
-    this.receiptModalOpen = true;
+  private resolveCatalogServiceNames(serviceIds: string[]): string[] {
+    if (serviceIds.length === 0 || this.services.length === 0) {
+      return [];
+    }
+
+    return serviceIds
+      .map((serviceId) => this.services.find((service) => service.id === serviceId)?.name ?? '')
+      .map((name) => name.trim())
+      .filter((name): name is string => Boolean(name));
+  }
+}
+
+function trimText(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function firstText(...values: unknown[]): string {
+  for (const value of values) {
+    const text = trimText(value);
+    if (text) {
+      return text;
+    }
   }
 
-  private buildReceiptData(booking: Booking): ReceiptData {
-    const patient = this.patients.find((p) => p.id === booking.patientId) ?? this.mockData.getPatientById(booking.patientId);
-    const doctor = this.doctors.find((d) => d.id === booking.doctorId) ?? this.mockData.getDoctorById(booking.doctorId);
-    const service = this.mockData.getServiceById(booking.serviceId);
-    const settings = this.clinicSettings.load();
-    const currentUser = this.authState.snapshot;
+  return '';
+}
 
-    return {
-      orNumber: booking.orNumber ?? '—',
-      clinicName: settings.clinicName,
-      clinicAddress: settings.address ?? '',
-      clinicPhone: settings.phone ?? '',
-      clinicEmail: settings.email ?? '',
-      patientName: patient ? `${patient.firstName} ${patient.lastName}` : '—',
-      patientCode: patient?.patientCode ?? '—',
-      doctorName: doctor?.fullName ?? '—',
-      serviceName: service?.name ?? '—',
-      appointmentDate: new Date(booking.appointmentDate).toLocaleDateString('en-PH', {
-        year: 'numeric', month: 'long', day: 'numeric'
-      }),
-      slotTime: booking.slotStartTime,
-      queueNumber: booking.queueNumber,
-      consultationFee: booking.consultationFeeSnapshot,
-      serviceFee: booking.serviceFeeSnapshot,
-      totalFee: booking.totalFee,
-      paymentMethod: booking.paymentMode === 'PayAtClinic' ? 'Pay at Clinic' : 'Online',
-      paymentStatus: booking.paymentStatus,
-      waivedReason: undefined,
-      isWalkIn: booking.isWalkIn,
-      printedBy: currentUser?.fullName ?? 'System',
-      printedAt: new Date().toLocaleDateString('en-PH', {
-        year: 'numeric', month: 'long', day: 'numeric',
-        hour: '2-digit', minute: '2-digit'
-      })
-    };
+function personLabel(value: unknown): string {
+  if (!isRecord(value)) {
+    return '';
   }
+
+  const direct = trimText(value['fullName']) || trimText(value['name']);
+  if (direct) {
+    return direct;
+  }
+
+  const firstName = trimText(value['firstName']);
+  const middleName = trimText(value['middleName']);
+  const lastName = trimText(value['lastName']);
+  const parts = [firstName, middleName, lastName].filter((part) => part.length > 0);
+  return parts.join(' ').trim();
+}
+
+function normalizeTextArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.map((item) => trimText(item)).filter((item): item is string => Boolean(item))
+    : [];
+}
+
+function nestedText(value: unknown, keys: string[]): string {
+  if (!isRecord(value)) {
+    return '';
+  }
+
+  for (const key of keys) {
+    const text = trimText(value[key]);
+    if (text) {
+      return text;
+    }
+  }
+
+  return '';
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function getNestedValue(record: unknown, key: string): unknown {
+  if (!isRecord(record)) {
+    return undefined;
+  }
+
+  return record[key];
 }

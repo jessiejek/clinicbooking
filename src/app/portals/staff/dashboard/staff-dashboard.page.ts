@@ -4,7 +4,7 @@ import { Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { IonIcon } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { alertCircleOutline } from 'ionicons/icons';
+import { cashOutline } from 'ionicons/icons';
 import { Booking, Doctor, Patient } from '../../../core/models';
 import { BookingService } from '../../../core/services/booking.service';
 import { ClinicDashboardRealtimeService } from '../../../core/services/clinic-dashboard-realtime.service';
@@ -32,9 +32,9 @@ import { QueueTableComponent } from '../components/queue-table/queue-table.compo
         </article>
 
         <article class="stat-card stat-card--red clinic-card">
-          <p class="stat-card__label">Pending Verifications</p>
-          <div class="stat-card__value">{{ pendingVerificationCount }}</div>
-          <span class="stat-card__badge" *ngIf="pendingVerificationCount > 0">Action Required</span>
+          <p class="stat-card__label">Ready for Payment</p>
+          <div class="stat-card__value">{{ completedUnpaidCount }}</div>
+          <span class="stat-card__badge" *ngIf="completedUnpaidCount > 0">Collect Now</span>
         </article>
 
         <article class="stat-card stat-card--blue clinic-card">
@@ -51,13 +51,13 @@ import { QueueTableComponent } from '../components/queue-table/queue-table.compo
       <div
         class="banner banner--danger"
         style="cursor: pointer"
-        *ngIf="pendingVerificationCount > 0"
-        (click)="goToProofSubmitted()"
+        *ngIf="completedUnpaidCount > 0"
+        (click)="goToPaymentQueue()"
       >
-        <ion-icon name="alert-circle-outline"></ion-icon>
+        <ion-icon name="cash-outline"></ion-icon>
         <span>
-          {{ pendingVerificationCount }} booking(s) require payment verification.
-          <strong>Review now -&gt;</strong>
+          {{ completedUnpaidCount }} completed consultation(s) are ready for payment collection.
+          <strong>Go to Payment Queue -&gt;</strong>
         </span>
       </div>
 
@@ -68,7 +68,6 @@ import { QueueTableComponent } from '../components/queue-table/queue-table.compo
           [doctors]="doctors"
           [patients]="patients"
           [isLoading]="isLoading"
-          [showWaiveRefund]="false"
           (rowClicked)="openBooking($event)"
           (actionTaken)="onQueueAction($event)"
         ></app-queue-table>
@@ -88,7 +87,6 @@ export class StaffDashboardPage implements OnInit {
   todaysBookings: Booking[] = [];
   doctors: Doctor[] = [];
   patients: Patient[] = [];
-  pendingVerificationCount = 0;
   bookingsLoading = false;
   doctorsLoading = false;
   patientsLoading = false;
@@ -106,11 +104,17 @@ export class StaffDashboardPage implements OnInit {
   }
 
   get confirmedTodayCount(): number {
-    return this.todaysBookings.filter((booking) => booking.status === 'Confirmed').length;
+    return this.todaysBookings.filter((booking) => booking.status === 'CheckedIn').length;
+  }
+
+  get completedUnpaidCount(): number {
+    return this.todaysBookings.filter(
+      (booking) => booking.status === 'Completed' && booking.paymentStatus === 'Unpaid'
+    ).length;
   }
 
   constructor() {
-    addIcons({ alertCircleOutline });
+    addIcons({ cashOutline });
   }
 
   ngOnInit(): void {
@@ -118,12 +122,6 @@ export class StaffDashboardPage implements OnInit {
       .getTodaysBookings()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((bookings) => (this.todaysBookings = bookings));
-    this.bookingService
-      .getPendingVerifications()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((bookings) => {
-      this.pendingVerificationCount = bookings.length;
-    });
     this.doctorState
       .getDoctors()
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -162,8 +160,8 @@ export class StaffDashboardPage implements OnInit {
       });
   }
 
-  goToProofSubmitted(): void {
-    void this.router.navigate(['/staff/bookings'], { queryParams: { status: 'ProofSubmitted' } });
+  goToPaymentQueue(): void {
+    void this.router.navigate(['/staff/payments']);
   }
 
   openBooking(bookingId: string): void {
@@ -171,32 +169,20 @@ export class StaffDashboardPage implements OnInit {
   }
 
   onQueueAction(event: { action: string; bookingId: string }): void {
-    // Booking lifecycle actions mirror the demo clinic workflow used by admin/staff queues.
     switch (event.action) {
-      case 'confirm':
-        this.bookingService.confirmBooking(event.bookingId);
+      case 'check-in':
+        this.bookingService.checkInBooking(event.bookingId).subscribe();
         break;
-      case 'reject':
-        this.bookingService.rejectBooking(event.bookingId, 'Rejected by staff.');
+      case 'undo-check-in':
+        this.bookingService.undoCheckInBooking(event.bookingId).subscribe();
         break;
-      case 'paid':
-        this.bookingService.confirmPayment(event.bookingId);
-        break;
-      case 'waive-pf':
-        this.bookingService.waivePayment(event.bookingId, 'Professional fee waived by staff.');
-        break;
-      case 'complete':
-        this.bookingService.markComplete(event.bookingId);
-        break;
-      case 'noshow':
-        this.bookingService.markNoShow(event.bookingId);
+      case 'collect-payment':
+        void this.goToPaymentQueue();
         break;
     }
   }
 
   private refreshDashboardBookings(): void {
-    // These calls refresh the shared booking cache that the dashboard subscriptions already consume.
     this.bookingService.getTodaysBookings();
-    this.bookingService.getPendingVerifications();
   }
 }
