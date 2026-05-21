@@ -18,10 +18,16 @@ import { QueueTableComponent } from '../components/queue-table/queue-table.compo
   imports: [NgFor, NgIf, IonIcon, QueueTableComponent],
   template: `
     <section class="page-shell">
-      <div class="page-shell__header">
-        <div>
+      <div class="dashboard-hero clinic-card">
+        <div class="dashboard-hero__content">
+          <p class="page-kicker">Staff portal</p>
           <h2 class="page-title">Dashboard</h2>
           <p class="page-subtitle">Track today's queue and resolve booking actions quickly.</p>
+        </div>
+        <div class="dashboard-hero__panel">
+          <span class="dashboard-hero__pill">Live queue</span>
+          <strong>{{ todaysAppointmentsCount }}</strong>
+          <span>appointments in today's list</span>
         </div>
       </div>
 
@@ -62,7 +68,16 @@ import { QueueTableComponent } from '../components/queue-table/queue-table.compo
       </div>
 
       <div class="clinic-card queue-card">
-        <div class="section-heading">Today's Queue</div>
+        <div class="queue-card__header">
+          <div>
+            <div class="section-heading">Today's Queue</div>
+            <p class="queue-card__subtitle">Booked and confirmed patients waiting for staff actions.</p>
+          </div>
+          <div class="queue-card__meta">
+            <span>{{ walkInsTodayCount }} walk-ins</span>
+            <span>{{ confirmedTodayCount }} confirmed</span>
+          </div>
+        </div>
         <app-queue-table
           [bookings]="todaysBookings"
           [doctors]="doctors"

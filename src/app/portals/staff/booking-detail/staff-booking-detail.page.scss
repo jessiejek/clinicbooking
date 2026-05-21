@@ -82,6 +82,24 @@
   justify-content: space-between;
 }
 
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  :host {
+    background: #ffffff !important;
+  }
+
+  .page-shell {
+    display: block;
+  }
+
+  app-booking-print-document {
+    display: block !important;
+  }
+}
+
 @media (max-width: 1100px) {
   .detail-grid,
   .detail-card-grid {

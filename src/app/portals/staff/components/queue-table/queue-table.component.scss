@@ -31,6 +31,16 @@
   overflow-wrap: anywhere;
 }
 
+.queue-table__cell--doctor,
+.queue-table__cell--services {
+  white-space: normal;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 .queue-table__cell--queue,
 .queue-table__cell--status,
 .queue-table__cell--payment,
@@ -39,16 +49,16 @@
 }
 
 .queue-table__cell--queue {
-  width: 92px;
+  width: 84px;
 }
 
 .queue-table__cell--status,
 .queue-table__cell--payment {
-  width: 124px;
+  width: 116px;
 }
 
 .queue-table__cell--actions {
-  width: 180px;
+  width: 156px;
   text-align: right;
 }
 
@@ -63,6 +73,7 @@
 .queue-action-button {
   min-height: 36px;
   white-space: nowrap;
+  max-width: 100%;
 }
 
 .queue-actions__empty {
@@ -157,7 +168,7 @@
   padding-top: var(--space-1);
 }
 
-@media (max-width: 720px) {
+@media (max-width: 960px) {
   .table-wrap {
     display: none;
   }

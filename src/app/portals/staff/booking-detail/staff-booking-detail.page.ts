@@ -19,7 +19,12 @@ import {
   BookingService,
   ConfirmPaymentRequest
 } from '../../../core/services/booking.service';
+import { ClinicSettingsService } from '../../../core/services/clinic-settings.service';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
+import {
+  BookingPrintDocumentComponent,
+  BookingPrintDocumentData
+} from '../../../shared/components/booking-print-document/booking-print-document.component';
 import { ConfirmModalComponent } from '../../../shared/components/confirm-modal/confirm-modal.component';
 import { ReceiptModalComponent } from '../../../shared/components/receipt-modal/receipt-modal.component';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
@@ -43,12 +48,13 @@ type CollectPaymentMethod = 'Cash' | 'GCash' | 'Maya' | 'BankTransfer';
     IonTitle,
     IonToolbar,
     AvatarComponent,
+    BookingPrintDocumentComponent,
     ConfirmModalComponent,
     StatusBadgeComponent,
     ReceiptModalComponent
   ],
   template: `
-    <section class="page-shell" *ngIf="!isLoading; else loadingTpl">
+    <section class="page-shell no-print" *ngIf="!isLoading; else loadingTpl">
       <ng-container *ngIf="booking; else missingTpl">
         <div class="page-shell__header">
           <div>
@@ -183,13 +189,13 @@ type CollectPaymentMethod = 'Cash' | 'GCash' | 'Maya' | 'BankTransfer';
                 </button>
 
                 <button
-                  *ngIf="canPrintReceipt"
+                  *ngIf="canPrintDocument"
                   class="btn-ghost"
                   type="button"
                   [disabled]="isActing"
-                  (click)="openReceipt()"
+                  (click)="printBookingDocument()"
                 >
-                  Print Receipt
+                  {{ printActionLabel }}
                 </button>
               </div>
 
@@ -220,7 +226,7 @@ type CollectPaymentMethod = 'Cash' | 'GCash' | 'Maya' | 'BankTransfer';
       </section>
     </ng-template>
 
-    <ion-modal [isOpen]="paymentModalOpen" (didDismiss)="closePaymentModal()">
+    <ion-modal class="no-print" [isOpen]="paymentModalOpen" (didDismiss)="closePaymentModal()">
       <ng-template>
         <ion-header>
           <ion-toolbar>
@@ -295,6 +301,7 @@ type CollectPaymentMethod = 'Cash' | 'GCash' | 'Maya' | 'BankTransfer';
     </ion-modal>
 
     <app-confirm-modal
+      class="no-print"
       [isOpen]="waiveModalOpen"
       title="Waive PF"
       message="Waive the professional fee for this completed consultation?"
@@ -308,15 +315,19 @@ type CollectPaymentMethod = 'Cash' | 'GCash' | 'Maya' | 'BankTransfer';
     ></app-confirm-modal>
 
     <app-receipt-modal
+      class="no-print"
       [isOpen]="receiptModalOpen"
       [data]="receiptData"
       (closed)="receiptModalOpen = false"
     ></app-receipt-modal>
+
+    <app-booking-print-document [data]="printDocumentData"></app-booking-print-document>
   `,
   styleUrl: './staff-booking-detail.page.scss'
 })
 export class StaffBookingDetailPage implements OnInit {
   private readonly bookingService = inject(BookingService);
+  private readonly clinicSettingsService = inject(ClinicSettingsService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly toastCtrl = inject(ToastController);
@@ -338,6 +349,7 @@ export class StaffBookingDetailPage implements OnInit {
 
   receiptModalOpen = false;
   receiptData: ReceiptData | null = null;
+  printDocumentData: BookingPrintDocumentData | null = null;
 
   readonly paymentMethods: CollectPaymentMethod[] = ['Cash', 'GCash', 'Maya', 'BankTransfer'];
 
@@ -448,17 +460,20 @@ export class StaffBookingDetailPage implements OnInit {
     return this.canConfirmPayment;
   }
 
-  get canPrintReceipt(): boolean {
-    return Boolean(
-      this.booking &&
-        this.booking.status === 'Completed' &&
-        this.booking.paymentStatus !== 'Unpaid' &&
-        this.booking.payment?.id
-    );
+  get canPrintDocument(): boolean {
+    return Boolean(this.booking && this.booking.status === 'Completed');
+  }
+
+  get printActionLabel(): string {
+    if (!this.booking) {
+      return 'Print';
+    }
+
+    return this.booking.paymentStatus === 'Unpaid' ? 'Print Summary' : 'Print Receipt';
   }
 
   get hasAvailableActions(): boolean {
-    return this.canCheckIn || this.canUndoCheckIn || this.canConfirmPayment || this.canWaivePf || this.canPrintReceipt;
+    return this.canCheckIn || this.canUndoCheckIn || this.canConfirmPayment || this.canWaivePf || this.canPrintDocument;
   }
 
   ngOnInit(): void {
@@ -476,6 +491,8 @@ export class StaffBookingDetailPage implements OnInit {
       .subscribe((loading) => {
         this.isLoading = loading;
       });
+
+    this.printDocumentData = null;
   }
 
   goBack(): void {
@@ -597,8 +614,9 @@ export class StaffBookingDetailPage implements OnInit {
       next: async (receipt) => {
         this.closePaymentModal();
         this.refreshBooking();
+        this.receiptData = receipt;
+        this.printDocumentData = this.buildPrintDocument(receipt);
         window.setTimeout(() => {
-          this.receiptData = receipt;
           this.receiptModalOpen = true;
         }, 0);
         await this.presentToast('Payment confirmed.', 'success');
@@ -657,23 +675,90 @@ export class StaffBookingDetailPage implements OnInit {
     });
   }
 
-  openReceipt(): void {
-    if (!this.booking?.payment?.id || this.isActing) {
+  printBookingDocument(): void {
+    if (!this.booking || this.isActing || this.booking.status !== 'Completed') {
       return;
     }
 
-    this.isActing = true;
-    this.bookingService.getReceipt(this.booking.payment.id).subscribe({
-      next: async (receipt) => {
-        this.isActing = false;
-        this.receiptData = receipt;
-        this.receiptModalOpen = true;
-      },
-      error: async (error) => {
-        this.isActing = false;
-        await this.presentToast(extractApiErrorMessage(error, 'Failed to load receipt.'), 'danger');
-      }
-    });
+    const paymentId = this.booking.payment?.id;
+    if (this.booking.paymentStatus !== 'Unpaid' && paymentId) {
+      this.isActing = true;
+      this.bookingService.getReceipt(paymentId).subscribe({
+        next: async (receipt) => {
+          this.isActing = false;
+          this.receiptData = receipt;
+          this.printDocumentData = this.buildPrintDocument(receipt);
+          window.setTimeout(() => window.print(), 0);
+        },
+        error: async (error) => {
+          this.isActing = false;
+          await this.presentToast(extractApiErrorMessage(error, 'Failed to load receipt.'), 'danger');
+        }
+      });
+      return;
+    }
+
+    this.printDocumentData = this.buildPrintDocument();
+    window.setTimeout(() => window.print(), 0);
+  }
+
+  private buildPrintDocument(receipt?: ReceiptData): BookingPrintDocumentData {
+    if (!this.booking) {
+      throw new Error('Booking is not loaded.');
+    }
+
+    const clinicSettings = this.clinicSettingsService.load();
+    const isSummary = this.booking.paymentStatus === 'Unpaid' || !receipt;
+    const kind: BookingPrintDocumentData['kind'] = receipt?.isWaived
+      ? 'waived'
+      : isSummary
+        ? 'summary'
+        : 'receipt';
+    const amountDue = this.amountDue;
+    const amountPaid = receipt?.amountPaid ?? (this.booking.paymentStatus === 'Unpaid' ? undefined : amountDue);
+
+    return {
+      kind,
+      title:
+        kind === 'summary'
+          ? 'BOOKING SUMMARY'
+          : kind === 'waived'
+            ? 'WAIVED PAYMENT SUMMARY'
+            : 'OFFICIAL RECEIPT',
+      clinicName: receipt?.clinicName || clinicSettings.clinicName || 'Dr. Grace E. Gavino Medical Clinic',
+      clinicAddress: receipt?.clinicAddress || clinicSettings.address || undefined,
+      clinicPhone: clinicSettings.phone || undefined,
+      clinicEmail: clinicSettings.email || undefined,
+      logoUrl: clinicSettings.logoUrl || undefined,
+      generatedAt: new Date().toISOString(),
+      bookingId: this.booking.id,
+      paymentId: receipt?.paymentId || this.booking.payment?.id,
+      patientName: this.patientDisplayName,
+      patientCode: this.booking.patient?.patientCode,
+      contactNumber: this.booking.patient?.contactNumber,
+      email: this.booking.patient?.email,
+      doctorName: this.doctorDisplayName,
+      services: this.serviceLabels,
+      appointmentDate: this.booking.appointmentDate,
+      slotStartTime: this.booking.slotStartTime,
+      slotEndTime: this.booking.slotEndTime,
+      queueNumber: this.booking.queueNumber,
+      bookingStatus: this.booking.status,
+      paymentStatus: this.booking.paymentStatus,
+      paymentMode: receipt?.paymentMethod || this.booking.paymentMode,
+      amountDue: isSummary ? amountDue : undefined,
+      amountPaid: isSummary ? undefined : amountPaid,
+      orNumber: receipt?.orNumber || this.booking.orNumber || undefined,
+      referenceNumber: receipt?.referenceNumber || this.booking.payment?.referenceNumber || undefined,
+      paidAt: receipt?.paidAt || this.booking.payment?.verifiedAt || undefined,
+      cashierName: receipt?.cashierName || undefined,
+      verifiedByName: receipt?.verifiedByName || undefined,
+      doctorCompletedAt: receipt?.doctorCompletedAt || this.booking.doctorCompletedAt || undefined,
+      isWaived: Boolean(receipt?.isWaived),
+      waivedReason: receipt?.waivedReason || this.booking.professionalFeeWaivedReason || undefined,
+      waivedByName: receipt?.waivedByName || undefined,
+      waivedAt: receipt?.waivedAt || this.booking.payment?.waivedAt || undefined
+    };
   }
 
   private refreshBooking(): void {
