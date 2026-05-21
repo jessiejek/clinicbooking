@@ -12,9 +12,11 @@ import {
   personOutline
 } from 'ionicons/icons';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ToastController } from '@ionic/angular/standalone';
 import { NavItem } from '../../../../core/models';
 import { AuthStateService } from '../../../../core/services/auth-state.service';
 import { ClinicSettingsService } from '../../../../core/services/clinic-settings.service';
+import { PatientDocumentsService } from '../../../../core/services/patient-documents.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { SidebarComponent } from '../../../admin/components/sidebar/sidebar.component';
 import { TopbarComponent } from '../../../admin/components/topbar/topbar.component';
@@ -48,6 +50,24 @@ import { PATIENT_NAV_ITEMS } from '../../patient.routes';
           (logout)="logout()"
         ></app-admin-topbar>
 
+        <div class="patient-quick-action">
+          <div>
+            <div class="patient-quick-action__eyebrow">Patient Documents</div>
+            <div class="patient-quick-action__title">Download all clinical records</div>
+            <div class="patient-quick-action__subtitle">
+              One PDF with completed consultations, prescriptions, and follow-up notes.
+            </div>
+          </div>
+          <button
+            type="button"
+            class="btn-primary patient-quick-action__button"
+            [disabled]="downloadingClinicalRecords"
+            (click)="downloadAllClinicalRecords()"
+          >
+            {{ downloadingClinicalRecords ? 'Preparing PDF...' : 'Download All Clinical Records' }}
+          </button>
+        </div>
+
         <main class="page-content">
           <router-outlet></router-outlet>
         </main>
@@ -66,10 +86,12 @@ import { PATIENT_NAV_ITEMS } from '../../patient.routes';
 export class PatientLayoutComponent implements OnInit {
   private readonly authState = inject(AuthStateService);
   private readonly notificationService = inject(NotificationService);
+  private readonly patientDocuments = inject(PatientDocumentsService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly clinicSettingsService = inject(ClinicSettingsService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly toastCtrl = inject(ToastController);
 
   readonly currentUser = this.authState.currentUser;
   readonly unreadCount = this.notificationService.unreadCount;
@@ -81,6 +103,7 @@ export class PatientLayoutComponent implements OnInit {
   searchPlaceholder = 'Search doctors, bookings...';
   navItems: NavItem[] = PATIENT_NAV_ITEMS;
   sidebarOpen = false;
+  downloadingClinicalRecords = false;
 
   constructor() {
     addIcons({
@@ -118,6 +141,24 @@ export class PatientLayoutComponent implements OnInit {
     this.authState.logout();
   }
 
+  downloadAllClinicalRecords(): void {
+    if (this.downloadingClinicalRecords) {
+      return;
+    }
+
+    this.downloadingClinicalRecords = true;
+    this.patientDocuments.downloadAllClinicalRecordsPdf().subscribe({
+      next: (blob) => {
+        this.saveBlob(blob, `clinical-records-${new Date().toISOString().slice(0, 10)}.pdf`);
+        this.downloadingClinicalRecords = false;
+      },
+      error: () => {
+        this.downloadingClinicalRecords = false;
+        void this.showToast('Document not available yet.');
+      }
+    });
+  }
+
   private updatePageTitle(): void {
     const route = this.getDeepestChild(this.route);
     this.pageTitle = (route.snapshot.data['title'] as string | undefined) ?? this.portalTitle;
@@ -129,5 +170,27 @@ export class PatientLayoutComponent implements OnInit {
       current = current.firstChild;
     }
     return current;
+  }
+
+  private saveBlob(blob: Blob, filename: string): void {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.rel = 'noopener';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  private async showToast(message: string): Promise<void> {
+    const toast = await this.toastCtrl.create({
+      message,
+      duration: 2200,
+      color: 'dark',
+      position: 'bottom'
+    });
+    await toast.present();
   }
 }

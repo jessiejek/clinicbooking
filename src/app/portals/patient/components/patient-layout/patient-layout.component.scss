@@ -11,6 +11,45 @@
 
 .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
 
+.patient-quick-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin: var(--space-5) var(--space-8) 0;
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(239, 246, 255, 0.98));
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+.patient-quick-action__eyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--clinic-blue-600);
+}
+
+.patient-quick-action__title {
+  margin-top: 0.25rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--clinic-slate-900);
+}
+
+.patient-quick-action__subtitle {
+  margin-top: 0.25rem;
+  font-size: 0.9rem;
+  color: var(--clinic-slate-600);
+}
+
+.patient-quick-action__button {
+  flex: none;
+  white-space: nowrap;
+}
+
 .page-content {
   flex: 1; overflow-y: auto; padding: var(--space-8); min-height: 0;
   overscroll-behavior-y: contain;
@@ -32,6 +71,15 @@
 @media (max-width: 1024px) {
   .portal-layout__sidebar { flex: none; width: 0; }
   .page-content { padding: var(--space-5); padding-bottom: env(safe-area-inset-bottom); }
+  .patient-quick-action {
+    margin: var(--space-4) var(--space-5) 0;
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .patient-quick-action__button {
+    width: 100%;
+  }
   .sidebar-overlay { display: block; pointer-events: none; }
   .sidebar-overlay.is-visible { opacity: 1; pointer-events: auto; }
 }
