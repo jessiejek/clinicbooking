@@ -60,7 +60,7 @@ export class FollowUpFormComponent implements OnChanges {
 
   readonly form = this.fb.group({
     followUpDate: [''],
-    reason: ['', Validators.required],
+    reason: [''],
     reminderEnabled: [false]
   });
 
@@ -94,14 +94,17 @@ export class FollowUpFormComponent implements OnChanges {
 
   private emitValue(): void {
     const value = this.form.getRawValue();
-    if (!value.followUpDate || !value.reason) {
+    const followUpDate = value.followUpDate ?? '';
+    const reason = value.reason ?? '';
+
+    if (!followUpDate && !reason) {
       this.followUpChange.emit(null);
       return;
     }
     this.followUpChange.emit({
       id: `fu-${Date.now()}`,
-      followUpDate: value.followUpDate,
-      reason: value.reason,
+      followUpDate,
+      reason,
       reminderEnabled: Boolean(value.reminderEnabled)
     });
   }

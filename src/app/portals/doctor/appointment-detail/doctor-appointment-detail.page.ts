@@ -6,9 +6,7 @@ import { map, switchMap } from 'rxjs/operators';
 import { Booking, Patient, Service } from '../../../core/models';
 import { AuthStateService } from '../../../core/services/auth-state.service';
 import { BookingService } from '../../../core/services/booking.service';
-import { DoctorStateService } from '../../../core/services/doctor-state.service';
 import { MockDataService } from '../../../core/services/mock-data.service';
-import { PatientStateService } from '../../../core/services/patient-state.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
@@ -89,8 +87,17 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
 
         <aside class="detail-side">
           <div class="clinic-card action-card">
-            <button type="button" class="btn-primary" (click)="startConsultation(detail.booking.id)">Start Consultation</button>
-            <button type="button" class="btn-ghost" (click)="complete(detail.booking.id)">Complete in Consultation</button>
+            <button type="button" class="btn-primary" (click)="openConsultation(detail.booking.id)">
+              {{ consultationActionLabel(detail.booking) }}
+            </button>
+            <button
+              *ngIf="detail.booking.status === 'Completed'"
+              type="button"
+              class="btn-ghost"
+              (click)="openConsultation(detail.booking.id, true)"
+            >
+              Edit / Amend Consultation
+            </button>
             <button type="button" class="btn-ghost" (click)="noShow(detail.booking.id)">Mark No Show</button>
             <button type="button" class="btn-ghost" (click)="back()">Back to appointments</button>
           </div>
@@ -122,8 +129,6 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
 export class DoctorAppointmentDetailPage implements OnInit {
   private readonly authState = inject(AuthStateService);
   private readonly bookingService = inject(BookingService);
-  private readonly doctorState = inject(DoctorStateService);
-  private readonly patientState = inject(PatientStateService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly mockData = inject(MockDataService);
@@ -132,25 +137,22 @@ export class DoctorAppointmentDetailPage implements OnInit {
     this.route.paramMap.pipe(map((paramMap) => paramMap.get('id') ?? '')),
     this.authState.currentUser$
   ]).pipe(
-    switchMap(([bookingId, user]) =>
-      bookingId && user
-        ? combineLatest([
-            this.bookingService.getBookingById$(bookingId),
-            this.doctorState.getDoctorByUserId(user.id),
-            this.patientState.getPatients()
-          ])
-        : of([undefined, undefined, []] as const)
-    ),
-    map(([booking, doctor, patients]) => {
-      if (!booking || !doctor || booking.doctorId !== doctor.id) {
-        return null;
+    switchMap(([bookingId, user]) => {
+      if (!bookingId || !user) {
+        return of(null);
       }
-      const patient = patients.find((item) => item.id === booking.patientId);
-      const service = this.mockData.getServiceById(booking.serviceId);
-      if (!patient || !service) {
-        return null;
-      }
-      return { booking, patient, service };
+
+      return this.bookingService.getBookingById$(bookingId).pipe(
+        map((booking) => {
+          if (!booking || !isOwnedByLoggedInDoctor(booking, user.id)) {
+            return null;
+          }
+
+          const patient = buildPatientFromBooking(booking);
+          const service = this.mockData.getServiceById(booking.serviceId) ?? buildFallbackService(booking);
+          return { booking, patient, service };
+        })
+      );
     })
   );
 
@@ -158,12 +160,8 @@ export class DoctorAppointmentDetailPage implements OnInit {
     // Data is preloaded by the doctor portal resolver, so the detail view only needs to stay in sync.
   }
 
-  startConsultation(bookingId: string): void {
-    void this.router.navigate(['/doctor/consultation', bookingId]);
-  }
-
-  complete(bookingId: string): void {
-    void this.router.navigate(['/doctor/consultation', bookingId]);
+  openConsultation(bookingId: string, amend = false): void {
+    void this.router.navigate(['/doctor/consultation', bookingId], amend ? { queryParams: { amend: '1' } } : undefined);
   }
 
   noShow(bookingId: string): void {
@@ -191,4 +189,65 @@ export class DoctorAppointmentDetailPage implements OnInit {
       active: index <= activeIndex
     }));
   }
+
+  consultationActionLabel(booking: Booking): string {
+    if (booking.status === 'Completed') {
+      return 'View Consultation';
+    }
+
+    if (booking.status === 'CheckedIn' || booking.status === 'InProgress') {
+      return 'Open Consultation';
+    }
+
+    return 'Appointment Ready';
+  }
+}
+
+function buildFallbackService(booking: Booking): Service {
+  return {
+    id: booking.serviceId || booking.id,
+    name: booking.serviceName || booking.serviceNames?.[0] || 'Service',
+    description: booking.serviceNames?.join(', '),
+    estimatedDurationMinutes: 0,
+    price: booking.consultationFeeSnapshot ?? 0,
+    category: 'Consultation',
+    doctorIds: booking.doctorId ? [booking.doctorId] : []
+  };
+}
+
+function isOwnedByLoggedInDoctor(
+  booking: Booking,
+  currentUserId: string
+): boolean {
+  if (!booking) {
+    return false;
+  }
+
+  if (booking.doctor?.userId && booking.doctor.userId === currentUserId) {
+    return true;
+  }
+
+  if (booking.doctorId && booking.doctor?.id && booking.doctorId === booking.doctor.id) {
+    return true;
+  }
+
+  return false;
+}
+
+function buildPatientFromBooking(booking: Booking): Patient {
+  const fullName = booking.patientName?.trim() ?? booking.patient?.fullName?.trim() ?? '';
+  const [firstName, ...rest] = fullName.split(/\s+/).filter(Boolean);
+
+  return {
+    id: booking.patientId,
+    patientCode: booking.patient?.patientCode ?? booking.patientId,
+    firstName: booking.patient?.firstName ?? firstName ?? 'Patient',
+    middleName: booking.patient?.middleName,
+    lastName: booking.patient?.lastName ?? rest.join(' '),
+    dateOfBirth: booking.patient?.dateOfBirth ?? '',
+    sex: booking.patient?.sex ?? '',
+    contactNumber: booking.patient?.contactNumber,
+    email: booking.patient?.email,
+    isGuest: Boolean(booking.patient?.isGuest)
+  };
 }

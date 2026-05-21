@@ -74,9 +74,132 @@ export interface DoctorCompleteBookingRequest {
   finalAmount?: number;
   isProfessionalFeeWaived: boolean;
   professionalFeeWaivedReason?: string;
+  doctorFeeStatus?: string | null;
+  generalNotes?: string | null;
+  vitalSigns?: {
+    systolicBp?: number | null;
+    diastolicBp?: number | null;
+    heartRate?: number | null;
+    respiratoryRate?: number | null;
+    temperature?: number | null;
+    oxygenSaturation?: number | null;
+    weight?: number | null;
+    height?: number | null;
+    bmi?: number | null;
+    painScore?: number | null;
+    takenAt?: string | null;
+  } | null;
+  soap?: {
+    subjective?: string | null;
+    objective?: string | null;
+    assessment?: string | null;
+    plan?: string | null;
+  } | null;
+  diagnoses?: Array<{
+    diagnosisText: string;
+    diagnosisCode?: string | null;
+    isPrimary: boolean;
+    notes?: string | null;
+  }>;
+  prescription?: {
+    notes?: string | null;
+    items: Array<{
+      medicationName: string;
+      strength?: string | null;
+      dosage?: string | null;
+      route?: string | null;
+      frequency?: string | null;
+      duration?: string | null;
+      quantity?: string | number | null;
+      instructions?: string | null;
+    }>;
+  } | null;
+  labOrders?: Array<{
+    notes?: string | null;
+    items: Array<{
+      testName: string;
+      testCode?: string | null;
+      instructions?: string | null;
+    }>;
+  }>;
+  followUp?: {
+    followUpDate?: string | null;
+    instructions?: string | null;
+    reason?: string | null;
+  } | null;
   soapNotes?: string;
+  diagnosis?: string;
+  followUpDate?: string;
+  followUpInstructions?: string;
+  prescriptionItems?: unknown[];
   doctorFeeNotes?: string;
   notes?: string;
+}
+
+export interface ConsultationRecordUpdateRequest {
+  generalNotes?: string | null;
+  soapNotes?: string | null;
+  doctorFeeNotes?: string | null;
+  notes?: string | null;
+  diagnosis?: string | null;
+  followUpDate?: string | null;
+  followUpInstructions?: string | null;
+  vitalSigns?: DoctorCompleteBookingRequest['vitalSigns'];
+  soap?: DoctorCompleteBookingRequest['soap'];
+  diagnoses?: NonNullable<DoctorCompleteBookingRequest['diagnoses']>;
+  prescription?: DoctorCompleteBookingRequest['prescription'];
+  labOrders?: NonNullable<DoctorCompleteBookingRequest['labOrders']>;
+  followUp?: DoctorCompleteBookingRequest['followUp'];
+  prescriptionItems?: DoctorCompleteBookingRequest['prescriptionItems'];
+}
+
+export interface ConsultationRecordResponse {
+  bookingId: string;
+  consultationId?: string | null;
+  patientId: string;
+  doctorId: string;
+  bookingStatus: BookingStatus | string;
+  generalNotes?: string | null;
+  vitalSigns?: DoctorCompleteBookingRequest['vitalSigns'];
+  soap?: DoctorCompleteBookingRequest['soap'];
+  diagnoses: Array<{
+    id?: string;
+    diagnosisText: string;
+    diagnosisCode?: string | null;
+    isPrimary: boolean;
+    notes?: string | null;
+  }>;
+  prescription?: {
+    id?: string;
+    notes?: string | null;
+    items: Array<{
+      id?: string;
+      medicationName: string;
+      strength?: string | null;
+      dosage?: string | null;
+      route?: string | null;
+      frequency?: string | null;
+      duration?: string | null;
+      quantity?: string | null;
+      instructions?: string | null;
+    }>;
+  } | null;
+  labOrders: Array<{
+    id?: string;
+    notes?: string | null;
+    items: Array<{
+      id?: string;
+      testName: string;
+      testCode?: string | null;
+      instructions?: string | null;
+    }>;
+  }>;
+  followUp?: {
+    id?: string;
+    followUpDate?: string | null;
+    instructions?: string | null;
+    reason?: string | null;
+  } | null;
 }
 
 export interface MyBookingsPageResult {
@@ -393,6 +516,35 @@ export class BookingService {
       this.apiService.patch<unknown>(`/bookings/${encodeURIComponent(id)}/doctor-complete`, dto),
       'Failed to complete booking.'
     );
+  }
+
+  fetchConsultationRecordByBookingId(bookingId: string): Observable<ConsultationRecordResponse> {
+    return defer(() => {
+      this.beginLoading();
+      return this.apiService.get<unknown>(`/bookings/${encodeURIComponent(bookingId)}/consultation-record`).pipe(
+        map((payload) => this.normalizeConsultationRecord(payload)),
+        catchError((error: unknown) =>
+          throwError(() => new Error(extractApiErrorMessage(error, 'Failed to load consultation record.')))
+        ),
+        finalize(() => this.endLoading())
+      );
+    });
+  }
+
+  updateConsultationRecord(
+    bookingId: string,
+    dto: ConsultationRecordUpdateRequest
+  ): Observable<ConsultationRecordResponse> {
+    return defer(() => {
+      this.beginLoading();
+      return this.apiService.patch<unknown>(`/bookings/${encodeURIComponent(bookingId)}/consultation-record`, dto).pipe(
+        map((payload) => this.normalizeConsultationRecord(payload)),
+        catchError((error: unknown) =>
+          throwError(() => new Error(extractApiErrorMessage(error, 'Failed to save consultation amendment.')))
+        ),
+        finalize(() => this.endLoading())
+      );
+    });
   }
 
   confirmBooking(bookingId: string): void {
@@ -1223,6 +1375,207 @@ export class BookingService {
       waivedAt: trimOptionalString(source['waivedAt']),
       serviceName: legacyServiceName,
       slotTime: trimOptionalString(source['slotTime']) ?? trimOptionalString(source['slotStartTime'])
+    };
+  }
+
+  private normalizeConsultationRecord(payload: unknown): ConsultationRecordResponse {
+    const source = isRecord(payload) ? payload : {};
+    const diagnoses = extractArray(source['diagnoses'])
+      .map((item) => this.normalizeConsultationDiagnosis(item))
+      .filter((item): item is NonNullable<typeof item> => Boolean(item));
+    const labOrders = extractArray(source['labOrders'])
+      .map((item) => this.normalizeConsultationLabOrder(item))
+      .filter((item): item is NonNullable<typeof item> => Boolean(item));
+
+    return {
+      bookingId: trimOptionalString(source['bookingId']) ?? '',
+      consultationId: trimOptionalString(source['consultationId']),
+      patientId: trimOptionalString(source['patientId']) ?? '',
+      doctorId: trimOptionalString(source['doctorId']) ?? '',
+      bookingStatus: normalizeBookingStatus(source['bookingStatus']) ?? trimOptionalString(source['bookingStatus']) ?? 'Completed',
+      generalNotes: trimOptionalString(source['generalNotes']),
+      vitalSigns: this.normalizeConsultationVitalSigns(source['vitalSigns']),
+      soap: this.normalizeConsultationSoap(source['soap']),
+      diagnoses,
+      prescription: this.normalizeConsultationPrescription(source['prescription']),
+      labOrders,
+      followUp: this.normalizeConsultationFollowUp(source['followUp'])
+    };
+  }
+
+  private normalizeConsultationVitalSigns(payload: unknown): ConsultationRecordResponse['vitalSigns'] {
+    if (!isRecord(payload)) {
+      return null;
+    }
+
+    return {
+      systolicBp: normalizeNullableNumber(payload['systolicBp']),
+      diastolicBp: normalizeNullableNumber(payload['diastolicBp']),
+      heartRate: normalizeNullableNumber(payload['heartRate']),
+      respiratoryRate: normalizeNullableNumber(payload['respiratoryRate']),
+      temperature: normalizeNullableNumber(payload['temperature']),
+      oxygenSaturation: normalizeNullableNumber(payload['oxygenSaturation']),
+      weight: normalizeNullableNumber(payload['weight']),
+      height: normalizeNullableNumber(payload['height']),
+      bmi: normalizeNullableNumber(payload['bmi']),
+      painScore: normalizeNullableNumber(payload['painScore']),
+      takenAt: trimOptionalString(payload['takenAt'])
+    };
+  }
+
+  private normalizeConsultationSoap(payload: unknown): ConsultationRecordResponse['soap'] {
+    if (!isRecord(payload)) {
+      return null;
+    }
+
+    const subjective = trimOptionalString(payload['subjective']);
+    const objective = trimOptionalString(payload['objective']);
+    const assessment = trimOptionalString(payload['assessment']);
+    const plan = trimOptionalString(payload['plan']);
+
+    if (!subjective && !objective && !assessment && !plan) {
+      return null;
+    }
+
+    return {
+      subjective,
+      objective,
+      assessment,
+      plan
+    };
+  }
+
+  private normalizeConsultationDiagnosis(payload: unknown): ConsultationRecordResponse['diagnoses'][number] | undefined {
+    if (!isRecord(payload)) {
+      return undefined;
+    }
+
+    const diagnosisText = trimOptionalString(payload['diagnosisText']);
+    if (!diagnosisText) {
+      return undefined;
+    }
+
+    return {
+      id: trimOptionalString(payload['id']),
+      diagnosisText,
+      diagnosisCode: trimOptionalString(payload['diagnosisCode']),
+      isPrimary: normalizeBoolean(payload['isPrimary'], false),
+      notes: trimOptionalString(payload['notes'])
+    };
+  }
+
+  private normalizeConsultationPrescription(payload: unknown): ConsultationRecordResponse['prescription'] {
+    if (!isRecord(payload)) {
+      return null;
+    }
+
+    const items = extractArray(payload['items'])
+      .map((item) => this.normalizeConsultationPrescriptionItem(item))
+      .filter((item): item is NonNullable<typeof item> => Boolean(item));
+
+    if (items.length === 0 && !trimOptionalString(payload['notes'])) {
+      return null;
+    }
+
+    return {
+      id: trimOptionalString(payload['id']),
+      notes: trimOptionalString(payload['notes']),
+      items
+    };
+  }
+
+  private normalizeConsultationPrescriptionItem(
+    payload: unknown
+  ): ConsultationRecordResponse['prescription'] extends infer T
+    ? T extends { items: Array<infer U> }
+      ? U
+      : never
+    : never {
+    if (!isRecord(payload)) {
+      return undefined as never;
+    }
+
+    const medicationName = trimOptionalString(payload['medicationName']);
+    if (!medicationName) {
+      return undefined as never;
+    }
+
+    return {
+      id: trimOptionalString(payload['id']),
+      medicationName,
+      strength: trimOptionalString(payload['strength']),
+      dosage: trimOptionalString(payload['dosage']),
+      route: trimOptionalString(payload['route']),
+      frequency: trimOptionalString(payload['frequency']),
+      duration: trimOptionalString(payload['duration']),
+      quantity: trimOptionalString(payload['quantity']),
+      instructions: trimOptionalString(payload['instructions'])
+    } as never;
+  }
+
+  private normalizeConsultationLabOrder(payload: unknown): ConsultationRecordResponse['labOrders'][number] | undefined {
+    if (!isRecord(payload)) {
+      return undefined;
+    }
+
+    const items = extractArray(payload['items'])
+      .map((item) => this.normalizeConsultationLabOrderItem(item))
+      .filter((item): item is NonNullable<typeof item> => Boolean(item));
+    const notes = trimOptionalString(payload['notes']);
+
+    if (items.length === 0 && !notes) {
+      return undefined;
+    }
+
+    return {
+      id: trimOptionalString(payload['id']),
+      notes,
+      items
+    };
+  }
+
+  private normalizeConsultationLabOrderItem(
+    payload: unknown
+  ): ConsultationRecordResponse['labOrders'][number] extends infer T
+    ? T extends { items: Array<infer U> }
+      ? U
+      : never
+    : never {
+    if (!isRecord(payload)) {
+      return undefined as never;
+    }
+
+    const testName = trimOptionalString(payload['testName']);
+    if (!testName) {
+      return undefined as never;
+    }
+
+    return {
+      id: trimOptionalString(payload['id']),
+      testName,
+      testCode: trimOptionalString(payload['testCode']),
+      instructions: trimOptionalString(payload['instructions'])
+    } as never;
+  }
+
+  private normalizeConsultationFollowUp(payload: unknown): ConsultationRecordResponse['followUp'] {
+    if (!isRecord(payload)) {
+      return null;
+    }
+
+    const followUpDate = trimOptionalString(payload['followUpDate']);
+    const instructions = trimOptionalString(payload['instructions']);
+    const reason = trimOptionalString(payload['reason']);
+
+    if (!followUpDate && !instructions && !reason) {
+      return null;
+    }
+
+    return {
+      id: trimOptionalString(payload['id']),
+      followUpDate,
+      instructions,
+      reason
     };
   }
 

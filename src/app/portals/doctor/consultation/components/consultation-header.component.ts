@@ -1,12 +1,14 @@
-import { DatePipe } from '@angular/common';
+import { DatePipe, NgSwitch, NgSwitchCase } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { Booking, Patient } from '../../../../core/models';
 import { PageHeaderComponent } from '../../../../shared/components/page-header/page-header.component';
 
+export type ConsultationHeaderMode = 'complete' | 'view' | 'amend';
+
 @Component({
   selector: 'app-consultation-header',
   standalone: true,
-  imports: [DatePipe, PageHeaderComponent],
+  imports: [DatePipe, NgSwitch, NgSwitchCase, PageHeaderComponent],
   template: `
     <app-page-header
       title="Consultation"
@@ -24,12 +26,31 @@ import { PageHeaderComponent } from '../../../../shared/components/page-header/p
         </p>
       </div>
       <div class="consultation-header__actions">
-        <button type="button" class="btn-ghost" [disabled]="saveDisabled" (click)="saveDraft.emit()">
-          {{ isSavingDraft ? 'Saving Draft...' : 'Save Draft' }}
-        </button>
-        <button type="button" class="btn-primary" [disabled]="completeDisabled" (click)="completeTransaction.emit()">
-          {{ isCompleting ? 'Completing...' : 'Complete Transaction' }}
-        </button>
+        <ng-container [ngSwitch]="mode">
+          <ng-container *ngSwitchCase="'complete'">
+            <button type="button" class="btn-ghost" [disabled]="saveDisabled" (click)="saveDraft.emit()">
+              {{ isSavingDraft ? 'Saving Draft...' : 'Save Draft' }}
+            </button>
+            <button type="button" class="btn-primary" [disabled]="completeDisabled" (click)="completeTransaction.emit()">
+              {{ isCompleting ? 'Completing...' : 'Complete Transaction' }}
+            </button>
+          </ng-container>
+
+          <ng-container *ngSwitchCase="'view'">
+            <button type="button" class="btn-primary" [disabled]="amendDisabled" (click)="enterAmendMode.emit()">
+              Edit / Amend Consultation
+            </button>
+          </ng-container>
+
+          <ng-container *ngSwitchCase="'amend'">
+            <button type="button" class="btn-ghost" [disabled]="amendDisabled || isSavingAmendment" (click)="cancelAmendMode.emit()">
+              Cancel
+            </button>
+            <button type="button" class="btn-primary" [disabled]="amendDisabled || isSavingAmendment" (click)="saveAmendment.emit()">
+              {{ isSavingAmendment ? 'Saving Amendment...' : 'Save Amendment' }}
+            </button>
+          </ng-container>
+        </ng-container>
       </div>
     </section>
   `,
@@ -92,13 +113,19 @@ export class ConsultationHeaderComponent {
   @Input({ required: true }) booking!: Booking;
   @Input({ required: true }) patient!: Patient;
   @Input() locked = false;
+  @Input() mode: ConsultationHeaderMode = 'complete';
   @Input() saveDisabled = false;
   @Input() completeDisabled = false;
+  @Input() amendDisabled = false;
   @Input() isSavingDraft = false;
   @Input() isCompleting = false;
+  @Input() isSavingAmendment = false;
 
   @Output() saveDraft = new EventEmitter<void>();
   @Output() completeTransaction = new EventEmitter<void>();
+  @Output() enterAmendMode = new EventEmitter<void>();
+  @Output() cancelAmendMode = new EventEmitter<void>();
+  @Output() saveAmendment = new EventEmitter<void>();
 
   get patientName(): string {
     return [this.patient.firstName, this.patient.lastName].filter(Boolean).join(' ') || 'Patient';

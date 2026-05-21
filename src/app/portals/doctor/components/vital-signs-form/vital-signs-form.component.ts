@@ -67,6 +67,10 @@ const optionalPositive = (): ValidatorFn => (control) => {
           <ion-input type="number" formControlName="respiratoryRate" placeholder="breaths/min"></ion-input>
         </ion-item>
         <ion-item class="field" [disabled]="locked">
+          <ion-label position="stacked">Pain Score</ion-label>
+          <ion-input type="number" formControlName="painScore" placeholder="0 - 10"></ion-input>
+        </ion-item>
+        <ion-item class="field" [disabled]="locked">
           <ion-label position="stacked">Temperature Celsius</ion-label>
           <ion-input type="number" formControlName="temperatureCelsius" placeholder="e.g. 36.8"></ion-input>
         </ion-item>
@@ -107,6 +111,7 @@ export class VitalSignsFormComponent implements OnChanges {
     bloodPressureDiastolic: [''],
     heartRate: [''],
     respiratoryRate: [''],
+    painScore: ['', [optionalRange(0, 10)]],
     temperatureCelsius: ['', [optionalRange(30, 45)]],
     oxygenSaturation: ['', [optionalRange(0, 100)]],
     weightKg: ['', [optionalPositive()]],
@@ -134,6 +139,7 @@ export class VitalSignsFormComponent implements OnChanges {
           bloodPressureDiastolic: this.toInputValue(this.value?.bloodPressureDiastolic),
           heartRate: this.toInputValue(this.value?.heartRate),
           respiratoryRate: this.toInputValue(this.value?.respiratoryRate),
+          painScore: this.toInputValue(this.value?.painScore),
           temperatureCelsius: this.toInputValue(this.value?.temperatureCelsius ?? this.value?.temperature),
           oxygenSaturation: this.toInputValue(this.value?.oxygenSaturation),
           weightKg: this.toInputValue(this.value?.weightKg ?? this.value?.weight),
@@ -175,6 +181,7 @@ export class VitalSignsFormComponent implements OnChanges {
       bloodPressureDiastolic: this.toNumber(raw.bloodPressureDiastolic),
       heartRate: this.toNumber(raw.heartRate),
       respiratoryRate: this.toNumber(raw.respiratoryRate),
+      painScore: this.toNumber(raw.painScore),
       temperatureCelsius: this.toNumber(raw.temperatureCelsius),
       oxygenSaturation: this.toNumber(raw.oxygenSaturation),
       weightKg: this.toNumber(raw.weightKg),

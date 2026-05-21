@@ -32,10 +32,17 @@ import {
   ConsultationCompleteModalComponent,
   ConsultationCompleteModalPayload
 } from './components/consultation-complete-modal.component';
-import { ConsultationHeaderComponent } from './components/consultation-header.component';
+import {
+  ConsultationHeaderComponent,
+  ConsultationHeaderMode
+} from './components/consultation-header.component';
 import { ConsultationOverviewComponent } from './components/consultation-overview.component';
 import { ConsultationWorkspaceComponent } from './components/consultation-workspace.component';
 import { ConsultationPageVm } from './doctor-consultation.types';
+import {
+  ConsultationRecordResponse,
+  ConsultationRecordUpdateRequest
+} from '../../../core/services/booking.service';
 
 type NullableString = string | null | undefined;
 
@@ -93,6 +100,8 @@ interface ConsultationLocalDraft {
   professionalFeeWaivedReason: string;
 }
 
+type ConsultationInteractionMode = 'complete' | 'view' | 'amend';
+
 @Component({
   standalone: true,
   selector: 'app-doctor-consultation-page',
@@ -110,19 +119,31 @@ interface ConsultationLocalDraft {
       <app-consultation-header
         [booking]="vm.booking"
         [patient]="vm.patient"
-        [locked]="isLocked(vm)"
-        [saveDisabled]="isLocked(vm) || isSavingDraft"
+        [mode]="headerMode(vm)"
+        [locked]="isWorkspaceLocked(vm)"
+        [saveDisabled]="isWorkspaceLocked(vm) || isSavingDraft"
         [completeDisabled]="isCompleteActionDisabled(vm)"
+        [amendDisabled]="isAmendActionDisabled(vm)"
         [isSavingDraft]="isSavingDraft"
         [isCompleting]="isSubmittingComplete"
+        [isSavingAmendment]="isSavingAmendment"
         (saveDraft)="saveDraft(vm)"
         (completeTransaction)="requestCompletion(vm)"
+        (enterAmendMode)="enterAmendMode()"
+        (cancelAmendMode)="cancelAmendMode()"
+        (saveAmendment)="saveAmendment(vm)"
       ></app-consultation-header>
 
       <app-banner
-        *ngIf="isLocked(vm)"
+        *ngIf="isAmendMode && isCompletedConsultation(vm)"
         variant="warning"
-        message="This consultation is locked. Create an amendment for changes."
+        message="Amendment mode is active. Payment and PF details remain unchanged."
+      ></app-banner>
+
+      <app-banner
+        *ngIf="isCompletedConsultation(vm) && !isAmendMode"
+        variant="success"
+        message="Completed Consultation"
       ></app-banner>
 
       <app-consultation-overview
@@ -136,7 +157,7 @@ interface ConsultationLocalDraft {
 
       <app-consultation-workspace
         [vm]="vm"
-        [locked]="isLocked(vm)"
+        [locked]="isWorkspaceLocked(vm)"
         [prescriptionItems]="prescriptionItems"
         (vitalSignsChange)="onVitalsChange($event)"
         (vitalsValidityChange)="vitalsValid = $event"
@@ -181,6 +202,8 @@ export class DoctorConsultationPage {
   completionWaivedReason = '';
   isSubmittingComplete = false;
   isSavingDraft = false;
+  isSavingAmendment = false;
+  isAmendMode = false;
 
   soapValid = false;
   diagnosisValid = false;
@@ -220,35 +243,29 @@ export class DoctorConsultationPage {
             this.resolvePatient$(booking)
           ]).pipe(
             switchMap(([resolvedBooking, doctor, patient]) => {
-              if (!doctor || resolvedBooking.doctorId !== doctor.id || !patient) {
+              if (!doctor || !patient || !this.isOwnedByLoggedInDoctor(resolvedBooking, doctor, user)) {
+                return of(null);
+              }
+
+              if (this.isConsultationUnavailable(resolvedBooking.status)) {
                 return of(null);
               }
 
               return this.medicalRecords.fetchPatientMedicalRecords(patient.id).pipe(
                 catchError(() => of(EMPTY_RECORDS)),
-                switchMap((records) => {
-                  const consultationSummary =
-                    records.consultations.find((item) => item.bookingId === resolvedBooking.id) ?? null;
-                  const consultationId = consultationSummary?.id;
-
-                  const consultation$: Observable<Consultation | null> = consultationId
-                    ? this.medicalRecords.fetchConsultation(consultationId).pipe(
-                        catchError(() => of(consultationSummary))
-                      )
-                    : of(null);
-
-                  return consultation$.pipe(
-                    map((consultation) =>
+                switchMap((records) =>
+                  this.loadConsultationRecord$(resolvedBooking).pipe(
+                    map((consultationRecord) =>
                       this.buildVm({
                         booking: resolvedBooking,
                         patient,
                         doctor,
                         records,
-                        consultation
+                        consultationRecord
                       })
                     )
-                  );
-                })
+                  )
+                )
               );
             })
           );
@@ -282,7 +299,7 @@ export class DoctorConsultationPage {
   }
 
   saveDraft(vm: ConsultationPageVm): void {
-    if (this.isLocked(vm) || this.isSavingDraft) {
+    if (this.isWorkspaceLocked(vm) || this.isSavingDraft || this.isAmendMode) {
       return;
     }
 
@@ -364,13 +381,7 @@ export class DoctorConsultationPage {
       return false;
     }
 
-    const payload: DoctorCompleteBookingRequest = {
-      finalAmount: this.isProfessionalFeeWaived ? 0 : finalAmount,
-      isProfessionalFeeWaived: this.isProfessionalFeeWaived,
-      professionalFeeWaivedReason: professionalFeeWaivedReason || undefined,
-      soapNotes: this.buildSoapNotes(),
-      notes: this.soapValue.plan.trim() || undefined
-    };
+    const payload = this.buildDoctorCompletePayload(finalAmount, professionalFeeWaivedReason);
 
     this.isSubmittingComplete = true;
 
@@ -390,12 +401,89 @@ export class DoctorConsultationPage {
     }
   }
 
-  isLocked(vm: ConsultationPageVm): boolean {
-    return Boolean(vm.consultation?.isLocked);
+  enterAmendMode(): void {
+    this.isAmendMode = true;
+    this.isSavingAmendment = false;
+  }
+
+  cancelAmendMode(): void {
+    if (this.isSavingAmendment) {
+      return;
+    }
+
+    this.isAmendMode = false;
+    this.reload();
+  }
+
+  async saveAmendment(vm: ConsultationPageVm): Promise<void> {
+    if (!this.isAmendMode || this.isSavingAmendment || !this.isCompletedConsultation(vm)) {
+      return;
+    }
+
+    const payload = this.buildConsultationRecordUpdatePayload();
+    this.isSavingAmendment = true;
+
+    try {
+      await firstValueFrom(this.bookingService.updateConsultationRecord(vm.booking.id, payload));
+      this.clearLocalDraft(vm.booking.id);
+      this.isAmendMode = false;
+      this.reload();
+      await this.presentToast('Consultation amendment saved.', 'success');
+    } catch (error) {
+      await this.presentToast(extractApiErrorMessage(error, 'Failed to save consultation amendment.'), 'danger');
+    } finally {
+      this.isSavingAmendment = false;
+    }
   }
 
   isCompleteActionDisabled(vm: ConsultationPageVm): boolean {
-    return this.isLocked(vm) || this.isSavingDraft || this.isSubmittingComplete || !this.soapValid || !this.diagnosisValid || !this.vitalsValid;
+    return (
+      this.isWorkspaceLocked(vm) ||
+      this.isSavingDraft ||
+      this.isSubmittingComplete ||
+      !this.soapValid ||
+      !this.diagnosisValid ||
+      !this.vitalsValid
+    );
+  }
+
+  private canEditConsultation(vm: ConsultationPageVm): boolean {
+    return vm.booking.status === 'CheckedIn' || vm.booking.status === 'InProgress';
+  }
+
+  isCompletedConsultation(vm: ConsultationPageVm): boolean {
+    return vm.booking.status === 'Completed';
+  }
+
+  private isEditableConsultation(vm: ConsultationPageVm): boolean {
+    return this.canEditConsultation(vm) || this.isAmendMode;
+  }
+
+  isWorkspaceLocked(vm: ConsultationPageVm): boolean {
+    if (this.isAmendMode && this.isCompletedConsultation(vm)) {
+      return false;
+    }
+
+    if (this.isCompletedConsultation(vm)) {
+      return true;
+    }
+
+    return !this.isEditableConsultation(vm);
+  }
+
+  isAmendActionDisabled(vm: ConsultationPageVm): boolean {
+    return (
+      !this.isCompletedConsultation(vm) ||
+      this.isSavingAmendment
+    );
+  }
+
+  headerMode(vm: ConsultationPageVm): ConsultationHeaderMode {
+    if (this.isCompletedConsultation(vm)) {
+      return this.isAmendMode ? 'amend' : 'view';
+    }
+
+    return 'complete';
   }
 
   private buildVm(args: {
@@ -403,20 +491,27 @@ export class DoctorConsultationPage {
     patient: Patient;
     doctor: ConsultationPageVm['doctor'];
     records: MedicalRecordsState;
-    consultation: Consultation | null;
+    consultationRecord: ConsultationRecordResponse | null;
   }): ConsultationPageVm {
     const localDraft = this.readLocalDraft(args.booking.id);
-    const mergedConsultation = mergeConsultationWithDraft(args.consultation, localDraft);
+    const consultation = this.mapConsultationRecord(
+      args.consultationRecord,
+      args.booking,
+      args.records
+    );
+    const fallbackConsultation =
+      consultation ?? args.records.consultations.find((item) => item.bookingId === args.booking.id) ?? null;
+    const mergedConsultation = mergeConsultationWithDraft(fallbackConsultation, localDraft);
     const existingPrescription =
       localDraft?.prescriptionItems.length
         ? mergePrescriptionWithDraft(
-            args.consultation?.prescriptions?.[0] ??
-              args.records.prescriptions.find((item) => item.consultationId === args.consultation?.id) ??
+            mergedConsultation?.prescriptions?.[0] ??
+              args.records.prescriptions.find((item) => item.consultationId === mergedConsultation?.id) ??
               null,
             localDraft
           )
-        : args.consultation?.prescriptions?.[0] ??
-          args.records.prescriptions.find((item) => item.consultationId === args.consultation?.id) ??
+        : mergedConsultation?.prescriptions?.[0] ??
+          args.records.prescriptions.find((item) => item.consultationId === mergedConsultation?.id) ??
           null;
 
     return {
@@ -481,6 +576,220 @@ export class DoctorConsultationPage {
       .map(([label, value]) => `${label}: ${value}`);
 
     return sections.length ? sections.join('\n') : undefined;
+  }
+
+  private buildDoctorCompletePayload(finalAmount: number, professionalFeeWaivedReason: string): DoctorCompleteBookingRequest {
+    const normalizedDiagnoses = this.buildNormalizedDiagnoses();
+    const normalizedPrescription = this.buildNormalizedPrescription();
+    const normalizedLabOrders = this.buildNormalizedLabOrders();
+    const normalizedFollowUp = this.buildNormalizedFollowUp();
+    const normalizedVitals = this.buildNormalizedVitalSigns();
+    const normalizedSoap = this.buildNormalizedSoap();
+    const generalNotes = this.buildGeneralNotes();
+
+    return {
+      finalAmount: this.isProfessionalFeeWaived ? 0 : finalAmount,
+      isProfessionalFeeWaived: this.isProfessionalFeeWaived,
+      professionalFeeWaivedReason: professionalFeeWaivedReason || undefined,
+      doctorFeeStatus: this.isProfessionalFeeWaived ? 'Waived' : 'Charged',
+      doctorFeeNotes: this.isProfessionalFeeWaived ? professionalFeeWaivedReason || undefined : undefined,
+      generalNotes,
+      vitalSigns: normalizedVitals,
+      soap: normalizedSoap,
+      diagnoses: normalizedDiagnoses,
+      prescription: normalizedPrescription,
+      labOrders: normalizedLabOrders,
+      followUp: normalizedFollowUp,
+      soapNotes: this.buildSoapNotes(),
+      diagnosis: this.buildLegacyDiagnosisText(normalizedDiagnoses),
+      followUpDate: normalizedFollowUp?.followUpDate ?? undefined,
+      followUpInstructions: normalizedFollowUp?.instructions ?? undefined,
+      prescriptionItems: this.buildLegacyPrescriptionItems(),
+      notes: generalNotes ?? undefined
+    };
+  }
+
+  private buildGeneralNotes(): string | null {
+    const plan = this.soapValue.plan.trim();
+    if (plan.length > 0) {
+      return plan;
+    }
+
+    const chiefComplaint = this.soapValue.chiefComplaint.trim();
+    return chiefComplaint.length > 0 ? chiefComplaint : null;
+  }
+
+  private buildNormalizedSoap(): DoctorCompleteBookingRequest['soap'] {
+    const subjective = this.soapValue.subjective.trim();
+    const objective = this.soapValue.objective.trim();
+    const assessment = this.soapValue.assessment.trim();
+    const plan = this.soapValue.plan.trim();
+
+    if (![subjective, objective, assessment, plan].some((value) => value.length > 0)) {
+      return null;
+    }
+
+    return {
+      subjective: subjective || null,
+      objective: objective || null,
+      assessment: assessment || null,
+      plan: plan || null
+    };
+  }
+
+  private buildNormalizedDiagnoses(): NonNullable<DoctorCompleteBookingRequest['diagnoses']> {
+    const rows = this.diagnoses
+      .map((diagnosis) => {
+        const diagnosisText = diagnosis.description.trim() || diagnosis.icd10Description?.trim() || '';
+        const diagnosisCode = diagnosis.icd10Code?.trim() || diagnosis.code.trim() || null;
+
+        if (!diagnosisText) {
+          return null;
+        }
+
+        return {
+          diagnosisText,
+          diagnosisCode,
+          isPrimary: diagnosis.type === 'Primary',
+          notes: diagnosis.type === 'Primary' ? null : diagnosis.type
+        };
+      })
+      .filter((item): item is NonNullable<typeof item> => Boolean(item));
+
+    if (rows.length === 0) {
+      return [];
+    }
+
+    if (!rows.some((item) => item.isPrimary)) {
+      rows[0] = { ...rows[0], isPrimary: true };
+    }
+
+    return rows;
+  }
+
+  private buildNormalizedPrescription(): DoctorCompleteBookingRequest['prescription'] {
+    const items = this.prescriptionItems
+      .map((item) => {
+        const medicationName = item.medicineName.trim();
+        if (!medicationName) {
+          return null;
+        }
+
+        return {
+          medicationName,
+          strength: item.strength.trim() || null,
+          dosage: item.sig.trim() || null,
+          route: item.route?.trim() || item.routeDescription?.trim() || null,
+          frequency: item.frequency?.trim() || item.frequencyCode?.trim() || null,
+          duration: item.duration?.trim() || null,
+          quantity: item.quantity === null || item.quantity === undefined ? null : String(item.quantity),
+          instructions: item.instructions?.trim() || null
+        };
+      })
+      .filter((item): item is NonNullable<typeof item> => Boolean(item));
+
+    if (items.length === 0) {
+      return null;
+    }
+
+    return {
+      notes: this.soapValue.plan.trim() || null,
+      items
+    };
+  }
+
+  private buildNormalizedLabOrders(): NonNullable<DoctorCompleteBookingRequest['labOrders']> {
+    const orders = this.labRequests
+      .map((request) => {
+        const testName = request.testName.trim();
+        if (!testName) {
+          return null;
+        }
+
+        const reason = request.reason?.trim() || null;
+        return {
+          notes: reason,
+          items: [
+            {
+              testName,
+              testCode: testName,
+              instructions: reason
+            }
+          ]
+        };
+      })
+      .filter((item): item is NonNullable<typeof item> => Boolean(item));
+
+    return orders;
+  }
+
+  private buildNormalizedFollowUp(): DoctorCompleteBookingRequest['followUp'] {
+    const followUpDate = this.followUpValue?.followUpDate?.trim() || '';
+    const reason = this.followUpValue?.reason?.trim() || '';
+
+    if (!followUpDate && !reason) {
+      return null;
+    }
+
+    return {
+      followUpDate: followUpDate || null,
+      instructions: reason || null,
+      reason: reason || null
+    };
+  }
+
+  private buildNormalizedVitalSigns(): DoctorCompleteBookingRequest['vitalSigns'] {
+    const value = this.vitalsValue;
+    if (!value || !this.hasVitalSignsValue(value)) {
+      return null;
+    }
+
+    return {
+      systolicBp: value.bloodPressureSystolic ?? null,
+      diastolicBp: value.bloodPressureDiastolic ?? null,
+      heartRate: value.heartRate ?? null,
+      respiratoryRate: value.respiratoryRate ?? null,
+      temperature: value.temperatureCelsius ?? value.temperature ?? null,
+      oxygenSaturation: value.oxygenSaturation ?? null,
+      weight: value.weightKg ?? value.weight ?? null,
+      height: value.heightCm ?? value.height ?? null,
+      bmi: value.bmi ?? null,
+      painScore: value.painScore ?? null,
+      takenAt: new Date().toISOString()
+    };
+  }
+
+  private hasVitalSignsValue(value: VitalSigns): boolean {
+    const entries: Array<number | string | null | undefined> = [
+      value.bloodPressureSystolic,
+      value.bloodPressureDiastolic,
+      value.heartRate,
+      value.respiratoryRate,
+      value.temperatureCelsius,
+      value.temperature,
+      value.oxygenSaturation,
+      value.weightKg,
+      value.weight,
+      value.heightCm,
+      value.height,
+      value.bmi,
+      value.painScore
+    ];
+
+    return entries.some((entry) => entry !== null && entry !== undefined && String(entry).trim().length > 0);
+  }
+
+  private buildLegacyDiagnosisText(diagnoses: NonNullable<DoctorCompleteBookingRequest['diagnoses']>): string | undefined {
+    if (!diagnoses.length) {
+      return undefined;
+    }
+
+    return diagnoses
+      .map((diagnosis) => {
+        const code = diagnosis.diagnosisCode?.trim();
+        return code ? `${code} - ${diagnosis.diagnosisText}` : diagnosis.diagnosisText;
+      })
+      .join('; ');
   }
 
   private writeLocalDraft(vm: ConsultationPageVm): void {
@@ -568,6 +877,10 @@ export class DoctorConsultationPage {
     this.isSubmittingComplete = false;
   }
 
+  private loadConsultationRecord$(booking: Booking): Observable<ConsultationRecordResponse | null> {
+    return this.bookingService.fetchConsultationRecordByBookingId(booking.id).pipe(catchError(() => of(null)));
+  }
+
   private resolvePatient$(booking: Booking): Observable<Patient | undefined> {
     return this.apiService.get<PatientDto>(`/patients/${encodeURIComponent(booking.patientId)}`).pipe(
       map((patient) => mapPatientDetail(patient)),
@@ -578,6 +891,181 @@ export class DoctorConsultationPage {
         )
       )
     );
+  }
+
+  private isConsultationUnavailable(status: Booking['status']): boolean {
+    return !['CheckedIn', 'InProgress', 'Completed'].includes(status);
+  }
+
+  private isOwnedByLoggedInDoctor(
+    booking: Booking,
+    doctor: { id: string; userId?: string | null } | null | undefined,
+    currentUser: { id: string }
+  ): boolean {
+    if (booking.doctorId && doctor?.id && booking.doctorId === doctor.id) {
+      return true;
+    }
+
+    if (booking.doctor?.userId && booking.doctor.userId === currentUser.id) {
+      return true;
+    }
+
+    if (doctor?.userId && doctor.userId === currentUser.id) {
+      return true;
+    }
+
+    return false;
+  }
+
+  private buildConsultationRecordUpdatePayload(): ConsultationRecordUpdateRequest {
+    const normalizedDiagnoses = this.buildNormalizedDiagnoses();
+    const normalizedFollowUp = this.buildNormalizedFollowUp();
+
+    return {
+      generalNotes: this.buildGeneralNotes(),
+      soapNotes: this.buildSoapNotes(),
+      notes: this.buildGeneralNotes(),
+      diagnosis: this.buildLegacyDiagnosisText(normalizedDiagnoses) ?? null,
+      followUpDate: normalizedFollowUp?.followUpDate ?? null,
+      followUpInstructions: normalizedFollowUp?.instructions ?? null,
+      vitalSigns: this.buildNormalizedVitalSigns(),
+      soap: this.buildNormalizedSoap(),
+      diagnoses: normalizedDiagnoses,
+      prescription: this.buildNormalizedPrescription(),
+      labOrders: this.buildNormalizedLabOrders(),
+      followUp: normalizedFollowUp,
+      prescriptionItems: this.buildLegacyPrescriptionItems().map((item) => ({
+        ...item,
+        quantity: item.quantity === null || item.quantity === undefined ? null : String(item.quantity)
+      }))
+    };
+  }
+
+  private mapConsultationRecord(
+    record: ConsultationRecordResponse | null,
+    booking: Booking,
+    records: MedicalRecordsState
+  ): Consultation | null {
+    if (!record) {
+      return null;
+    }
+
+    const prescriptions = record.prescription ? [this.mapConsultationRecordPrescription(record)] : [];
+    const labRequests = record.labOrders.flatMap((order) =>
+      order.items.map((item) => ({
+        id: item.id ?? `${order.id}-${item.testName}`,
+        consultationId: record.consultationId ?? record.bookingId,
+        patientId: record.patientId,
+        doctorId: record.doctorId,
+        testName: item.testName,
+        reason: item.instructions ?? order.notes ?? '',
+        status: 'Requested' as const,
+        requestedAt: new Date().toISOString()
+      }))
+    );
+    const diagnoses: Diagnosis[] = record.diagnoses.map(
+      (item): Diagnosis => ({
+        id: item.id ?? `${record.bookingId}-${item.diagnosisText}`,
+        code: item.diagnosisCode ?? item.diagnosisText,
+        description: item.diagnosisText,
+        type: item.isPrimary ? 'Primary' : 'Secondary'
+      })
+    );
+
+    return {
+      id: record.consultationId ?? record.bookingId,
+      bookingId: record.bookingId,
+      patientId: record.patientId,
+      doctorId: record.doctorId,
+      consultationDate: booking.doctorCompletedAt ?? booking.createdAt,
+      generalNotes: record.generalNotes ?? '',
+      chiefComplaint: record.soap?.subjective ?? record.generalNotes ?? '',
+      subjective: record.soap?.subjective ?? '',
+      objective: record.soap?.objective ?? '',
+      assessment: record.soap?.assessment ?? '',
+      plan: record.soap?.plan ?? '',
+      vitalSigns: record.vitalSigns
+        ? {
+            id: `${record.bookingId}-vitals`,
+            consultationId: record.consultationId ?? undefined,
+            patientId: record.patientId,
+            bloodPressureSystolic: record.vitalSigns.systolicBp ?? undefined,
+            bloodPressureDiastolic: record.vitalSigns.diastolicBp ?? undefined,
+            heartRate: record.vitalSigns.heartRate ?? undefined,
+            respiratoryRate: record.vitalSigns.respiratoryRate ?? undefined,
+            temperatureCelsius: record.vitalSigns.temperature ?? undefined,
+            temperature: record.vitalSigns.temperature ?? undefined,
+            oxygenSaturation: record.vitalSigns.oxygenSaturation ?? undefined,
+            weightKg: record.vitalSigns.weight ?? undefined,
+            weight: record.vitalSigns.weight ?? undefined,
+            heightCm: record.vitalSigns.height ?? undefined,
+            height: record.vitalSigns.height ?? undefined,
+            bmi: record.vitalSigns.bmi ?? undefined,
+            painScore: record.vitalSigns.painScore ?? undefined,
+            takenAt: record.vitalSigns.takenAt ?? undefined,
+            createdAt: record.vitalSigns.takenAt ?? booking.createdAt
+          }
+        : undefined,
+      diagnoses,
+      prescriptionIds: record.prescription ? [record.prescription.id ?? record.bookingId] : [],
+      labRequestIds: labRequests.map((item) => item.id),
+      followUpDate: record.followUp?.followUpDate ?? undefined,
+      status: record.bookingStatus === 'Completed' ? 'Completed' : 'Draft',
+      isLocked: record.bookingStatus === 'Completed' && !this.isAmendMode,
+      createdAt: booking.createdAt,
+      updatedAt: booking.doctorCompletedAt ?? booking.createdAt,
+      prescriptions,
+      labRequests
+    };
+  }
+
+  private mapConsultationRecordPrescription(record: ConsultationRecordResponse): Prescription {
+    const prescription = record.prescription;
+    if (!prescription) {
+      return {
+        id: record.bookingId,
+        consultationId: record.consultationId ?? record.bookingId,
+        patientId: record.patientId,
+        doctorId: record.doctorId,
+        issuedAt: new Date().toISOString(),
+        status: 'Active',
+        items: [],
+        notes: undefined
+      };
+    }
+
+    return {
+      id: prescription.id ?? record.bookingId,
+      consultationId: record.consultationId ?? record.bookingId,
+      patientId: record.patientId,
+      doctorId: record.doctorId,
+      issuedAt: new Date().toISOString(),
+      status: 'Active',
+      items: prescription.items
+        .map((item) => ({
+          id: item.id ?? `${prescription.id ?? record.bookingId}-${item.medicationName}`,
+          medicineName: item.medicationName,
+          genericName: undefined,
+          dosageForm: 'Tablet',
+          strength: item.strength ?? '',
+          quantity: parsePrescriptionQuantity(item.quantity),
+          sig: item.dosage ?? '',
+          frequency: item.frequency ?? undefined,
+          duration: item.duration ?? undefined,
+          route: item.route ?? undefined,
+          routeDescription: item.route ?? undefined,
+          unitOfMeasure: undefined,
+          unitOfMeasureDescription: undefined,
+          instructions: item.instructions ?? undefined,
+          isControlledSubstance: false
+        }))
+        .filter((item) => item.medicineName.length > 0 && item.strength.length > 0 && item.sig.length > 0),
+      notes: prescription.notes ?? undefined
+    };
+  }
+
+  private buildLegacyPrescriptionItems(): PrescriptionItem[] {
+    return this.prescriptionItems.map((item) => ({ ...item }));
   }
 
   private reload(): void {
@@ -647,6 +1135,22 @@ function buildFallbackPatient(booking: Booking): Patient {
 function normalizeString(value: NullableString): string | undefined {
   const trimmed = value?.trim();
   return trimmed ? trimmed : undefined;
+}
+
+function parsePrescriptionQuantity(value: string | null | undefined): number {
+  const text = value?.trim() ?? '';
+  if (!text) {
+    return 1;
+  }
+
+  const parsed = Number(text);
+  if (Number.isFinite(parsed) && parsed > 0) {
+    return parsed;
+  }
+
+  const digits = text.replace(/[^0-9.]/g, '');
+  const digitsValue = Number(digits);
+  return Number.isFinite(digitsValue) && digitsValue > 0 ? digitsValue : 1;
 }
 
 function formatServicesLabel(booking: Booking): string {

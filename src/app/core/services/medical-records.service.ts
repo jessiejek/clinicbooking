@@ -62,6 +62,7 @@ interface ConsultationDto {
   patientId?: NullableString;
   doctorId?: NullableString;
   consultationDate?: NullableString;
+  generalNotes?: NullableString;
   consultationTime?: NullableString;
   chiefComplaint?: NullableString;
   subjective?: NullableString;
@@ -100,6 +101,8 @@ interface VitalSignsDto {
   heightCm?: number | null;
   height?: number | null;
   bmi?: number | null;
+  painScore?: number | null;
+  takenAt?: NullableString;
   createdAt?: NullableString;
 }
 
@@ -679,6 +682,7 @@ function mapConsultationDto(dto: ConsultationDto): Consultation {
     patientId: normalizeString(dto.patientId) || '',
     doctorId: normalizeString(dto.doctorId) || '',
     consultationDate: normalizeString(dto.consultationDate) || '',
+    generalNotes: normalizeString(dto.generalNotes),
     consultationTime: normalizeString(dto.consultationTime),
     chiefComplaint: normalizeString(dto.chiefComplaint) || '',
     subjective: normalizeString(dto.subjective) || '',
@@ -720,6 +724,8 @@ function mapVitalSignsDto(dto: VitalSignsDto): VitalSigns {
     weightKg: normalizeNumber(dto.weightKg ?? dto.weight),
     heightCm: normalizeNumber(dto.heightCm ?? dto.height),
     bmi: normalizeNumber(dto.bmi),
+    painScore: normalizeNumber(dto.painScore),
+    takenAt: normalizeString(dto.takenAt),
     createdAt: normalizeString(dto.createdAt)
   };
 }

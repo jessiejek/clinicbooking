@@ -371,11 +371,11 @@ export class DoctorAppointmentsPage implements OnInit {
   }
 
   canStartConsultation(booking: Booking): boolean {
-    return booking.status === 'Confirmed' || booking.status === 'CheckedIn';
+    return booking.status === 'CheckedIn' || booking.status === 'InProgress';
   }
 
   canComplete(booking: Booking): boolean {
-    return booking.status === 'Confirmed' || booking.status === 'CheckedIn';
+    return booking.status === 'CheckedIn' || booking.status === 'InProgress';
   }
 
   timeRangeLabel(booking: Booking): string {

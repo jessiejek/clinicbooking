@@ -24,6 +24,7 @@ export interface Consultation {
   patientId: string;
   doctorId: string;
   consultationDate: string;
+  generalNotes?: string;
   chiefComplaint: string;
   subjective: string;
   objective: string;
@@ -62,6 +63,8 @@ export interface VitalSigns {
   heightCm?: number;
   height?: number;
   bmi?: number;
+  painScore?: number;
+  takenAt?: string;
   createdAt?: string;
 }
 
