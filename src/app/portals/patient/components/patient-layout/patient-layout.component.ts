@@ -22,6 +22,7 @@ import { SidebarComponent } from '../../../admin/components/sidebar/sidebar.comp
 import { TopbarComponent } from '../../../admin/components/topbar/topbar.component';
 import { PATIENT_NAV_ITEMS } from '../../patient.routes';
 
+
 @Component({
   selector: 'app-patient-layout',
   standalone: true,
@@ -29,14 +30,15 @@ import { PATIENT_NAV_ITEMS } from '../../patient.routes';
   template: `
     <div class="portal-layout">
       <app-admin-sidebar
-        class="portal-layout__sidebar"
-        [navItems]="navItems"
-        [portalLabel]="portalLabel"
-        [clinicName]="clinicName"
-        [currentUser]="currentUser()"
-        [isOpen]="sidebarOpen"
-        (navClick)="closeSidebar()"
-        (logout)="logout()"
+          class="portal-layout__sidebar"
+          [class.is-open]="sidebarOpen"
+          [navItems]="navItems"
+          [portalLabel]="portalLabel"
+          [clinicName]="clinicName"
+          [currentUser]="currentUser()"
+          [isOpen]="sidebarOpen"
+          (navClick)="closeSidebar()"
+          (logout)="logout()"
       ></app-admin-sidebar>
 
       <div class="main-content">

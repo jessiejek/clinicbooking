@@ -76,7 +76,20 @@
 }
 
 @media (max-width: 1024px) {
-  .portal-layout__sidebar { flex: none; width: 0; }
+  .portal-layout__sidebar {
+  position: fixed;
+  left: -260px;
+  top: 0;
+  width: 260px;
+  height: 100vh;
+  z-index: 200;
+  transition: left 200ms ease;
+  flex: none;
+}
+
+.portal-layout__sidebar.is-open {
+  left: 0;
+}
   .page-content { padding: var(--space-5); padding-bottom: env(safe-area-inset-bottom); }
   .patient-quick-action {
     margin: var(--space-4) var(--space-5) 0;

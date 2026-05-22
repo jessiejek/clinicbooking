@@ -61,14 +61,15 @@ import { TopbarComponent } from '../../../portals/admin/components/topbar/topbar
   template: `
     <div class="portal-layout" [style.--portal-accent]="portalColor">
       <app-admin-sidebar
-        class="portal-layout__sidebar"
-        [navItems]="resolvedNavItems"
-        [portalLabel]="portalLabel"
-        [clinicName]="clinicName"
-        [currentUser]="currentUser$ | async"
-        [isOpen]="sidebarOpen"
-        (navClick)="closeSidebar()"
-        (logout)="logout()"
+          class="portal-layout__sidebar"
+          [class.is-open]="sidebarOpen"
+          [navItems]="resolvedNavItems"
+          [portalLabel]="portalLabel"
+          [clinicName]="clinicName"
+          [currentUser]="currentUser$ | async"
+          [isOpen]="sidebarOpen"
+          (navClick)="closeSidebar()"
+          (logout)="logout()"
       ></app-admin-sidebar>
 
       <div class="portal-layout__main">
