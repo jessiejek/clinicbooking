@@ -24,8 +24,7 @@ interface QueueActionConfig {
           <thead>
             <tr>
               <th>Patient</th>
-              <th>Doctor</th>
-              <th>Services</th>
+              <th>Doctor / Services</th>
               <th>Time</th>
               <th>Queue #</th>
               <th>Status</th>
@@ -42,38 +41,44 @@ interface QueueActionConfig {
               (click)="rowClicked.emit(booking.id)"
               (keydown.enter)="rowClicked.emit(booking.id)"
             >
-              <td class="queue-table__cell queue-table__cell--patient">
+              <td class="cell cell--patient">
                 <strong>{{ patientLabel(booking) }}</strong>
               </td>
-              <td class="queue-table__cell queue-table__cell--doctor">{{ doctorLabel(booking) }}</td>
-              <td class="queue-table__cell queue-table__cell--services">{{ serviceLabel(booking) }}</td>
-              <td class="queue-table__cell queue-table__cell--time data-mono">{{ timeLabel(booking) }}</td>
-              <td class="queue-table__cell queue-table__cell--queue data-mono">{{ queueLabel(booking) }}</td>
-              <td class="queue-table__cell queue-table__cell--status">
+              <td class="cell cell--doctor">
+                <div class="cell-doctor">
+                  <span class="cell-doctor__name">{{ doctorLabel(booking) }}</span>
+                  <span class="cell-doctor__service">{{ serviceLabel(booking) }}</span>
+                </div>
+              </td>
+              <td class="cell cell--time data-mono">{{ timeLabel(booking) }}</td>
+              <td class="cell cell--queue"><span class="queue-pill">{{ queueLabel(booking) }}</span></td>
+              <td class="cell cell--status">
                 <app-status-badge
+                  portal="staff"
                   [status]="booking.status"
                   [labelOverride]="queueStatusLabel(booking.status)"
                 ></app-status-badge>
               </td>
-              <td class="queue-table__cell queue-table__cell--payment">
-                <app-status-badge [status]="booking.paymentStatus"></app-status-badge>
+              <td class="cell cell--payment">
+                <app-status-badge
+                  portal="staff"
+                  [status]="booking.paymentStatus"
+                ></app-status-badge>
               </td>
-              <td class="queue-table__cell queue-table__cell--actions">
-                <div class="action-row">
-                  <ng-container *ngIf="actionConfig(booking) as action; else noDesktopAction">
-                    <button
-                      type="button"
-                      class="queue-action-button"
-                      [ngClass]="action.buttonClass"
-                      (click)="takeAction(action.action, booking.id, $event)"
-                    >
-                      {{ action.label }}
-                    </button>
-                  </ng-container>
-                  <ng-template #noDesktopAction>
-                    <span class="queue-actions__empty">-</span>
-                  </ng-template>
-                </div>
+              <td class="cell cell--actions">
+                <ng-container *ngIf="actionConfig(booking) as action; else noAction">
+                  <button
+                    type="button"
+                    class="queue-action-button"
+                    [ngClass]="action.buttonClass"
+                    (click)="takeAction(action.action, booking.id, $event)"
+                  >
+                    {{ action.label }}
+                  </button>
+                </ng-container>
+                <ng-template #noAction>
+                  <span class="queue-actions__empty">&mdash;</span>
+                </ng-template>
               </td>
             </tr>
           </tbody>
@@ -92,35 +97,35 @@ interface QueueActionConfig {
         >
           <div class="queue-mobile-card__header">
             <div class="queue-mobile-card__identity">
-              <span class="queue-mobile-card__queue data-mono">{{ queueLabel(booking) }}</span>
+              <span class="queue-mobile-card__queue">{{ queueLabel(booking) }}</span>
               <strong>{{ patientLabel(booking) }}</strong>
+              <span class="queue-mobile-card__time data-mono">{{ timeLabel(booking) }}</span>
             </div>
 
             <div class="queue-mobile-card__badges">
               <app-status-badge
+                portal="staff"
                 [status]="booking.status"
                 [labelOverride]="queueStatusLabel(booking.status)"
               ></app-status-badge>
-              <app-status-badge [status]="booking.paymentStatus"></app-status-badge>
+              <app-status-badge
+                portal="staff"
+                [status]="booking.paymentStatus"
+              ></app-status-badge>
             </div>
           </div>
 
           <dl class="queue-mobile-card__details">
             <div>
               <dt>Doctor</dt>
-              <dd>{{ doctorLabel(booking) }}</dd>
-            </div>
-            <div>
-              <dt>Services</dt>
-              <dd>{{ serviceLabel(booking) }}</dd>
-            </div>
-            <div>
-              <dt>Time</dt>
-              <dd class="data-mono">{{ timeLabel(booking) }}</dd>
+              <dd>
+                {{ doctorLabel(booking) }}
+                <span class="mobile-service">{{ serviceLabel(booking) }}</span>
+              </dd>
             </div>
           </dl>
 
-          <div class="action-row queue-mobile-card__actions">
+          <div class="queue-mobile-card__actions">
             <ng-container *ngIf="actionConfig(booking) as action; else noMobileAction">
               <button
                 type="button"
@@ -132,7 +137,7 @@ interface QueueActionConfig {
               </button>
             </ng-container>
             <ng-template #noMobileAction>
-              <span class="queue-actions__empty">-</span>
+              <span class="queue-actions__empty">&mdash;</span>
             </ng-template>
           </div>
         </article>

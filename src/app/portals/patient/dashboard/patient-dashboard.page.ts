@@ -58,11 +58,10 @@ interface DashboardVm {
     PrescriptionCardComponent
   ],
   template: `
-    <section class="page-shell" *ngIf="vm$ | async as vm">
+    <section class="page-shell" *ngIf="vm$ | async as vm; else loadingTpl">
             <div class="dashboard-hero">
         <div class="dashboard-hero__content">
-          <div class="dashboard-hero__eyebrow">Patient Portal</div>
-          <h2 class="page-title">Welcome back, {{ vm.patient?.firstName || getWelcomeName(vm.user) || 'Juan' }}</h2>
+              <h2 class="page-title">Welcome back, {{ vm.patient?.firstName || getWelcomeName(vm.user) || 'Juan' }}</h2>
           <p class="page-subtitle">View your appointments, documents, prescriptions, and medical records in one place.</p>
           <div class="dashboard-hero__actions">
             <button type="button" class="btn-primary" routerLink="/patient/doctors">
@@ -75,21 +74,22 @@ interface DashboardVm {
         </div>
       </div>
 
-      <app-banner
-        *ngIf="vm.showEmailWarning"
-        variant="warning"
-        message="Your email is not verified. Some notifications may not be delivered."
-      ></app-banner>
+      <div class="dashboard-banners">
+        <app-banner
+          *ngIf="vm.showEmailWarning"
+          variant="warning"
+          message="Your email is not verified. Some notifications may not be delivered."
+        ></app-banner>
 
-      <app-banner
-        *ngIf="vm.showConsentWarning"
-        variant="info"
-        message="Please review and accept the latest privacy consent."
-      ></app-banner>
-      <div class="dashboard-consent-cta" *ngIf="vm.showConsentWarning">
-        <button type="button" class="btn-outline" routerLink="/patient/privacy-consent">
-          Review Consent
-        </button>
+        <div class="dashboard-banner-row" *ngIf="vm.showConsentWarning">
+          <app-banner
+            variant="info"
+            message="Please review and accept the latest privacy consent."
+          ></app-banner>
+          <button type="button" class="btn-outline" routerLink="/patient/privacy-consent" aria-label="Review and accept privacy consent">
+            Review Consent
+          </button>
+        </div>
       </div>
 
             <div class="stats-grid">
@@ -195,6 +195,21 @@ interface DashboardVm {
         </div>
       </div>
     </section>
+  <ng-template #loadingTpl>
+      <div class="dashboard-loading">
+        <div class="skel-hero"></div>
+        <div class="skel-stats">
+          <div class="skel-stat"></div>
+          <div class="skel-stat"></div>
+          <div class="skel-stat"></div>
+          <div class="skel-stat"></div>
+        </div>
+        <div class="skel-grid">
+          <div class="skel-panel"></div>
+          <div class="skel-panel"></div>
+        </div>
+      </div>
+    </ng-template>
   `,
   styleUrl: './patient-dashboard.page.scss'
 })

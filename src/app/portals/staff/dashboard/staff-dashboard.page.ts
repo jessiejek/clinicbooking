@@ -18,52 +18,61 @@ import { QueueTableComponent } from '../components/queue-table/queue-table.compo
   imports: [NgFor, NgIf, IonIcon, QueueTableComponent],
   template: `
     <section class="page-shell">
-      <div class="dashboard-hero clinic-card">
-        <div class="dashboard-hero__content">
-          <p class="page-kicker">Staff portal</p>
+      <div class="page-shell__header">
+        <div>
           <h2 class="page-title">Dashboard</h2>
           <p class="page-subtitle">Track today's queue and resolve booking actions quickly.</p>
-        </div>
-        <div class="dashboard-hero__panel">
-          <span class="dashboard-hero__pill">Live queue</span>
-          <strong>{{ todaysAppointmentsCount }}</strong>
-          <span>appointments in today's list</span>
         </div>
       </div>
 
       <div class="stat-grid">
-        <article class="stat-card stat-card--green clinic-card">
-          <p class="stat-card__label">Today's Appointments</p>
-          <div class="stat-card__value">{{ todaysAppointmentsCount }}</div>
+        <article class="stat-card stat-card--green">
+          <div class="stat-card__accent"></div>
+          <div class="stat-card__body">
+            <p class="stat-card__label">Today's Appointments</p>
+            <div class="stat-card__value">{{ todaysAppointmentsCount }}</div>
+            <p class="stat-card__desc">Scheduled for today</p>
+          </div>
         </article>
 
-        <article class="stat-card stat-card--red clinic-card">
-          <p class="stat-card__label">Ready for Payment</p>
-          <div class="stat-card__value">{{ completedUnpaidCount }}</div>
-          <span class="stat-card__badge" *ngIf="completedUnpaidCount > 0">Collect Now</span>
+        <article class="stat-card stat-card--red">
+          <div class="stat-card__accent"></div>
+          <div class="stat-card__body">
+            <p class="stat-card__label">Ready for Payment</p>
+            <div class="stat-card__value">{{ completedUnpaidCount }}</div>
+            <p class="stat-card__badge" *ngIf="completedUnpaidCount > 0; else noPayment">Collect Now</p>
+            <ng-template #noPayment><p class="stat-card__desc">All payments collected</p></ng-template>
+          </div>
         </article>
 
-        <article class="stat-card stat-card--blue clinic-card">
-          <p class="stat-card__label">Walk-Ins Today</p>
-          <div class="stat-card__value">{{ walkInsTodayCount }}</div>
+        <article class="stat-card stat-card--blue">
+          <div class="stat-card__accent"></div>
+          <div class="stat-card__body">
+            <p class="stat-card__label">Walk-Ins Today</p>
+            <div class="stat-card__value">{{ walkInsTodayCount }}</div>
+            <p class="stat-card__desc">Unscheduled arrivals</p>
+          </div>
         </article>
 
-        <article class="stat-card stat-card--neutral clinic-card">
-          <p class="stat-card__label">Confirmed Today</p>
-          <div class="stat-card__value">{{ confirmedTodayCount }}</div>
+        <article class="stat-card stat-card--neutral">
+          <div class="stat-card__accent"></div>
+          <div class="stat-card__body">
+            <p class="stat-card__label">Confirmed Today</p>
+            <div class="stat-card__value">{{ confirmedTodayCount }}</div>
+            <p class="stat-card__desc">Checked in to clinic</p>
+          </div>
         </article>
       </div>
 
       <div
         class="banner banner--danger"
-        style="cursor: pointer"
         *ngIf="completedUnpaidCount > 0"
         (click)="goToPaymentQueue()"
       >
         <ion-icon name="cash-outline"></ion-icon>
         <span>
           {{ completedUnpaidCount }} completed consultation(s) are ready for payment collection.
-          <strong>Go to Payment Queue -&gt;</strong>
+          <strong>Go to Payment Queue &rarr;</strong>
         </span>
       </div>
 
