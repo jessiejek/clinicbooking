@@ -1,12 +1,9 @@
 import { AsyncPipe, CurrencyPipe, DatePipe, NgFor, NgIf } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { distinctUntilChanged } from 'rxjs';
-import { Booking } from '../../../core/models';
-import { BookingService } from '../../../core/services/booking.service';
-import { DoctorStateService } from '../../../core/services/doctor-state.service';
+import { ToastController } from '@ionic/angular/standalone';
+import { ApiService } from '../../../core/services/api.service';
 import { MockDataService } from '../../../core/services/mock-data.service';
-import { PatientStateService } from '../../../core/services/patient-state.service';
 import { TodayAppointmentsTableComponent } from '../components/today-appointments-table/today-appointments-table.component';
 import { StatCardComponent } from '../components/stat-card/stat-card.component';
 
@@ -93,17 +90,16 @@ import { StatCardComponent } from '../components/stat-card/stat-card.component';
   styleUrl: './dashboard.page.scss'
 })
 export class DashboardPage implements OnInit {
-  private readonly bookingService = inject(BookingService);
-  private readonly doctorState = inject(DoctorStateService);
-  private readonly patientState = inject(PatientStateService);
+  private readonly apiService = inject(ApiService);
   private readonly mockData = inject(MockDataService);
+  private readonly toastCtrl = inject(ToastController);
   private readonly router = inject(Router);
 
-  bookings: Booking[] = [];
-  doctors = this.mockData.getDoctors();
-  patients = this.mockData.getPatients();
-  services = this.mockData.getServices();
-  todaysBookings: Booking[] = [];
+  bookings: any[] = [];
+  doctors: any[] = [];
+  patients: any[] = [];
+  services: any[] = [];
+  todaysBookings: any[] = [];
   isLoading = false;
 
   todayAppointmentsCount = 0;
@@ -115,49 +111,115 @@ export class DashboardPage implements OnInit {
   noShowCount = 0;
   followUpsCount = 0;
   topDoctorStats: Array<{ label: string; value: number; max: number }> = [];
-  revenueLegend: string[] = this.buildRevenueLegend();
-  primaryColor = this.resolvePrimaryColor();
+  revenueLegend: string[] = [];
+  primaryColor = '#5D3E8E';
   areaLinePath = '';
   areaFillPath = '';
-  private readonly revenueData = this.buildRevenueSeries(this.getRevenueSeed());
+  revenueData: number[] = [500, 800, 1200, 900, 1500, 1100, 1800];
 
   ngOnInit(): void {
-    this.bookingService.isLoading$
-      .pipe(distinctUntilChanged())
-      .subscribe((isLoading) => (this.isLoading = isLoading));
-    this.bookingService
-      .getBookings()
-      .pipe(distinctUntilChanged())
-      .subscribe((bookings) => {
-        this.bookings = bookings;
-        this.refreshStats();
-      });
-    this.bookingService
-      .getTodaysBookings()
-      .pipe(distinctUntilChanged())
-      .subscribe((bookings) => {
-        this.todaysBookings = bookings;
-        this.refreshCharts();
-      });
-    this.bookingService
-      .getPendingVerifications()
-      .pipe(distinctUntilChanged())
-      .subscribe((bookings) => {
-        this.pendingVerificationCount = bookings.length;
-      });
-    this.doctorState
-      .getDoctors()
-      .pipe(distinctUntilChanged())
-      .subscribe((doctors) => {
-        this.doctors = doctors.length ? doctors : this.mockData.getDoctors();
-        this.refreshCharts();
-      });
-    this.patientState
-      .getPatients()
-      .pipe(distinctUntilChanged())
-      .subscribe((patients) => {
-        this.patients = patients.length ? patients : this.mockData.getPatients();
-      });
+    this.loadDashboard();
+  }
+
+  private loadDashboard(): void {
+    this.isLoading = true;
+    this.apiService.get<any>('/admin/dashboard/summary').subscribe({
+      next: (data) => {
+        this.isLoading = false;
+        if (!data) return;
+
+        this.todayAppointmentsCount = data.totalAppointmentsToday ?? 0;
+        this.monthlyAppointmentsCount = (data.todaysAppointments ?? []).length;
+        this.revenueToday = data.revenueThisMonth ?? 0;
+        this.pendingVerificationCount = data.pendingAppointments ?? 0;
+        this.onHoldCount = 0;
+        this.unpaidCompletedCount = data.unpaidCount ?? 0;
+        this.noShowCount = 0;
+        this.followUpsCount = 0;
+
+        if (data.revenueTrend?.length) {
+          this.revenueData = data.revenueTrend.map((r: any) => r.amount);
+          this.revenueLegend = data.revenueTrend.map((r: any) => r.label);
+        }
+        this.buildChartPaths();
+
+        if (data.mostBookedDoctors?.length) {
+          const max = Math.max(...data.mostBookedDoctors.map((d: any) => d.bookingCount), 1);
+          this.topDoctorStats = data.mostBookedDoctors.map((d: any) => ({
+            label: d.doctorName,
+            value: d.bookingCount,
+            max
+          }));
+        }
+
+        if (data.todaysAppointments?.length) {
+          const patientMap = new Map<string, string>();
+          const doctorMap = new Map<string, string>();
+          const serviceMap = new Map<string, string>();
+
+          this.todaysBookings = data.todaysAppointments.map((a: any) => {
+            if (a.patientName) patientMap.set(a.patientId, a.patientName);
+            if (a.doctorName) doctorMap.set(a.doctorId, a.doctorName);
+            if (a.serviceName) serviceMap.set(a.serviceId || 'svc-' + a.serviceName, a.serviceName);
+            return {
+              id: a.bookingId,
+              patientId: a.patientId,
+              doctorId: a.doctorId,
+              serviceId: a.serviceId || ('svc-' + a.serviceName),
+              patientName: a.patientName,
+              doctorName: a.doctorName,
+              serviceName: a.serviceName,
+              serviceNames: a.serviceNames || [],
+              appointmentDate: '',
+              slotStartTime: a.slotStartTime || '',
+              slotEndTime: a.slotEndTime || '',
+              status: a.status,
+              paymentStatus: a.paymentStatus,
+              paymentMode: a.paymentMode || '',
+              queueNumber: a.queueNumber,
+              totalFee: a.totalFee ?? 0
+            };
+          });
+
+          this.patients = Array.from(patientMap.entries()).map(([id, name]) => {
+            const parts = name.split(' ');
+            return { id, firstName: parts[0] || name, lastName: parts.slice(1).join(' ') || '' };
+          });
+          this.doctors = Array.from(doctorMap.entries()).map(([id, fn]) => ({ id, fullName: fn }));
+          this.services = Array.from(serviceMap.entries()).map(([id, n]) => ({ id, name: n }));
+        }
+      },
+      error: () => {
+        this.isLoading = false;
+        this.showToast('Could not load dashboard from server. Using local data.', 'warning');
+        this.useMockFallback();
+      }
+    });
+  }
+
+  private useMockFallback(): void {
+    const m = this.mockData;
+    this.doctors = m.getDoctors();
+    this.patients = m.getPatients();
+    this.services = m.getServices();
+    this.todaysBookings = [];
+    this.todayAppointmentsCount = 0;
+    this.monthlyAppointmentsCount = 0;
+    this.revenueToday = 0;
+    this.pendingVerificationCount = 0;
+    this.onHoldCount = 0;
+    this.unpaidCompletedCount = 0;
+    this.noShowCount = 0;
+    this.followUpsCount = 0;
+    this.topDoctorStats = [];
+    this.revenueData = [500, 800, 1200, 900, 1500, 1100, 1800];
+    this.revenueLegend = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+    this.buildChartPaths();
+  }
+
+  private async showToast(message: string, color: string): Promise<void> {
+    const t = await this.toastCtrl.create({ message, duration: 3000, color, position: 'top' });
+    await t.present();
   }
 
   handleTableAction(event: { action: string; id: string }): void {
@@ -173,33 +235,8 @@ export class DashboardPage implements OnInit {
     void this.router.navigate(['/admin/bookings', id]);
   }
 
-  private refreshStats(): void {
-    const today = this.localIsoDate();
-    const monthKey = today.slice(0, 7);
-    this.todayAppointmentsCount = this.bookings.filter((booking) => booking.appointmentDate === today).length;
-    this.monthlyAppointmentsCount = this.bookings.filter((booking) => booking.appointmentDate.startsWith(monthKey)).length;
-    this.revenueToday = this.bookings
-      .filter((booking) => booking.appointmentDate === today && booking.paymentStatus === 'Paid')
-      .reduce((total, booking) => total + booking.totalFee, 0);
-    this.onHoldCount = this.bookings.filter((booking) => booking.status === 'OnHold').length;
-    this.unpaidCompletedCount = this.bookings.filter(
-      (booking) => booking.status === 'Completed' && booking.paymentStatus === 'Unpaid'
-    ).length;
-    this.noShowCount = this.bookings.filter(
-      (booking) => booking.status === 'NoShow' && booking.appointmentDate === today
-    ).length;
-    this.followUpsCount = this.mockData.getAdminDashboardStats().upcomingFollowUps;
-  }
-
-  private refreshCharts(): void {
-    const doctorStats = this.doctors.slice(0, 3).map((doctor) => ({
-      label: doctor.fullName,
-      value: this.bookings.filter((booking) => booking.doctorId === doctor.id).length
-    }));
-    const maxCount = Math.max(...doctorStats.map((item) => item.value), 1);
-    this.topDoctorStats = doctorStats.map((item) => ({ ...item, max: maxCount }));
-    this.revenueLegend = this.buildRevenueLegend();
-
+  private buildChartPaths(): void {
+    if (!this.revenueData.length) return;
     const points = this.revenueData.map((value, index) => {
       const x = (index / (this.revenueData.length - 1)) * 560 + 20;
       const y = 190 - ((value - 500) / 3000) * 150;
@@ -207,41 +244,5 @@ export class DashboardPage implements OnInit {
     });
     this.areaLinePath = `M ${points.join(' L ')}`;
     this.areaFillPath = `${this.areaLinePath} L 580,200 L 20,200 Z`;
-  }
-
-  private buildRevenueSeries(seed: number): number[] {
-    let value = seed >>> 0;
-    return Array.from({ length: 30 }, () => {
-      value = (value * 1664525 + 1013904223) >>> 0;
-      return 500 + (value % 3001);
-    });
-  }
-
-  private getRevenueSeed(): number {
-    const now = new Date();
-    return now.getFullYear() * 12 + now.getMonth() + 1;
-  }
-
-  private localIsoDate(): string {
-    const now = new Date();
-    const offset = now.getTimezoneOffset() * 60000;
-    return new Date(now.getTime() - offset).toISOString().slice(0, 10);
-  }
-
-  private resolvePrimaryColor(): string {
-    if (typeof document === 'undefined') {
-      return '#5D3E8E';
-    }
-
-    const color = getComputedStyle(document.documentElement).getPropertyValue('--ion-color-primary').trim();
-    return color || '#5D3E8E';
-  }
-
-  private buildRevenueLegend(): string[] {
-    return Array.from({ length: 6 }, (_, index) => {
-      const date = new Date();
-      date.setMonth(date.getMonth() - (5 - index));
-      return date.toLocaleString(undefined, { month: 'short' });
-    });
   }
 }
