@@ -782,13 +782,43 @@ ion-item.clinic-input {
   -webkit-overflow-scrolling: touch;
 }
 
-.clinic-table {
+/* Tables – responsive enhancements */
+.table-scroll-wrap .clinic-table {
   width: 100%;
-  min-width: 520px;
+  min-width: 0; /* allow shrinkage on small screens */
   border-collapse: separate;
   border-spacing: 0;
   font-size: var(--text-sm);
+}
 
+.table-scroll-wrap .clinic-table th,
+.table-scroll-wrap .clinic-table td {
+  overflow-wrap: anywhere; /* break long words */
+  word-break: break-word;
+}
+
+/* Ensure badge and button spacing inside tables */
+.table-scroll-wrap .clinic-table .badge,
+.table-scroll-wrap .clinic-table .btn {
+  margin: var(--space-1) 0;
+}
+
+/* Clickable rows */
+.table-scroll-wrap .clinic-table .clickable-row {
+  cursor: pointer;
+}
+
+/* Mobile fallback – hide table on narrow viewports, show cards via existing .mobile-card styles */
+@media (max-width: 960px) {
+  .table-scroll-wrap .clinic-table {
+    display: none;
+  }
+  .mobile-table-card {
+    display: grid; /* will use .mobile-card utilities */
+  }
+}
+
+.clinic-table {
   thead tr {
     background: var(--color-neutral-50);
   }

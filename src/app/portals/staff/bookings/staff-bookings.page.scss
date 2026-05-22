@@ -67,3 +67,19 @@
     grid-template-columns: 1fr;
   }
 }
+/* Table responsiveness */
+.table-scroll-wrap,
+.patients-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Mobile fallback */
+@media (max-width: 960px) {
+  .clinic-table {
+    display: none;
+  }
+  .mobile-table-card {
+    display: grid;
+  }
+}
