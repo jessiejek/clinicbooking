@@ -51,13 +51,48 @@
   color: var(--clinic-text-primary);
 }
 
+.badge--admin-confirmed {
+  background: var(--color-success-100);
+  color: #14532d;
+}
+
+.badge--admin-pending {
+  background: var(--color-warning-100);
+  color: #92400e;
+}
+
+.badge--admin-checked-in {
+  background: var(--color-secondary-100);
+  color: #1e3a8a;
+}
+
 .badge--admin-on-hold {
   background: var(--color-warning-50);
   color: var(--clinic-text-primary);
 }
 
+.badge--admin-cancelled {
+  background: var(--color-neutral-100);
+  color: var(--color-neutral-600);
+}
+
+.badge--admin-completed {
+  background: var(--color-primary-100);
+  color: var(--color-primary-900);
+}
+
 .badge--admin-no-show {
   background: var(--color-danger-50);
   color: var(--clinic-text-primary);
+}
+
+.badge--admin-expired {
+  background: var(--color-neutral-100);
+  color: var(--color-neutral-500);
+}
+
+.badge--admin-rescheduled {
+  background: #fff7ed;
+  color: #9a3412;
 }
 
