@@ -65,6 +65,11 @@ export const PATIENT_ROUTES: Routes = [
         data: { title: 'My Lab Results' }
       },
       {
+        path: 'labs',
+        loadComponent: () =>
+          import('./labs-redirect/patient-labs-redirect.page').then((m) => m.PatientLabsRedirectPage)
+      },
+      {
         path: 'bookings/:id',
         loadComponent: () =>
           import('./booking-detail/patient-booking-detail.page').then(

@@ -4,7 +4,9 @@ import { ReactiveFormsModule, FormBuilder } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { catchError, map, of } from 'rxjs';
 import { ActivatedRoute } from '@angular/router';
-import { IonSearchbar, IonSpinner, ToastController } from '@ionic/angular/standalone';
+import { IonSearchbar, IonSpinner, ToastController, IonIcon, ModalController } from '@ionic/angular/standalone';
+import { addIcons } from 'ionicons';
+import { documentTextOutline, flaskOutline } from 'ionicons/icons';
 import {
   PatientDocument,
   PatientDocumentUploadRequest,
@@ -14,6 +16,8 @@ import {
 } from '../../../core/models';
 import { PatientDocumentsService } from '../../../core/services/patient-documents.service';
 import { BookingService } from '../../../core/services/booking.service';
+import { SecureImageComponent } from '../secure-image/secure-image.component';
+import { PatientMediaPreviewModalComponent } from './patient-media-preview.modal';
 
 type MediaKind = 'document' | 'lab-result';
 type PatientMediaItem = PatientDocument | PatientLabResult;
@@ -21,7 +25,7 @@ type PatientMediaItem = PatientDocument | PatientLabResult;
 @Component({
   selector: 'app-patient-media-panel',
   standalone: true,
-  imports: [DatePipe, NgFor, NgIf, ReactiveFormsModule, IonSearchbar, IonSpinner],
+  imports: [DatePipe, NgFor, NgIf, ReactiveFormsModule, IonSearchbar, IonSpinner, SecureImageComponent, IonIcon],
   template: `
     <section class="patient-media-panel clinic-card">
       <div class="patient-media-panel__header">
@@ -42,7 +46,7 @@ type PatientMediaItem = PatientDocument | PatientLabResult;
             <span>{{ fileFieldLabel }}</span>
             <div class="file-picker" (click)="fileInput.click()">
               <strong>{{ selectedFileName || 'Choose a file' }}</strong>
-              <small>Select a booking below to link this file. Consultation ID is optional.</small>
+              <small *ngIf="!fromQueryParam">Select a booking below to link this file.</small>
             </div>
             <input #fileInput type="file" class="visually-hidden" (change)="onFileSelected($event)" />
           </label>
@@ -57,24 +61,21 @@ type PatientMediaItem = PatientDocument | PatientLabResult;
             <textarea class="filter-input" rows="3" [formControl]="form.controls.notes"></textarea>
           </label>
 
-          <label class="media-field">
-            <span>Booking (optional)</span>
+          <label class="media-field media-field--full">
+            <span>Related Booking</span>
             <select class="filter-input" [formControl]="form.controls.bookingId">
               <option value="">Select a booking</option>
               <option *ngFor="let booking of bookings" [value]="booking.id">
                 {{ formatBooking(booking) }}
               </option>
             </select>
-          </label>
-
-          <label class="media-field">
-            <span>Consultation ID (optional)</span>
-            <input class="filter-input" [formControl]="form.controls.consultationId" placeholder="Consultation ID" />
+            <small class="booking-helper" *ngIf="fromQueryParam">This upload will be linked to the selected booking.</small>
+            <small class="booking-helper">{{ helperText }}</small>
           </label>
         </div>
 
         <div class="patient-media-panel__actions">
-          <button type="submit" class="btn-primary" [disabled]="uploading || !selectedFile">
+          <button type="submit" class="btn-primary" [disabled]="uploading || !canSubmitUpload">
             {{ uploading ? uploadButtonLabel + '...' : uploadButtonLabel }}
           </button>
           <button type="button" class="btn-outline" (click)="resetUpload()" [disabled]="uploading && !selectedFile">
@@ -84,6 +85,7 @@ type PatientMediaItem = PatientDocument | PatientLabResult;
       </form>
 
       <ion-searchbar
+        *ngIf="allowUpload"
         class="patient-media-panel__search"
         placeholder="Search by file name, title, notes, or linked IDs"
         [value]="searchTerm"
@@ -103,50 +105,29 @@ type PatientMediaItem = PatientDocument | PatientLabResult;
 
       <ng-container *ngIf="!loading && !error">
         <ng-container *ngIf="filteredItems.length > 0; else emptyTpl">
-          <article class="media-card" *ngFor="let item of filteredItems">
-            <div class="media-card__header">
-              <div>
-                <div class="media-card__date">{{ item.uploadedAt | date : 'MMM d, y' }}</div>
+          <div class="media-gallery-grid">
+            <article class="gallery-card" *ngFor="let item of filteredItems">
+              <div class="gallery-card__thumb" (click)="openPreview(item)">
+                <app-secure-image
+                  *ngIf="isImage(item)"
+                  [src]="item.fileUrl"
+                  [mediaId]="item.id"
+                  [mediaKind]="kind"
+                  [patientId]="patientId || undefined"
+                  [alt]="displayTitle(item)"
+                ></app-secure-image>
+                <div class="gallery-card__icon" *ngIf="!isImage(item)">
+                  <ion-icon [name]="kind === 'document' ? 'document-text-outline' : 'flask-outline'"></ion-icon>
+                </div>
+              </div>
+              <div class="gallery-card__info" (click)="openPreview(item)">
+                <div class="gallery-card__date">{{ item.uploadedAt | date : 'MMM d, y' }}</div>
                 <h4>{{ displayTitle(item) }}</h4>
+                <div class="gallery-card__tag" *ngIf="bookingLabelFor(item)">{{ bookingLabelFor(item) }}</div>
+                <div class="gallery-card__tag gallery-card__tag--muted" *ngIf="!bookingLabelFor(item)">{{ tagLabel(item) }}</div>
               </div>
-              <div class="media-card__tag">{{ tagLabel(item) }}</div>
-            </div>
-
-            <div class="media-card__grid">
-              <div>
-                <span>File</span>
-                <p>{{ item.fileName }}</p>
-              </div>
-              <div>
-                <span>{{ recordDetailLabel }}</span>
-                <p>{{ recordDetailText(item) }}</p>
-              </div>
-              <div>
-                <span>Booking</span>
-                <p>{{ item.bookingId || 'Not linked' }}</p>
-              </div>
-              <div>
-                <span>Consultation</span>
-                <p>{{ item.consultationId || 'Not linked' }}</p>
-              </div>
-            </div>
-
-            <div class="media-card__meta">
-              <span>{{ secondaryMetaLabel }}: {{ secondaryMetaValue(item) }}</span>
-              <span>{{ item.createdAt | date : 'MMM d, y, h:mm a' }}</span>
-            </div>
-
-            <div class="media-card__actions">
-              <button
-                type="button"
-                class="btn-outline"
-                [disabled]="isDownloading(item.id)"
-                (click)="download(item)"
-              >
-                {{ isDownloading(item.id) ? 'Downloading...' : 'Download File' }}
-              </button>
-            </div>
-          </article>
+            </article>
+          </div>
         </ng-container>
       </ng-container>
 
@@ -167,6 +148,9 @@ export class PatientMediaPanelComponent implements OnInit, OnChanges {
   @Input() heading = '';
   @Input() subheading = '';
   @Input() errorTitle = '';
+  @Input() bookingIdFilter?: string;
+  /** When false (doctor view), show all patient uploads instead of filtering to one booking. */
+  @Input() filterByBooking = true;
 
   private readonly documentsService = inject(PatientDocumentsService);
   private readonly fb = inject(FormBuilder);
@@ -174,6 +158,7 @@ export class PatientMediaPanelComponent implements OnInit, OnChanges {
   private readonly destroyRef = inject(DestroyRef);
   private readonly route = inject(ActivatedRoute);
   private readonly bookingService = inject(BookingService);
+  private readonly modalCtrl = inject(ModalController);
 
   readonly form = this.fb.nonNullable.group({
     title: [''],
@@ -191,11 +176,28 @@ export class PatientMediaPanelComponent implements OnInit, OnChanges {
   searchTerm = '';
   selectedFile: File | null = null;
   selectedFileName = '';
+  fromQueryParam = false;
+  private pendingBookingId = '';
+  private queryBookingId = '';
+
   private readonly downloading = new Set<string>();
   private loadToken = 0;
 
+  constructor() {
+    addIcons({ documentTextOutline, flaskOutline });
+  }
+
+  get canSubmitUpload(): boolean {
+    return !!this.selectedFile && !!normalizeOptionalString(this.form.controls.bookingId.value);
+  }
+
   ngOnInit(): void {
+    this.syncBookingContextFromRoute(this.route.snapshot.queryParamMap.get('bookingId'));
     this.loadRecords();
+
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+      this.syncBookingContextFromRoute(params.get('bookingId'));
+    });
 
     if (this.allowUpload) {
       const bookings$ = this.patientId
@@ -207,19 +209,28 @@ export class PatientMediaPanelComponent implements OnInit, OnChanges {
 
       bookings$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((items) => {
         this.bookings = items;
+        this.applyPendingBookingSelection();
       });
-
-      const queryBookingId = this.route.snapshot.queryParamMap.get('bookingId');
-      if (queryBookingId) {
-        this.form.patchValue({ bookingId: queryBookingId });
-      }
+    } else if (this.patientId) {
+      this.bookingService
+        .getBookingsByPatientId(this.patientId)
+        .pipe(catchError(() => of([])), takeUntilDestroyed(this.destroyRef))
+        .subscribe((items) => {
+          this.bookings = items;
+        });
     }
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['kind'] || changes['patientId']) {
+    if (changes['bookingIdFilter']) {
+      this.applyFilter();
+    }
+
+    if (changes['kind'] || changes['patientId'] || changes['bookingIdFilter'] || changes['filterByBooking']) {
       this.loadRecords();
-      this.resetUpload();
+      if (this.allowUpload) {
+        this.resetUpload();
+      }
     }
   }
 
@@ -256,17 +267,57 @@ export class PatientMediaPanelComponent implements OnInit, OnChanges {
   }
 
   get emptyTitle(): string {
+    if (!this.allowUpload && !this.filterByBooking) {
+      return this.kind === 'document' ? 'No documents uploaded yet' : 'No lab results uploaded yet';
+    }
+
+    if (this.bookingIdFilter && !this.allowUpload && this.filterByBooking) {
+      return 'No patient uploads yet';
+    }
+
+    if (this.activeBookingFilter) {
+      return this.kind === 'document' ? 'No documents for this booking' : 'No lab results for this booking';
+    }
+
     return this.kind === 'document' ? 'No documents yet' : 'No lab results yet';
   }
 
   get emptyDescription(): string {
+    if (!this.allowUpload && !this.filterByBooking) {
+      return 'The patient has not uploaded any files in this category yet.';
+    }
+
+    if (this.bookingIdFilter && !this.allowUpload && this.filterByBooking) {
+      return 'No patient uploads linked to this booking yet.';
+    }
+
+    if (this.activeBookingFilter) {
+      return this.kind === 'document'
+        ? 'No documents uploaded for this booking yet.'
+        : 'No lab results uploaded for this booking yet.';
+    }
+
     return this.kind === 'document'
-      ? 'Upload supporting documents anytime, even if there is no booking attached.'
-      : 'Upload lab result files anytime, even if there is no booking attached.';
+      ? 'Upload supporting documents and link them to the correct appointment.'
+      : 'Upload lab result files and link them to the correct appointment.';
+  }
+
+  get activeBookingFilter(): string | undefined {
+    if (!this.filterByBooking) {
+      return undefined;
+    }
+
+    return this.bookingIdFilter || this.queryBookingId || undefined;
   }
 
   get errorHeader(): string {
     return this.errorTitle || (this.kind === 'document' ? 'Unable to load documents' : 'Unable to load lab results');
+  }
+
+  get helperText(): string {
+    return this.kind === 'document'
+      ? 'Upload documents that are relevant to this booking, such as referrals, medical certificates, previous prescriptions, or supporting files.'
+      : 'Upload lab results that are relevant to this booking so your doctor and clinic staff can review them properly.';
   }
 
   get secondaryMetaLabel(): string {
@@ -274,25 +325,70 @@ export class PatientMediaPanelComponent implements OnInit, OnChanges {
   }
 
   formatBooking(booking: Booking): string {
-    const date = new Date(booking.appointmentDate).toLocaleDateString('en-US', {
-      month: 'short',
+    const date = new Date(`${booking.appointmentDate}T12:00:00`).toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
       day: 'numeric',
       year: 'numeric'
     });
     const doctor = booking.doctorName || 'Doctor';
-    const time = this.formatTime(booking.slotStartTime);
+    const time = this.formatTimeRange(booking);
     return `${date} — ${doctor} — ${time}`;
   }
 
-  private formatTime(timeStr?: string): string {
-    if (!timeStr) return '';
-    const parts = timeStr.split(':');
-    if (parts.length < 2) return timeStr;
-    const hours = parseInt(parts[0], 10);
-    const minutes = parts[1];
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    const hr = hours % 12 || 12;
-    return `${hr}:${minutes} ${ampm}`;
+  formatTimeRange(booking: Booking): string {
+    const start = booking.slotStartTime?.trim() ?? '';
+    const end = booking.slotEndTime?.trim() ?? '';
+
+    if (!start) {
+      return 'Time not available';
+    }
+
+    if (!end || end === start) {
+      return start;
+    }
+
+    return `${start} - ${end}`;
+  }
+
+  bookingLabelFor(item: PatientMediaItem): string {
+    if (!item.bookingId) {
+      return '';
+    }
+
+    return this.formatPreviewBooking(item.bookingId);
+  }
+
+  formatPreviewBooking(bookingId: string): string {
+    const booking = this.bookings.find((entry) => entry.id === bookingId);
+    return booking ? this.formatBooking(booking) : 'Linked appointment';
+  }
+
+  isImage(item: PatientMediaItem): boolean {
+    if (item.fileContentType && item.fileContentType.startsWith('image/')) return true;
+    const name = (item.fileName || '').toLowerCase();
+    return name.endsWith('.jpg') || name.endsWith('.jpeg') || name.endsWith('.png') || name.endsWith('.gif') || name.endsWith('.webp');
+  }
+
+  async openPreview(item: PatientMediaItem): Promise<void> {
+    const previewItems = this.isImage(item)
+      ? this.filteredItems.filter((entry) => this.isImage(entry))
+      : [item];
+    const startIndex = this.isImage(item) ? previewItems.findIndex((entry) => entry.id === item.id) : 0;
+
+    const modal = await this.modalCtrl.create({
+      component: PatientMediaPreviewModalComponent,
+      componentProps: {
+        items: previewItems.length > 0 ? previewItems : [item],
+        startIndex: startIndex >= 0 ? startIndex : 0,
+        kind: this.kind,
+        bookings: this.bookings,
+        patientId: this.patientId || undefined
+      },
+      cssClass: 'patient-media-preview-modal'
+    });
+
+    await modal.present();
   }
 
   onSearchChange(value: string): void {
@@ -307,10 +403,14 @@ export class PatientMediaPanelComponent implements OnInit, OnChanges {
   }
 
   resetUpload(): void {
+    const bookingId = this.fromQueryParam
+      ? this.pendingBookingId || normalizeOptionalString(this.form.controls.bookingId.value) || ''
+      : '';
+
     this.form.reset({
       title: '',
       notes: '',
-      bookingId: '',
+      bookingId,
       consultationId: ''
     });
     this.selectedFile = null;
@@ -324,16 +424,24 @@ export class PatientMediaPanelComponent implements OnInit, OnChanges {
 
     const values = this.form.getRawValue();
     const bookingId = normalizeOptionalString(values.bookingId);
+
+    if (!bookingId) {
+      void this.presentToast('Please select the booking this file belongs to.', 'danger');
+      return;
+    }
+
     const consultationId = normalizeOptionalString(values.consultationId);
 
     this.uploading = true;
+    
+    const title = normalizeOptionalString(values.title) || this.selectedFileName;
 
     if (this.kind === 'document') {
       const request: PatientDocumentUploadRequest = {
         file: this.selectedFile,
         bookingId,
         consultationId,
-        title: normalizeOptionalString(values.title),
+        title,
         description: normalizeOptionalString(values.notes)
       };
 
@@ -352,7 +460,7 @@ export class PatientMediaPanelComponent implements OnInit, OnChanges {
       file: this.selectedFile,
       bookingId,
       consultationId,
-      resultTitle: normalizeOptionalString(values.title),
+      resultTitle: title,
       resultText: normalizeOptionalString(values.notes)
     };
 
@@ -372,7 +480,10 @@ export class PatientMediaPanelComponent implements OnInit, OnChanges {
     }
 
     this.downloading.add(item.id);
-    this.documentsService.downloadFile(item.fileUrl).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    this.documentsService
+      .downloadMediaFile(item, this.kind, this.patientId || undefined)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
       next: (blob) => {
         this.saveBlob(blob, item.fileName || `${item.id}.bin`);
         this.downloading.delete(item.id);
@@ -438,10 +549,12 @@ export class PatientMediaPanelComponent implements OnInit, OnChanges {
     this.loading = true;
     this.error = '';
 
+    const bookingFilter = this.activeBookingFilter;
+
     if (this.kind === 'document') {
       const request$ = this.patientId
-        ? this.documentsService.getPatientDocuments(this.patientId)
-        : this.documentsService.getMyDocuments();
+        ? this.documentsService.getPatientDocuments(this.patientId, bookingFilter)
+        : this.documentsService.getMyDocuments(bookingFilter);
 
       request$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: (records: PatientDocument[]) => {
@@ -468,8 +581,8 @@ export class PatientMediaPanelComponent implements OnInit, OnChanges {
     }
 
     const request$ = this.patientId
-      ? this.documentsService.getPatientLabResults(this.patientId)
-      : this.documentsService.getMyLabResults();
+      ? this.documentsService.getPatientLabResults(this.patientId, bookingFilter)
+      : this.documentsService.getMyLabResults(bookingFilter);
 
     request$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (records: PatientLabResult[]) => {
@@ -494,14 +607,42 @@ export class PatientMediaPanelComponent implements OnInit, OnChanges {
     });
   }
 
-  private applyFilter(): void {
-    const term = this.searchTerm.trim().toLowerCase();
-    if (!term) {
-      this.filteredItems = [...this.items];
+  private syncBookingContextFromRoute(bookingId: string | null): void {
+    const normalized = bookingId?.trim();
+    if (!normalized) {
       return;
     }
 
-    this.filteredItems = this.items.filter((item) => {
+    this.pendingBookingId = normalized;
+    this.queryBookingId = normalized;
+    this.fromQueryParam = true;
+    this.applyPendingBookingSelection();
+    this.applyFilter();
+  }
+
+  private applyPendingBookingSelection(): void {
+    if (!this.pendingBookingId) {
+      return;
+    }
+
+    this.form.patchValue({ bookingId: this.pendingBookingId });
+  }
+
+  private applyFilter(): void {
+    let source = this.items;
+    const bookingFilter = this.activeBookingFilter;
+
+    if (bookingFilter) {
+      source = source.filter((item) => item.bookingId === bookingFilter);
+    }
+  
+    const term = this.searchTerm.trim().toLowerCase();
+    if (!term) {
+      this.filteredItems = [...source];
+      return;
+    }
+
+    this.filteredItems = source.filter((item) => {
       const values =
         this.kind === 'document'
           ? [
@@ -534,6 +675,7 @@ export class PatientMediaPanelComponent implements OnInit, OnChanges {
   private finishUpload(message: string): void {
     this.uploading = false;
     this.resetUpload();
+    this.applyPendingBookingSelection();
     this.loadRecords();
     void this.presentToast(message);
   }

@@ -9,12 +9,22 @@ import { BookingService } from '../../../core/services/booking.service';
 import { MockDataService } from '../../../core/services/mock-data.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
+import { PatientMediaPanelComponent } from '../../../shared/components/patient-media-panel/patient-media-panel.component';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 
 @Component({
   standalone: true,
   selector: 'app-doctor-appointment-detail-page',
-  imports: [AsyncPipe, CurrencyPipe, NgFor, NgIf, PageHeaderComponent, EmptyStateComponent, StatusBadgeComponent],
+  imports: [
+    AsyncPipe,
+    CurrencyPipe,
+    NgFor,
+    NgIf,
+    PageHeaderComponent,
+    EmptyStateComponent,
+    PatientMediaPanelComponent,
+    StatusBadgeComponent
+  ],
   template: `
     <ng-container *ngIf="detail$ | async as detail; else notFound">
       <app-page-header
@@ -82,6 +92,29 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
           <div class="clinic-card">
             <h3>Doctor Notes</h3>
             <p class="muted-text">Notes will be captured in the Phase 9 consultation workspace.</p>
+          </div>
+
+          <div class="clinic-card patient-uploads-section" *ngIf="detail.booking.patientId">
+            <h3>Patient Uploads</h3>
+            <p class="muted-text">All documents and lab results uploaded by this patient.</p>
+            <div class="patient-uploads-section__panels">
+              <app-patient-media-panel
+                kind="document"
+                [patientId]="detail.booking.patientId"
+                [filterByBooking]="false"
+                [allowUpload]="false"
+                heading="Documents"
+                subheading="Referrals, certificates, prescriptions, and supporting files."
+              ></app-patient-media-panel>
+              <app-patient-media-panel
+                kind="lab-result"
+                [patientId]="detail.booking.patientId"
+                [filterByBooking]="false"
+                [allowUpload]="false"
+                heading="Lab Results"
+                subheading="Uploaded lab reports and test result files."
+              ></app-patient-media-panel>
+            </div>
           </div>
         </div>
 

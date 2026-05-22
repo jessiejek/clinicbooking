@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
-import { map, Observable } from 'rxjs';
+import { concatMap, from, map, Observable, of, take, throwError } from 'rxjs';
+import { catchError, defaultIfEmpty, filter, switchMap } from 'rxjs/operators';
 import {
   PatientDocument,
   PatientDocumentUploadRequest,
@@ -139,28 +140,32 @@ export class PatientDocumentsService {
     );
   }
 
-  getMyDocuments(): Observable<PatientDocument[]> {
-    return this.apiService.get<PatientDocumentDto[]>('/patients/me/documents').pipe(
+  getMyDocuments(bookingId?: string): Observable<PatientDocument[]> {
+    const params = bookingId?.trim() ? { bookingId: bookingId.trim() } : undefined;
+    return this.apiService.get<PatientDocumentDto[]>('/patients/me/documents', { params }).pipe(
       map((records) => (Array.isArray(records) ? records.map((record) => mapDocument(record)) : []))
     );
   }
 
-  getPatientDocuments(patientId: string): Observable<PatientDocument[]> {
-    return this.apiService.get<PatientDocumentDto[]>(`/patients/${encodeURIComponent(patientId)}/documents`).pipe(
-      map((records) => (Array.isArray(records) ? records.map((record) => mapDocument(record)) : []))
-    );
+  getPatientDocuments(patientId: string, bookingId?: string): Observable<PatientDocument[]> {
+    const params = bookingId?.trim() ? { bookingId: bookingId.trim() } : undefined;
+    return this.apiService
+      .get<PatientDocumentDto[]>(`/patients/${encodeURIComponent(patientId)}/documents`, { params })
+      .pipe(map((records) => (Array.isArray(records) ? records.map((record) => mapDocument(record)) : [])));
   }
 
-  getMyLabResults(): Observable<PatientLabResult[]> {
-    return this.apiService.get<PatientLabResultDto[]>('/patients/me/lab-results').pipe(
+  getMyLabResults(bookingId?: string): Observable<PatientLabResult[]> {
+    const params = bookingId?.trim() ? { bookingId: bookingId.trim() } : undefined;
+    return this.apiService.get<PatientLabResultDto[]>('/patients/me/lab-results', { params }).pipe(
       map((records) => (Array.isArray(records) ? records.map((record) => mapLabResult(record)) : []))
     );
   }
 
-  getPatientLabResults(patientId: string): Observable<PatientLabResult[]> {
-    return this.apiService.get<PatientLabResultDto[]>(`/patients/${encodeURIComponent(patientId)}/lab-results`).pipe(
-      map((records) => (Array.isArray(records) ? records.map((record) => mapLabResult(record)) : []))
-    );
+  getPatientLabResults(patientId: string, bookingId?: string): Observable<PatientLabResult[]> {
+    const params = bookingId?.trim() ? { bookingId: bookingId.trim() } : undefined;
+    return this.apiService
+      .get<PatientLabResultDto[]>(`/patients/${encodeURIComponent(patientId)}/lab-results`, { params })
+      .pipe(map((records) => (Array.isArray(records) ? records.map((record) => mapLabResult(record)) : [])));
   }
 
   uploadMyDocument(request: PatientDocumentUploadRequest): Observable<PatientDocument> {
@@ -194,7 +199,16 @@ export class PatientDocumentsService {
   }
 
   downloadFile(url: string): Observable<Blob> {
-    return this.apiService.getBlob(url);
+    return this.apiService.getBlob(normalizeDownloadPath(url));
+  }
+
+  downloadMediaFile(
+    item: { id: string; fileUrl?: string; fileName?: string; fileContentType?: string },
+    kind: 'document' | 'lab-result',
+    patientId?: string
+  ): Observable<Blob> {
+    const paths = buildMediaDownloadPaths(item, kind, patientId);
+    return downloadFromPaths(this.apiService, paths);
   }
 
   downloadConsultationSummaryPdf(bookingId: string): Observable<Blob> {
@@ -365,4 +379,83 @@ function normalizeNumber(value: number | null | undefined): number | undefined {
 function normalizeString(value: NullableString): string | undefined {
   const trimmed = value?.trim();
   return trimmed ? trimmed : undefined;
+}
+
+function normalizeDownloadPath(url: string): string {
+  const trimmed = url.trim();
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+
+  let path = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+  if (path.startsWith('/api/')) {
+    path = path.slice(4);
+  }
+
+  return path;
+}
+
+function buildMediaDownloadPaths(
+  item: { id: string; fileUrl?: string },
+  kind: 'document' | 'lab-result',
+  patientId?: string
+): string[] {
+  const segment = kind === 'document' ? 'documents' : 'lab-results';
+  const paths: string[] = [];
+  const scopedPatientId = patientId?.trim();
+
+  if (scopedPatientId) {
+    const base = `/patients/${encodeURIComponent(scopedPatientId)}/${segment}/${encodeURIComponent(item.id)}`;
+    paths.push(`${base}/file`, `${base}/download`, `${base}/content`);
+  } else {
+    const base = `/patients/me/${segment}/${encodeURIComponent(item.id)}`;
+    paths.push(`${base}/file`, `${base}/download`, `${base}/content`);
+  }
+
+  const fileUrl = item.fileUrl?.trim();
+  if (fileUrl) {
+    const normalized = normalizeDownloadPath(fileUrl);
+    const isPatientMeUrl = normalized.includes('/patients/me/');
+    if (!scopedPatientId || !isPatientMeUrl) {
+      paths.unshift(normalized);
+    }
+  }
+
+  return [...new Set(paths)];
+}
+
+function downloadFromPaths(
+  apiService: ApiService,
+  paths: string[]
+): Observable<Blob> {
+  if (paths.length === 0) {
+    return throwError(() => new Error('No download path available.'));
+  }
+
+  return from(paths).pipe(
+    concatMap((path) =>
+      apiService.getBlob(path).pipe(
+        map((blob) => ({ blob, path })),
+        catchError(() => of(null))
+      )
+    ),
+    filter((result): result is { blob: Blob; path: string } => result !== null && isValidMediaBlob(result.blob)),
+    take(1),
+    map((result) => result.blob),
+    defaultIfEmpty(null),
+    switchMap((blob) => (blob ? of(blob) : throwError(() => new Error('File not available.'))))
+  );
+}
+
+function isValidMediaBlob(blob: Blob): boolean {
+  if (!blob || blob.size === 0) {
+    return false;
+  }
+
+  const type = blob.type.toLowerCase();
+  if (type.includes('json') || type.includes('html') || type === 'text/plain') {
+    return false;
+  }
+
+  return true;
 }

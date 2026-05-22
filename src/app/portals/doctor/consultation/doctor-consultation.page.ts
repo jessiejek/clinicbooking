@@ -39,6 +39,7 @@ import {
 import { ConsultationOverviewComponent } from './components/consultation-overview.component';
 import { ConsultationWorkspaceComponent } from './components/consultation-workspace.component';
 import { ConsultationPageVm } from './doctor-consultation.types';
+import { PatientMediaPanelComponent } from '../../../shared/components/patient-media-panel/patient-media-panel.component';
 import {
   ConsultationRecordResponse,
   ConsultationRecordUpdateRequest
@@ -112,7 +113,8 @@ type ConsultationInteractionMode = 'complete' | 'view' | 'amend';
     BannerComponent,
     ConsultationHeaderComponent,
     ConsultationOverviewComponent,
-    ConsultationWorkspaceComponent
+    ConsultationWorkspaceComponent,
+    PatientMediaPanelComponent
   ],
   template: `
     <ng-container *ngIf="vm$ | async as vm; else notFound">
@@ -154,6 +156,29 @@ type ConsultationInteractionMode = 'complete' | 'view' | 'amend';
         [followUps]="vm.followUps"
         [recentConsultations]="vm.recentConsultations"
       ></app-consultation-overview>
+
+      <section class="clinic-card patient-uploads-section">
+        <h3>Patient Uploads</h3>
+        <p class="patient-uploads-section__intro">All documents and lab results uploaded by this patient.</p>
+        <div class="patient-uploads-section__panels">
+          <app-patient-media-panel
+            kind="document"
+            [patientId]="vm.patient.id"
+            [filterByBooking]="false"
+            [allowUpload]="false"
+            heading="Documents"
+            subheading="Referrals, certificates, prescriptions, and supporting files."
+          ></app-patient-media-panel>
+          <app-patient-media-panel
+            kind="lab-result"
+            [patientId]="vm.patient.id"
+            [filterByBooking]="false"
+            [allowUpload]="false"
+            heading="Lab Results"
+            subheading="Uploaded lab reports and test result files."
+          ></app-patient-media-panel>
+        </div>
+      </section>
 
       <app-consultation-workspace
         [vm]="vm"

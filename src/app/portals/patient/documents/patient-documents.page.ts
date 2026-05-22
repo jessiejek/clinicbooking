@@ -10,7 +10,7 @@ import { PatientMediaPanelComponent } from '../../../shared/components/patient-m
       <app-patient-media-panel
         kind="document"
         heading="My Documents"
-        subheading="Upload referrals, certificates, clearance letters, and other supporting files. Booking and consultation IDs are optional."
+        subheading="Upload referrals, certificates, prescriptions, and other files linked to your appointments."
       ></app-patient-media-panel>
     </section>
   `,

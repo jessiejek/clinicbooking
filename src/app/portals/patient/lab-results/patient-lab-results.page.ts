@@ -10,7 +10,7 @@ import { PatientMediaPanelComponent } from '../../../shared/components/patient-m
       <app-patient-media-panel
         kind="lab-result"
         heading="My Lab Results"
-        subheading="Upload lab reports, test results, and related files. Booking and consultation IDs are optional."
+        subheading="Upload lab reports and test results linked to your appointments."
       ></app-patient-media-panel>
     </section>
   `,

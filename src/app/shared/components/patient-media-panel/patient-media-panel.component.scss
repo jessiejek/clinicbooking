@@ -136,96 +136,70 @@
   font-weight: var(--font-semibold);
 }
 
-.media-card {
+.booking-helper {
+  color: var(--color-text-muted);
+}
+
+.media-gallery-grid {
   display: grid;
-  gap: var(--space-4);
-  padding: var(--space-4);
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: var(--space-3);
+}
+
+.gallery-card {
   border: 1px solid var(--clinic-border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
+  overflow: hidden;
   background: var(--clinic-bg-elevated);
-  box-shadow: var(--shadow-xs);
+  cursor: pointer;
 }
 
-.media-card__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-.media-card__date {
-  margin-bottom: 0.35rem;
-  font-size: 0.76rem;
-  font-weight: var(--font-semibold);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-text-muted);
-}
-
-.media-card__header h4 {
-  margin: 0;
-  font-size: var(--text-lg);
-  font-weight: var(--font-semibold);
-}
-
-.media-card__tag {
-  flex: 0 0 auto;
-  padding: 0.45rem 0.75rem;
-  border-radius: 999px;
-  background: rgba(16, 185, 129, 0.08);
-  color: var(--ion-color-success);
-  font-size: 0.78rem;
-  font-weight: var(--font-semibold);
-}
-
-.media-card__grid {
+.gallery-card__thumb {
+  aspect-ratio: 4 / 3;
+  background: rgba(37, 99, 235, 0.04);
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-3) var(--space-4);
+  place-items: center;
+  overflow: hidden;
 }
 
-.media-card__grid div {
-  min-width: 0;
+.gallery-card__thumb app-secure-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
-.media-card__grid span {
-  display: block;
-  margin-bottom: 0.3rem;
+.gallery-card__icon {
+  font-size: 2rem;
+  color: var(--ion-color-primary);
+}
+
+.gallery-card__info {
+  padding: 0.7rem 0.8rem;
+}
+
+.gallery-card__info h4 {
+  margin: 0.15rem 0 0;
+  font-size: 0.9rem;
+}
+
+.gallery-card__date,
+.gallery-card__tag--muted {
+  color: var(--color-text-muted);
   font-size: 0.72rem;
-  font-weight: var(--font-semibold);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-text-muted);
 }
 
-.media-card__grid p {
-  margin: 0;
-  overflow-wrap: anywhere;
-}
-
-.media-card__meta {
-  display: flex;
-  gap: var(--space-3);
-  flex-wrap: wrap;
-  justify-content: space-between;
-  color: var(--color-text-muted);
-  font-size: 0.86rem;
-}
-
-.media-card__actions {
-  display: flex;
-  justify-content: flex-end;
+.gallery-card__tag {
+  margin-top: 0.35rem;
+  font-size: 0.74rem;
+  color: var(--ion-color-primary);
 }
 
 @media (max-width: 900px) {
-  .patient-media-panel__header,
-  .media-card__header,
-  .media-card__meta {
+  .patient-media-panel__header {
     flex-direction: column;
   }
 
-  .patient-media-panel__upload-grid,
-  .media-card__grid {
+  .patient-media-panel__upload-grid {
     grid-template-columns: 1fr;
   }
 }

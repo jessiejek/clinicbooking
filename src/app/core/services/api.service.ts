@@ -9,11 +9,22 @@ export class ApiService {
   private readonly apiBaseUrl = environment.apiBaseUrl.replace(/\/$/, '');
 
   private buildUrl(url: string): string {
-    if (/^https?:\/\//i.test(url)) {
-      return url;
+    const trimmed = url.trim();
+    if (/^https?:\/\//i.test(trimmed)) {
+      return trimmed.replace(/\/api\/api\//i, '/api/');
     }
 
-    return `${this.apiBaseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
+    let path = trimmed;
+    if (!path.startsWith('/')) {
+      path = `/${path}`;
+    }
+
+    // apiBaseUrl already ends with /api — avoid /api/api/... when fileUrl includes /api/
+    if (path.startsWith('/api/')) {
+      path = path.slice(4);
+    }
+
+    return `${this.apiBaseUrl}${path}`;
   }
 
   get<T>(url: string, options?: object): Observable<T> {
