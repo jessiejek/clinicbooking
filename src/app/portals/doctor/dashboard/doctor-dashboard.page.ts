@@ -1,26 +1,24 @@
-import { NgFor, NgIf } from '@angular/common';
+import { DatePipe, NgFor, NgIf } from '@angular/common';
 import { Component, DestroyRef, OnInit, inject } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { Router, RouterLink } from '@angular/router';
 import { IonSpinner, ToastController } from '@ionic/angular/standalone';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { catchError, finalize, forkJoin, of, switchMap } from 'rxjs';
-import { AvailabilityStatus, Doctor, DoctorDayStatus, DoctorSchedule } from '../../../core/models';
+import { catchError, forkJoin, of } from 'rxjs';
+import { finalize, switchMap } from 'rxjs/operators';
+import { AvailabilityStatus, Booking, Doctor, DoctorDayStatus, DoctorSchedule } from '../../../core/models';
+import { BookingService } from '../../../core/services/booking.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
-import { DoctorStatusPanelComponent } from '../components/doctor-status-panel/doctor-status-panel.component';
 import { DoctorService } from '../services/doctor.service';
 
 @Component({
   standalone: true,
   selector: 'app-doctor-dashboard-page',
   imports: [
-    NgFor,
-    NgIf,
-    IonSpinner,
-    PageHeaderComponent,
-    EmptyStateComponent,
-    StatusBadgeComponent,
-    DoctorStatusPanelComponent
+    DatePipe, NgFor, NgIf, FormsModule, RouterLink,
+    IonSpinner, PageHeaderComponent, EmptyStateComponent, StatusBadgeComponent
   ],
   template: `
     <div class="page-loading" *ngIf="isLoading">
@@ -28,287 +26,179 @@ import { DoctorService } from '../services/doctor.service';
     </div>
 
     <ng-container *ngIf="!isLoading">
-      <ng-container *ngIf="doctor; else dashboardErrorState">
-        <app-page-header title="Dashboard" subtitle="Doctor Portal">
-          <div class="dashboard-header-copy">
-            <h2>Good morning, {{ doctor.fullName }}</h2>
-            <p>Here is your clinic overview for today.</p>
+      <ng-container *ngIf="doctor; else errorState">
+          <div class="dash">
+          <div class="dh">
+            <div>
+              <h1 class="dt">{{ greeting }}, Dr. {{ doctor.fullName.split(' ')[0] || 'Doctor' }}</h1>
+              <p class="ds">Here's your clinic overview for today.</p>
+            </div>
+            <span class="sp" [class.sa]="todayStatus === 'Available'" [class.sl]="todayStatus === 'RunningLate'" [class.su]="todayStatus === 'UnavailableToday'">
+              {{ todayStatus === 'RunningLate' ? 'Running Late' : todayStatus === 'UnavailableToday' ? 'Unavailable Today' : 'Available' }}
+            </span>
           </div>
-        </app-page-header>
 
-        <section class="dashboard-grid">
-          <article
-            class="clinic-card doctor-profile-card"
-            [class.clinic-card--accent-green]="todayStatusLabel === 'Available'"
-            [class.clinic-card--accent-amber]="todayStatusLabel === 'RunningLate'"
-            [class.clinic-card--accent-red]="todayStatusLabel === 'UnavailableToday'"
-          >
-            <p class="section-label">Profile</p>
-            <h3>{{ doctor.fullName }}</h3>
+          <div class="kpi">
+            <div class="kc k1"><div class="ka"></div><div class="kb"><span class="kl">Booked Today</span><strong class="kv">{{ summary?.bookedToday ?? 0 }}</strong></div></div>
+            <div class="kc k2"><div class="ka"></div><div class="kb"><span class="kl">Waiting</span><strong class="kv">{{ summary?.waiting ?? 0 }}</strong></div></div>
+            <div class="kc k3"><div class="ka"></div><div class="kb"><span class="kl">Checked In</span><strong class="kv">{{ summary?.checkedIn ?? 0 }}</strong></div></div>
+            <div class="kc k4"><div class="ka"></div><div class="kb"><span class="kl">Completed</span><strong class="kv">{{ summary?.completed ?? 0 }}</strong></div></div>
+          </div>
 
-            <div class="profile-grid">
-              <div class="profile-item">
-                <span class="profile-label">Specialization</span>
-                <strong>{{ doctor.specialization }}</strong>
+          <div class="m">
+            <div class="qs">
+              <div class="sh">
+                <h2>Today's Queue</h2>
+                <span class="sc">{{ queueItems.length }} patient(s)</span>
               </div>
-              <div class="profile-item">
-                <span class="profile-label">Consultation Fee</span>
-                <strong>PHP {{ doctor.consultationFee }}</strong>
-              </div>
-              <div class="profile-item">
-                <span class="profile-label">Account Status</span>
-                <app-status-badge [status]="doctor.status"></app-status-badge>
-              </div>
-              <div class="profile-item">
-                <span class="profile-label">Today's Status</span>
-                <app-status-badge [status]="todayStatusLabel"></app-status-badge>
-              </div>
-            </div>
-          </article>
 
-          <app-doctor-status-panel
-            [doctor]="doctor"
-            [status]="doctorDayStatus"
-            (statusChanged)="updateStatus($event)"
-          ></app-doctor-status-panel>
-
-          <article class="clinic-card schedule-card">
-            <div class="card-head">
-              <div>
-                <p class="section-label">Schedule</p>
-                <h3>Working Days</h3>
-              </div>
+              <ng-container *ngIf="queueItems.length > 0; else noQueue">
+                <div class="ql">
+                  <div class="qi" *ngFor="let b of queueItems" (click)="openAppointment(b.id)">
+                    <div class="qih">
+                      <div class="qii">
+                        <span class="qn">{{ b.patientName || 'Patient' }}</span>
+                        <span class="qt">{{ b.slotStartTime ? (b.slotStartTime.substring(0,5)) : '--' }}</span>
+                      </div>
+                      <div class="qib">
+                        <app-status-badge portal="doctor" [status]="b.status"></app-status-badge>
+                        <span class="qp" *ngIf="b.queueNumber != null">#{{ b.queueNumber }}</span>
+                      </div>
+                    </div>
+                    <div class="qs2">{{ b.serviceNames?.join(', ') || b.serviceName || 'Service' }}</div>
+                  </div>
+                </div>
+              </ng-container>
+              <ng-template #noQueue>
+                <div class="qe">No appointments scheduled for today.</div>
+              </ng-template>
             </div>
 
-            <ng-container *ngIf="doctorSchedule.length > 0; else noScheduleState">
-              <div class="schedule-list">
-                <div class="schedule-item" *ngFor="let schedule of doctorSchedule">
-                  <strong>{{ schedule.dayOfWeek }}</strong>
-                  <span>{{ formatTime(schedule.startTime) }} - {{ formatTime(schedule.endTime) }}</span>
+            <div class="ss">
+              <div class="clinic-card">
+                <div class="sh"><h2>Availability</h2></div>
+                <div class="aa">
+                  <button class="ab" [class.active]="todayStatus === 'Available'" (click)="updateStatus('Available')">Mark Available</button>
+                  <div class="rr">
+                    <input class="fi2" type="number" min="5" [(ngModel)]="runningLateMinutes" />
+                    <button class="ab" [class.active]="todayStatus === 'RunningLate'" [disabled]="runningLateMinutes < 5" (click)="updateStatus('RunningLate')">Running Late</button>
+                  </div>
+                  <button class="ab" [class.active]="todayStatus === 'UnavailableToday'" (click)="updateStatus('UnavailableToday')">Unavailable Today</button>
                 </div>
               </div>
-            </ng-container>
-          </article>
-        </section>
 
-        <ng-template #noScheduleState>
-          <app-empty-state
-            icon="time-outline"
-            title="No schedule found"
-            description="Your weekly schedule has not been configured yet."
-          ></app-empty-state>
-        </ng-template>
+              <div class="clinic-card">
+                <div class="sh"><h2>Working Schedule</h2></div>
+                <div class="sl2" *ngIf="schedule.length > 0">
+                  <div class="sr2" *ngFor="let s of schedule">
+                    <span class="sd">{{ s.dayOfWeek.substring(0,3) }}</span>
+                    <span class="st2">{{ (s.startTime).substring(0,5) }} - {{ (s.endTime).substring(0,5) }}</span>
+                  </div>
+                </div>
+                <div class="se2" *ngIf="schedule.length === 0">No schedule configured.</div>
+                <a class="cl" routerLink="/doctor/schedule">Manage Schedule &rarr;</a>
+              </div>
+
+              <div class="clinic-card">
+                <div class="sh"><h2>Profile</h2></div>
+                <div class="pi">
+                  <div class="pr"><span class="pl2">Specialization</span><span>{{ doctor.specialization || '--' }}</span></div>
+                  <div class="pr"><span class="pl2">Fee</span><span>PHP {{ doctor.consultationFee }}</span></div>
+                  <div class="pr"><span class="pl2">Status</span><app-status-badge [status]="doctor.status"></app-status-badge></div>
+                </div>
+                <a class="cl" routerLink="/doctor/profile">Edit Profile &rarr;</a>
+              </div>
+            </div>
+          </div>
+        </div>
       </ng-container>
     </ng-container>
 
-    <ng-template #dashboardErrorState>
-      <app-empty-state
-        icon="medical-outline"
-        title="Unable to load dashboard"
-        [description]="dashboardError ?? 'We could not load your doctor profile.'"
-        ctaLabel="Retry"
-        (ctaClick)="reload()"
-      ></app-empty-state>
+    <ng-template #errorState>
+      <app-empty-state icon="medical-outline" title="Unable to load dashboard" description="We could not load your doctor profile." ctaLabel="Retry" (ctaClick)="loadDashboard()"></app-empty-state>
     </ng-template>
   `,
   styleUrl: './doctor-dashboard.page.scss'
 })
 export class DoctorDashboardPage implements OnInit {
   private readonly doctorService = inject(DoctorService);
-  private readonly toastController = inject(ToastController);
+  private readonly bookingService = inject(BookingService);
+  private readonly router = inject(Router);
+  private readonly toastCtrl = inject(ToastController);
   private readonly destroyRef = inject(DestroyRef);
 
   isLoading = true;
-  dashboardError: string | null = null;
   doctor: Doctor | null = null;
-  doctorSchedule: DoctorSchedule[] = [];
-  doctorDayStatus: DoctorDayStatus | null = null;
-
-  get todayStatusLabel(): AvailabilityStatus {
-    return this.doctorDayStatus?.status ?? 'Available';
-  }
+  summary: { bookedToday: number; waiting: number; checkedIn: number; completed: number } | null = null;
+  queueItems: Booking[] = [];
+  schedule: DoctorSchedule[] = [];
+  todayStatus: AvailabilityStatus = 'Available';
+  greeting = '';
+  runningLateMinutes = 15;
 
   ngOnInit(): void {
+    this.setGreeting();
     this.loadDashboard();
   }
 
-  reload(): void {
-    this.loadDashboard();
-  }
-
-  updateStatus(event: {
-    doctorId: string;
-    status: AvailabilityStatus;
-    runningLateMinutes?: number;
-  }): void {
-    if (!this.doctor) {
-      return;
-    }
-
-    const date = this.getTodayLocalDateString();
-
-    this.doctorService
-      .setDayStatus(event.doctorId, {
-        date,
-        status: event.status,
-        runningLateMinutes: event.status === 'RunningLate' ? event.runningLateMinutes ?? null : null
-      })
-      .pipe(
-        catchError((error: unknown) => {
-          void this.presentToast(extractApiErrorMessage(error, 'Failed to update availability status.'));
-          return of(null);
-        }),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe((status) => {
-        if (!status) {
-          return;
-        }
-
-        this.doctorDayStatus = { ...status };
-        void this.presentToast(`Status updated to ${this.formatAvailabilityStatus(status.status)}.`, 'success');
-      });
-  }
-
-  formatTime(time: string): string {
-    const [hourPart, minutePart = '00'] = time.split(':');
-    const hour24 = Number(hourPart);
-
-    if (!Number.isFinite(hour24)) {
-      return time;
-    }
-
-    const suffix = hour24 >= 12 ? 'PM' : 'AM';
-    const hour12 = hour24 % 12 || 12;
-    return `${String(hour12).padStart(2, '0')}:${minutePart.padStart(2, '0')} ${suffix}`;
-  }
-
-  private loadDashboard(): void {
+  loadDashboard(): void {
     this.isLoading = true;
-    this.dashboardError = null;
-    this.doctor = null;
-    this.doctorSchedule = [];
-    this.doctorDayStatus = null;
+    this.doctorService.getMyProfile().pipe(
+      switchMap((doc) => {
+        if (!doc) return of(null);
+        this.doctor = doc;
+        return forkJoin({
+          summary: this.bookingService.getDoctorTodaySummary().pipe(catchError(() => of(null))),
+          schedule: this.doctorService.getDoctorSchedules(doc.id).pipe(catchError(() => of([] as DoctorSchedule[]))),
+          dayStatus: this.doctorService.getDayStatus(doc.id).pipe(catchError(() => of(null as DoctorDayStatus | null)))
+        });
+      }),
+      catchError(() => of(null)),
+      finalize(() => (this.isLoading = false)),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe((result) => {
+      if (!result || !this.doctor) return;
+      this.summary = result.summary ? { bookedToday: result.summary.bookedToday, waiting: result.summary.waiting, checkedIn: result.summary.checkedIn, completed: result.summary.completed } : null;
+      this.queueItems = (result.summary?.items ?? []).sort((a, b) => (a.queueNumber ?? 999) - (b.queueNumber ?? 999));
+      this.schedule = result.schedule;
+      this.todayStatus = result.dayStatus?.status ?? 'Available';
+    });
+  }
 
-    this.doctorService
-      .getMyProfile()
-      .pipe(
-        switchMap((doctor) => {
-          if (!doctor) {
-            this.dashboardError = 'Doctor profile not found.';
-            return of(null);
-          }
-
-          return forkJoin({
-            doctor: of(doctor),
-            schedule: this.doctorService.getDoctorSchedules(doctor.id).pipe(
-              catchError((error: unknown) => {
-                void this.presentToast(extractApiErrorMessage(error, 'Failed to load schedule.'));
-                return of([] as DoctorSchedule[]);
-              })
-            ),
-            dayStatus: this.doctorService.getDayStatus(doctor.id).pipe(
-              catchError((error: unknown) => {
-                void this.presentToast(extractApiErrorMessage(error, 'Failed to load today\'s status.'));
-                return of(null as DoctorDayStatus | null);
-              })
-            )
-          });
-        }),
-        catchError((error: unknown) => {
-          this.dashboardError = extractApiErrorMessage(error, 'Failed to load doctor dashboard.');
-          void this.presentToast(this.dashboardError);
-          return of(null);
-        }),
-        finalize(() => {
-          this.isLoading = false;
-        }),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe((result) => {
-        if (!result) {
-          return;
-        }
-
-        this.doctor = result.doctor;
-        this.doctorSchedule = result.schedule;
-        this.doctorDayStatus = result.dayStatus ? { ...result.dayStatus } : null;
+  updateStatus(status: AvailabilityStatus): void {
+    if (!this.doctor) return;
+    this.doctorService.setDayStatus(this.doctor.id, {
+      date: this.todayStr(),
+      status,
+      runningLateMinutes: status === 'RunningLate' ? this.runningLateMinutes : null
+    }).pipe(catchError(() => { this.showToast('Failed to update status.', 'danger'); return of(null); }))
+      .subscribe((res) => {
+        if (!res) return;
+        this.todayStatus = res.status as AvailabilityStatus;
+        this.showToast(`Status: ${this.label(status)}`, 'success');
       });
   }
 
-  private formatAvailabilityStatus(status: AvailabilityStatus): string {
-    switch (status) {
-      case 'RunningLate':
-        return 'Running Late';
-      case 'UnavailableToday':
-        return 'Unavailable Today';
-      default:
-        return 'Available';
-    }
+  openAppointment(id: string): void {
+    this.router.navigate(['/doctor/appointments', id]);
   }
 
-  private getTodayLocalDateString(): string {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+  private setGreeting(): void {
+    const h = new Date().getHours();
+    this.greeting = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
   }
 
-  private async presentToast(message: string, color: 'danger' | 'success' = 'danger'): Promise<void> {
-    const toast = await this.toastController.create({
-      message,
-      duration: 1800,
-      color,
-      position: 'top'
-    });
-    await toast.present();
-  }
-}
-
-function extractApiErrorMessage(error: unknown, fallback: string): string {
-  if (typeof error === 'object' && error !== null && 'error' in error) {
-    const body = (error as { error?: unknown }).error;
-
-    const message = extractFirstMessage(body);
-    if (message) {
-      return message;
-    }
+  private label(s: AvailabilityStatus): string {
+    return s === 'RunningLate' ? 'Running Late' : s === 'UnavailableToday' ? 'Unavailable Today' : 'Available';
   }
 
-  if (error instanceof Error && error.message.trim()) {
-    return error.message;
+  private todayStr(): string {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   }
 
-  return fallback;
-}
-
-function extractFirstMessage(body: unknown): string | null {
-  if (typeof body === 'string' && body.trim()) {
-    return body.trim();
+  private async showToast(msg: string, color: string = 'success'): Promise<void> {
+    const t = await this.toastCtrl.create({ message: msg, duration: 1800, color, position: 'top' });
+    await t.present();
   }
-
-  if (typeof body !== 'object' || body === null) {
-    return null;
-  }
-
-  const record = body as Record<string, unknown>;
-  for (const key of ['message', 'detail', 'error', 'title']) {
-    const value = record[key];
-    if (typeof value === 'string' && value.trim()) {
-      return value.trim();
-    }
-  }
-
-  const errors = record['errors'];
-  if (Array.isArray(errors)) {
-    for (const entry of errors) {
-      const nested = extractFirstMessage(entry);
-      if (nested) {
-        return nested;
-      }
-    }
-  }
-
-  return null;
 }

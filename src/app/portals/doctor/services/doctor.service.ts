@@ -8,6 +8,7 @@ import {
   DoctorBlockedDate,
   DoctorDayStatus,
   DoctorSchedule,
+  DoctorScheduleInput,
   DoctorStatus
 } from '../../../core/models';
 
@@ -126,6 +127,22 @@ export class DoctorService {
     return this.apiService.get<DoctorBlockedDateDto[]>(`/doctors/${doctorId}/blocked-dates`).pipe(
       map((dates) => dates.map((date) => mapDoctorBlockedDateDto(date)))
     );
+  }
+
+  updateSchedule(doctorId: string, schedules: DoctorScheduleInput[]): Observable<DoctorSchedule[]> {
+    return this.apiService.put<DoctorScheduleDto[]>(`/doctors/${doctorId}/schedule`, { schedules }).pipe(
+      map((dtos) => dtos.map((dto) => mapDoctorScheduleDto(dto)))
+    );
+  }
+
+  createBlockedDate(doctorId: string, payload: { blockedDate: string; reason?: string | null }): Observable<DoctorBlockedDate> {
+    return this.apiService.post<DoctorBlockedDateDto>(`/doctors/${doctorId}/blocked-dates`, payload).pipe(
+      map((dto) => mapDoctorBlockedDateDto(dto))
+    );
+  }
+
+  deleteBlockedDate(doctorId: string, blockedDateId: string): Observable<void> {
+    return this.apiService.delete<void>(`/doctors/${doctorId}/blocked-dates/${blockedDateId}`);
   }
 }
 

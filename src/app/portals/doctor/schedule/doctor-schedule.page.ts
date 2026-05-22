@@ -1,34 +1,44 @@
 import { AsyncPipe, NgIf } from '@angular/common';
 import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { ToastController } from '@ionic/angular/standalone';
-import { of } from 'rxjs';
-import { switchMap } from 'rxjs/operators';
+import { forkJoin } from 'rxjs';
+import { catchError, finalize } from 'rxjs/operators';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   DoctorBlockedDate,
   DayOfWeek,
+  DoctorScheduleInput,
   TimeSlot
 } from '../../../core/models';
-import { AuthStateService } from '../../../core/services/auth-state.service';
-import { DoctorStateService } from '../../../core/services/doctor-state.service';
-import { MockDataService } from '../../../core/services/mock-data.service';
 import { DoctorService } from '../services/doctor.service';
 import {
   DoctorScheduleEditorComponent,
   DoctorWeeklyScheduleDraft
 } from '../components/doctor-schedule-editor/doctor-schedule-editor.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
+import { SkeletonComponent } from '../../../shared/components/skeleton/skeleton.component';
 
 const DAY_NAMES: DayOfWeek[] = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 @Component({
   standalone: true,
   selector: 'app-doctor-schedule-page',
-  imports: [AsyncPipe, NgIf, PageHeaderComponent, DoctorScheduleEditorComponent],
+  imports: [AsyncPipe, NgIf, PageHeaderComponent, DoctorScheduleEditorComponent, SkeletonComponent],
   template: `
     <app-page-header title="Schedule" subtitle="Weekly availability and blocked dates"></app-page-header>
 
-    <ng-container *ngIf="doctorReady">
+    <app-skeleton *ngIf="isLoading" variant="card" [count]="2"></app-skeleton>
+
+    <div *ngIf="error" class="er">
+      <p>Unable to load schedule. Please try again.</p>
+      <button type="button" class="btn-primary" (click)="loadData()">Retry</button>
+    </div>
+
+    <ng-container *ngIf="doctorId && !isLoading && !error">
+      <div class="note-banner">
+        <span>Changes here affect patient booking slot availability.</span>
+      </div>
+
       <app-doctor-schedule-editor
         [schedules]="draftSchedules"
         [blockedDates]="blockedDates"
@@ -45,82 +55,119 @@ const DAY_NAMES: DayOfWeek[] = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thu
   styleUrl: './doctor-schedule.page.scss'
 })
 export class DoctorSchedulePage implements OnInit {
-  private readonly authState = inject(AuthStateService);
-  private readonly doctorState = inject(DoctorStateService);
   private readonly doctorService = inject(DoctorService);
-  private readonly mockData = inject(MockDataService);
   private readonly toastController = inject(ToastController);
   private readonly destroyRef = inject(DestroyRef);
 
-  doctorReady = false;
+  doctorId = '';
+  isLoading = true;
+  error = false;
   isSaving = false;
   previewDate = new Date().toISOString().slice(0, 10);
   previewSlots: TimeSlot[] = [];
   draftSchedules: DoctorWeeklyScheduleDraft[] = [];
   blockedDates: DoctorBlockedDate[] = [];
-  private doctorId = '';
 
   ngOnInit(): void {
-    this.authState.currentUser$
-      .pipe(
-        switchMap((user) => (user ? this.doctorState.getDoctorByUserId(user.id) : of(undefined))),
+    this.loadData();
+  }
+
+  loadData(): void {
+    this.isLoading = true;
+    this.error = false;
+    this.doctorService.getMyProfile().pipe(
+      catchError(() => {
+        this.isLoading = false;
+        this.error = true;
+        return [];
+      }),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe((doctor) => {
+      if (!doctor || !doctor.id) {
+        this.isLoading = false;
+        this.error = true;
+        return;
+      }
+      this.doctorId = doctor.id;
+      forkJoin([
+        this.doctorService.getDoctorSchedules(doctor.id),
+        this.doctorService.getDoctorBlockedDates(doctor.id)
+      ]).pipe(
+        catchError(() => {
+          this.isLoading = false;
+          this.error = true;
+          return [];
+        }),
         takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe((doctor) => {
-        if (!doctor) {
-          this.doctorReady = false;
-          return;
-        }
-
-        this.doctorReady = true;
-        this.doctorId = doctor.id;
-
-        this.doctorState
-          .getDoctorSchedules(doctor.id)
-          .pipe(takeUntilDestroyed(this.destroyRef))
-          .subscribe((schedules) => {
-            this.draftSchedules = this.buildDraftSchedules(schedules);
-            this.refreshPreview();
-          });
-
-        this.doctorService
-          .getDoctorBlockedDates(doctor.id)
-          .pipe(takeUntilDestroyed(this.destroyRef))
-          .subscribe((blockedDates) => {
-            this.blockedDates = blockedDates;
-            this.previewSlots = this.generatePreviewSlots(this.previewDate);
-            blockedDates.forEach((blockedDate) => this.doctorState.addBlockedDate(blockedDate));
-          });
+      ).subscribe(([schedules, blockedDates]) => {
+        this.draftSchedules = this.buildDraftSchedules(schedules, doctor.slotDurationMinutes, doctor.slotCapacity);
+        this.blockedDates = blockedDates;
+        this.isLoading = false;
+        this.refreshPreview();
       });
+    });
   }
 
   saveSchedules(drafts: DoctorWeeklyScheduleDraft[]): void {
-    this.draftSchedules = drafts.map((draft) => ({ ...draft }));
-    this.refreshPreview();
-    void this.presentToast('Schedule saved locally.');
+    this.draftSchedules = drafts.map((d) => ({ ...d }));
+    const activeSchedules = drafts
+      .filter((d) => d.isActive)
+      .map((d) => ({
+        dayOfWeek: d.dayOfWeek,
+        startTime: this.toBackendTime(d.startTime),
+        endTime: this.toBackendTime(d.endTime)
+      } as DoctorScheduleInput));
+
+    this.isSaving = true;
+    this.doctorService.updateSchedule(this.doctorId, activeSchedules).pipe(
+      finalize(() => (this.isSaving = false)),
+      catchError(() => {
+        void this.presentToast('Failed to save schedule.', 'danger');
+        return [];
+      }),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(() => {
+      this.refreshPreview();
+      void this.presentToast('Schedule saved successfully.', 'success');
+    });
   }
 
   addBlockedDate(blockedDate: string, reason: string): void {
     if (!this.doctorId) {
       return;
     }
-    const record: DoctorBlockedDate = {
-      id: `blocked-${this.doctorId}-${Date.now()}`,
-      doctorId: this.doctorId,
-      blockedDate,
-      reason
-    };
-    this.blockedDates = [...this.blockedDates.filter((item) => item.blockedDate !== blockedDate), record];
-    this.doctorState.addBlockedDate(record);
-    this.refreshPreview();
-    void this.presentToast('Blocked date added.');
+    this.isSaving = true;
+    this.doctorService.createBlockedDate(this.doctorId, { blockedDate, reason: reason || null }).pipe(
+      finalize(() => (this.isSaving = false)),
+      catchError(() => {
+        void this.presentToast('Failed to add blocked date.', 'danger');
+        return [];
+      }),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe((record) => {
+      this.blockedDates = [...this.blockedDates, record];
+      this.refreshPreview();
+      void this.presentToast('Blocked date added.', 'success');
+    });
   }
 
   removeBlockedDate(id: string): void {
-    this.blockedDates = this.blockedDates.filter((item) => item.id !== id);
-    this.doctorState.removeBlockedDate(id);
-    this.refreshPreview();
-    void this.presentToast('Blocked date removed.');
+    if (!this.doctorId) {
+      return;
+    }
+    this.isSaving = true;
+    this.doctorService.deleteBlockedDate(this.doctorId, id).pipe(
+      finalize(() => (this.isSaving = false)),
+      catchError(() => {
+        void this.presentToast('Failed to remove blocked date.', 'danger');
+        return [];
+      }),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(() => {
+      this.blockedDates = this.blockedDates.filter((item) => item.id !== id);
+      this.refreshPreview();
+      void this.presentToast('Blocked date removed.', 'success');
+    });
   }
 
   updatePreviewDate(date: string): void {
@@ -128,19 +175,41 @@ export class DoctorSchedulePage implements OnInit {
     this.refreshPreview();
   }
 
-  private buildDraftSchedules(schedules: { dayOfWeek: DayOfWeek; startTime: string; endTime: string }[]): DoctorWeeklyScheduleDraft[] {
-    const doctor = this.mockData.getDoctorById(this.doctorId);
+  private buildDraftSchedules(
+    schedules: { dayOfWeek: DayOfWeek; startTime: string; endTime: string }[],
+    slotDurationMinutes = 30,
+    slotCapacity = 1
+  ): DoctorWeeklyScheduleDraft[] {
     return DAY_NAMES.map((dayOfWeek) => {
       const schedule = schedules.find((item) => item.dayOfWeek === dayOfWeek);
       return {
         dayOfWeek,
-        startTime: schedule?.startTime ?? '08:00',
-        endTime: schedule?.endTime ?? '17:00',
+        startTime: schedule?.startTime ? this.toDisplayTime(schedule.startTime) : '08:00',
+        endTime: schedule?.endTime ? this.toDisplayTime(schedule.endTime) : '17:00',
         isActive: !!schedule,
-        slotDurationMinutes: doctor?.slotDurationMinutes ?? 30,
-        slotCapacity: doctor?.slotCapacity ?? 1
+        slotDurationMinutes,
+        slotCapacity
       };
     });
+  }
+
+  /** Convert HH:mm:ss backend format to HH:mm for the time input. */
+  private toDisplayTime(time: string): string {
+    return time.length >= 5 ? time.substring(0, 5) : time;
+  }
+
+  /** Ensure time is HH:mm format (strip seconds if present). */
+  private toBackendTime(time: string): string {
+    const trimmed = time.trim();
+    // Already HH:mm
+    if (trimmed.length === 5) {
+      return trimmed;
+    }
+    // Strip :ss from HH:mm:ss
+    if (trimmed.length >= 5) {
+      return trimmed.substring(0, 5);
+    }
+    return trimmed;
   }
 
   private refreshPreview(): void {
@@ -202,11 +271,11 @@ export class DoctorSchedulePage implements OnInit {
     return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
   }
 
-  private async presentToast(message: string): Promise<void> {
+  private async presentToast(message: string, color: string = 'success'): Promise<void> {
     const toast = await this.toastController.create({
       message,
       duration: 1800,
-      color: 'success',
+      color,
       position: 'top'
     });
     await toast.present();

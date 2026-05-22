@@ -50,6 +50,21 @@ export interface DoctorBlockedDate {
   reason?: string;
 }
 
+export interface DoctorScheduleInput {
+  dayOfWeek: string;
+  startTime: string;
+  endTime: string;
+}
+
+export interface UpsertSchedulesRequest {
+  schedules: DoctorScheduleInput[];
+}
+
+export interface BlockDateRequest {
+  blockedDate: string;
+  reason?: string | null;
+}
+
 export interface DoctorDayStatus {
   id: string;
   doctorId: string;
