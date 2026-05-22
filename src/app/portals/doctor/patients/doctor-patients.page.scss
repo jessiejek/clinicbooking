@@ -16,7 +16,7 @@
 .pii{display:grid;gap:2px;min-width:0}
 .pin{font-size:var(--text-sm);font-weight:600;color:#0f172a}
 .pis{font-size:var(--text-xs);color:#6b21a8}
-.pib{display:flex;align-items:center;gap:var(--space-1);flex-shrink:0}
+.pib{display:flex;align-items:center;gap:var(--space-1);flex-shrink:0;flex-wrap:wrap}
 .qp{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:22px;padding:0 6px;border-radius:999px;background:#f1f5f9;color:#475569;font-size:var(--text-xs);font-weight:700;font-family:var(--font-mono,monospace)}
 .pim{display:flex;align-items:center;justify-content:space-between;gap:var(--space-3)}
 .pid{font-size:var(--text-xs);color:#64748b;font-family:var(--font-mono,monospace)}

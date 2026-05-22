@@ -139,6 +139,7 @@ type ConsultationInteractionMode = 'complete' | 'view' | 'amend';
               <strong>{{ vm.patient.firstName }} {{ vm.patient.lastName }}</strong>
               <span>{{ vm.patient.sex || '--' }} &middot; {{ vm.patient.dateOfBirth ? (calcAge(vm.patient.dateOfBirth) + ' yrs') : '--' }}</span>
               <span>{{ vm.booking.serviceNames?.join(', ') || vm.booking.serviceName || 'Service' }}</span>
+              <a class="cr-clinical-link" [routerLink]="['/doctor/patients', vm.patient.id]" (click)="$event.stopPropagation()">View Clinical History &rarr;</a>
             </div>
             <div class="cr-patient__meta">
               <div><span class="ml">Fee</span><span class="mv">PHP {{ vm.booking.consultationFeeSnapshot ?? vm.booking.totalFee ?? 0 }}</span></div>

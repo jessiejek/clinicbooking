@@ -7,3 +7,5 @@ export * from './patient-documents.models';
 export * from './notification.models';
 export * from './patient.models';
 export * from './vaccination.models';
+export * from './patient-clinical-history.models';
+export * from './doctor-patient-summary.models';

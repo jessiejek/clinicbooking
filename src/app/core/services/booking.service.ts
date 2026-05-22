@@ -16,6 +16,7 @@ import {
 import {
   Booking,
   BookingServiceItem,
+  DoctorPatientSummaryDto,
   BookingStatus,
   Payment,
   PaymentMethod,
@@ -402,6 +403,15 @@ export class BookingService {
   getDoctorUpcoming(): Observable<Booking[]> {
     return this.requestBookingList('/bookings/doctor/upcoming', undefined, false).pipe(
       map((bookings) => [...bookings].sort((a, b) => bookingDateTime(a) - bookingDateTime(b)))
+    );
+  }
+
+  getDoctorPatients(): Observable<DoctorPatientSummaryDto[]> {
+    return this.apiService.get<DoctorPatientSummaryDto[]>('/bookings/doctor/patients').pipe(
+      catchError((err) => {
+        console.warn('Failed to load doctor patients:', err);
+        return of([]);
+      })
     );
   }
 

@@ -1,345 +1,261 @@
 import { AsyncPipe, DatePipe, NgFor, NgIf } from '@angular/common';
 import { Component, inject } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
-import { catchError, combineLatest, firstValueFrom, of } from 'rxjs';
-import { map, switchMap } from 'rxjs/operators';
+import { ActivatedRoute, RouterLink } from '@angular/router';
+import { catchError, map, of, switchMap } from 'rxjs';
 import { FormsModule } from '@angular/forms';
-import { IonLabel, IonSegment, IonSegmentButton, ModalController, ToastController } from '@ionic/angular/standalone';
-import { Allergy, Booking, Consultation, FollowUp, LabResult, Patient, Prescription } from '../../../core/models';
-import { PatientVaccinationDto, CreatePatientVaccinationRequest } from '../../../core/models/vaccination.models';
+import { IonLabel, IonSegment, IonSegmentButton, ModalController } from '@ionic/angular/standalone';
+import { PatientClinicalHistoryDto } from '../../../core/models/patient-clinical-history.models';
 import { ApiService } from '../../../core/services/api.service';
-import { AuthStateService } from '../../../core/services/auth-state.service';
-import { BookingService } from '../../../core/services/booking.service';
-import { DoctorStateService } from '../../../core/services/doctor-state.service';
-import { MedicalRecordsService } from '../../../core/services/medical-records.service';
-import { PatientVaccinationsService } from '../../../core/services/patient-vaccinations.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
-import { PatientMediaPanelComponent } from '../../../shared/components/patient-media-panel/patient-media-panel.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
-import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
-import { ConsultationTimelineComponent } from '../../admin/components/consultation-timeline/consultation-timeline.component';
-import { VitalsTrendChartComponent } from '../components/vitals-trend-chart/vitals-trend-chart.component';
-import { VaccinationFormComponent } from '../components/vaccination-form/vaccination-form.component';
+
+type ClinicalTab = 'timeline' | 'consultations' | 'prescriptions' | 'labs' | 'documents' | 'vaccinations' | 'appointments';
+
+
 
 @Component({
   standalone: true,
   selector: 'app-doctor-patient-detail-page',
   imports: [
-    AsyncPipe,
-    DatePipe,
-    FormsModule,
-    NgFor,
-    NgIf,
-    IonLabel,
-    IonSegment,
-    IonSegmentButton,
-    PageHeaderComponent,
-    EmptyStateComponent,
-    PatientMediaPanelComponent,
-    ConsultationTimelineComponent,
-    VitalsTrendChartComponent,
-    StatusBadgeComponent,
-    VaccinationFormComponent
+    AsyncPipe, DatePipe, NgFor, NgIf, FormsModule, RouterLink,
+    IonLabel, IonSegment, IonSegmentButton,
+    PageHeaderComponent, EmptyStateComponent
   ],
   template: `
-    <ng-container *ngIf="detail$ | async as detail; else notFound">
+    <ng-container *ngIf="history$ | async as history; else loadingTpl">
       <app-page-header
-        title="Patient Detail"
-        subtitle="Read-only patient profile"
+        [title]="history.patient.fullName"
+        [subtitle]="'Patient Code: ' + history.patient.patientCode"
         [showBackButton]="true"
         defaultBackHref="/doctor/patients"
       ></app-page-header>
 
+      <div class="patient-summary clinic-card">
+        <div class="patient-summary__avatar">{{ history.patient.fullName.charAt(0) }}</div>
+        <div class="patient-summary__info">
+          <div class="patient-summary__name">{{ history.patient.fullName }}</div>
+          <div class="patient-summary__meta">
+            <span *ngIf="history.patient.sex">{{ history.patient.sex }}</span>
+            <span *ngIf="history.patient.dateOfBirth">&middot; {{ calcAge(history.patient.dateOfBirth) }} yrs</span>
+            <span *ngIf="history.patient.contactNumber">&middot; {{ history.patient.contactNumber }}</span>
+            <span *ngIf="history.patient.email">&middot; {{ history.patient.email }}</span>
+          </div>
+          <div class="patient-summary__dates">
+            <span *ngIf="history.summary.lastVisitDate">Last visit: {{ history.summary.lastVisitDate }}</span>
+            <span *ngIf="history.summary.nextAppointmentDate">Next appointment: {{ history.summary.nextAppointmentDate }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="summary-cards">
+        <div class="stat-card"><span class="stat-num">{{ history.summary.totalAppointments }}</span><span class="stat-label">Appointments</span></div>
+        <div class="stat-card"><span class="stat-num">{{ history.summary.completedConsultations }}</span><span class="stat-label">Consultations</span></div>
+        <div class="stat-card"><span class="stat-num">{{ history.summary.activePrescriptions }}</span><span class="stat-label">Prescriptions</span></div>
+        <div class="stat-card"><span class="stat-num">{{ history.summary.labResultsCount }}</span><span class="stat-label">Lab Results</span></div>
+        <div class="stat-card"><span class="stat-num">{{ history.summary.documentsCount }}</span><span class="stat-label">Documents</span></div>
+        <div class="stat-card"><span class="stat-num">{{ history.summary.vaccinationsCount }}</span><span class="stat-label">Vaccinations</span></div>
+      </div>
+
       <section class="clinic-card tab-card">
         <ion-segment [(ngModel)]="activeTab">
-          <ion-segment-button value="overview">
-            <ion-label>Overview</ion-label>
-          </ion-segment-button>
-          <ion-segment-button value="vaccinations">
-            <ion-label>Vaccinations</ion-label>
-          </ion-segment-button>
-          <ion-segment-button value="records">
-            <ion-label>Medical Records</ion-label>
-          </ion-segment-button>
+          <ion-segment-button value="timeline"><ion-label>Timeline</ion-label></ion-segment-button>
+          <ion-segment-button value="appointments"><ion-label>Appointments</ion-label></ion-segment-button>
+          <ion-segment-button value="consultations"><ion-label>Consultations</ion-label></ion-segment-button>
+          <ion-segment-button value="prescriptions"><ion-label>Prescriptions</ion-label></ion-segment-button>
+          <ion-segment-button value="labs"><ion-label>Lab Results</ion-label></ion-segment-button>
+          <ion-segment-button value="documents"><ion-label>Documents</ion-label></ion-segment-button>
+          <ion-segment-button value="vaccinations"><ion-label>Vaccinations</ion-label></ion-segment-button>
         </ion-segment>
       </section>
 
-      <section *ngIf="activeTab === 'overview'" class="detail-grid">
-        <div class="detail-main">
-          <div class="clinic-card">
-            <h3>{{ patientName(detail.patient) }}</h3>
-            <div class="info-grid">
-              <div><span>Patient Code</span><strong>{{ detail.patient.patientCode }}</strong></div>
-              <div><span>Age / Gender</span><strong>{{ ageLabel(detail.patient) }} / {{ detail.patient.sex }}</strong></div>
-              <div><span>Contact</span><strong>{{ detail.patient.contactNumber || 'N/A' }}</strong></div>
-              <div><span>Email</span><strong>{{ detail.patient.email || 'N/A' }}</strong></div>
-              <div><span>Emergency Contact</span><strong>{{ emergencyContact(detail.patient) }}</strong></div>
-              <div><span>Allergies</span><strong>{{ allergies.length > 0 ? allergies.length + ' recorded' : 'None recorded' }}</strong></div>
-              <div><span>PhilHealth</span><strong>{{ detail.patient.philHealthNumber || 'N/A' }}</strong></div>
-              <div><span>HMO</span><strong>{{ detail.patient.hmoProvider || 'N/A' }}</strong></div>
-            </div>
-          </div>
-
-          <div class="clinic-card">
-            <h3>Booking History With This Doctor</h3>
-            <div class="history-list" *ngIf="detail.bookings.length > 0; else noHistory">
-              <article class="history-item" *ngFor="let booking of detail.bookings">
-                <div>
-                  <strong>{{ booking.appointmentDate }} {{ booking.slotStartTime }}</strong>
-                  <p>{{ booking.status }} &bull; {{ booking.paymentStatus }}</p>
-                </div>
-                <app-status-badge [status]="booking.status"></app-status-badge>
-              </article>
-            </div>
-            <ng-template #noHistory>
-              <p class="muted-text">No booking history is available for this doctor.</p>
-            </ng-template>
-          </div>
-        </div>
-
-        <aside class="detail-side">
-          <div class="clinic-card">
-            <h3>Last Visit</h3>
-            <p class="muted-text">{{ lastCompletedVisit(detail.bookings) || 'No completed visits yet.' }}</p>
-          </div>
-        </aside>
-      </section>
-
-      <section *ngIf="activeTab === 'vaccinations'">
-        <div class="records-grid">
-          <app-vaccination-form
-            class="records-grid__full"
-            [locked]="isSavingVaccination"
-            [existingVaccinations]="vaccinations"
-            (vaccinationsAdded)="onVaccinationsAdded($event)"
-          ></app-vaccination-form>
-
-          <section class="clinic-card records-grid__full">
-            <h3>Vaccination Records</h3>
-            <p class="muted-text" *ngIf="isLoadingVaccinations">Loading vaccinations...</p>
-            <div class="vac-record-list" *ngIf="!isLoadingVaccinations">
-              <div class="vac-record" *ngFor="let v of vaccinations">
-                <div class="vac-record__info">
-                  <strong>{{ v.vaccineName }}</strong>
-                  <span>{{ v.administeredDate | date:'MMM d, y' }} &bull; {{ v.status }}</span>
-                  <span class="vac-record__detail" *ngIf="v.doseNumber">Dose: {{ v.doseNumber }}</span>
-                  <span class="vac-record__detail" *ngIf="v.manufacturer">{{ v.manufacturer }}</span>
-                  <span class="vac-record__detail" *ngIf="v.lotNumber">Lot: {{ v.lotNumber }}</span>
-                  <span class="vac-record__detail" *ngIf="v.nextDueDate">Next due: {{ v.nextDueDate | date:'MMM d, y' }}</span>
-                  <span class="vac-record__detail" *ngIf="v.notes">{{ v.notes }}</span>
-                </div>
-                <div class="vac-record__acts">
-                  <button type="button" (click)="editExistingVaccination(v)">Edit</button>
-                  <button type="button" class="vac-remove" (click)="deleteVaccination(v)">Delete</button>
-                </div>
+      <section *ngIf="activeTab === 'timeline'" class="clinical-section">
+        <div class="timeline" *ngIf="history.timeline.length > 0; else emptyTimeline">
+          <div class="timeline-item" *ngFor="let item of history.timeline">
+            <div class="timeline-dot" [class]="'dot-' + item.type.toLowerCase().replace(' ', '-')"></div>
+            <div class="timeline-content">
+              <div class="timeline-header">
+                <span class="timeline-date">{{ item.date }}</span>
+                <span class="timeline-badge" [class]="'badge-' + item.type.toLowerCase().replace(' ', '-')">{{ item.type }}</span>
               </div>
-              <p *ngIf="vaccinations.length === 0">No vaccination records found.</p>
+              <div class="timeline-title">{{ item.title }}</div>
+              <div class="timeline-desc" *ngIf="item.description">{{ item.description }}</div>
+              <a *ngIf="item.bookingId" class="timeline-link" [routerLink]="['/doctor/appointments', item.bookingId]">View Appointment &rarr;</a>
             </div>
-          </section>
+          </div>
         </div>
       </section>
 
-      <section *ngIf="activeTab === 'records'">
-        <div class="records-grid">
-          <app-consultation-timeline [consultations]="consultations"></app-consultation-timeline>
-          <app-vitals-trend-chart [consultations]="consultations"></app-vitals-trend-chart>
-          <app-patient-media-panel
-            class="records-grid__full"
-            *ngIf="detail.patient"
-            kind="document"
-            [patientId]="detail.patient.id"
-            [allowUpload]="false"
-            heading="Patient Documents"
-            subheading="View supporting documents uploaded by the patient or staff."
-          ></app-patient-media-panel>
-          <app-patient-media-panel
-            class="records-grid__full"
-            *ngIf="detail.patient"
-            kind="lab-result"
-            [patientId]="detail.patient.id"
-            [allowUpload]="false"
-            heading="Patient Lab Results"
-            subheading="View uploaded lab reports and result files."
-          ></app-patient-media-panel>
-          <section class="clinic-card">
-            <h3>Allergies</h3>
-            <p *ngFor="let allergy of allergies">{{ allergy.allergen }} &bull; {{ allergy.severity }}</p>
-            <p *ngIf="allergies.length === 0">No allergies recorded.</p>
-          </section>
-          <section class="clinic-card">
-            <h3>Prescriptions</h3>
-            <p *ngFor="let prescription of prescriptions">{{ prescription.items.length }} medicine(s)</p>
-            <p *ngIf="prescriptions.length === 0">No prescriptions recorded.</p>
-          </section>
-          <section class="clinic-card">
-            <h3>Follow-Ups</h3>
-            <p *ngFor="let followUp of followUps">{{ followUp.followUpDate }} &bull; {{ followUp.reason }}</p>
-            <p *ngIf="followUps.length === 0">No follow-ups scheduled.</p>
-          </section>
+      <section *ngIf="activeTab === 'appointments'" class="clinical-section">
+        <div class="card-list" *ngIf="history.appointments.length > 0; else emptyAppointments">
+          <div class="apt-card clinic-card" *ngFor="let a of history.appointments">
+            <div class="apt-card__header">
+              <div>
+                <strong>{{ a.appointmentDate }}</strong>
+                <span>{{ a.slotStartTime }} - {{ a.slotEndTime }}</span>
+              </div>
+              <div class="apt-card__right">
+                <span class="status-tag" [class]="'status-' + a.status.toLowerCase()">{{ a.status }}</span>
+                <a class="btn-sm" [routerLink]="['/doctor/appointments', a.bookingId]">View</a>
+              </div>
+            </div>
+            <div class="apt-card__meta">
+              <span>{{ a.doctorName }}</span>
+              <span *ngIf="a.queueNumber">Queue: #{{ a.queueNumber }}</span>
+              <span>{{ a.paymentStatus }}</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section *ngIf="activeTab === 'consultations'" class="clinical-section">
+        <div class="card-list" *ngIf="history.consultations.length > 0; else emptyConsultations">
+          <div class="consult-card clinic-card" *ngFor="let c of history.consultations">
+            <div class="consult-card__header">
+              <div>
+                <strong>{{ c.appointmentDate }}</strong> &middot; {{ c.appointmentTime }}
+                <p class="consult-card__doctor">{{ c.doctorName }}</p>
+              </div>
+              <a *ngIf="c.bookingId" class="btn-sm" [routerLink]="['/doctor/appointments', c.bookingId]">View</a>
+            </div>
+            <div class="consult-card__body" *ngIf="c.diagnosesSummary"><span>Diagnosis</span><p>{{ c.diagnosesSummary }}</p></div>
+            <div class="consult-card__body" *ngIf="c.generalNotes"><span>Notes</span><p>{{ c.generalNotes }}</p></div>
+            <div class="consult-card__footer" *ngIf="c.prescription || c.labOrders.length > 0 || c.followUp">
+              <span *ngIf="c.prescription">{{ c.prescription['items']?.length || 0 }} medicine(s)</span>
+              <span *ngIf="c.labOrders.length > 0">{{ c.labOrders.length }} lab order(s)</span>
+              <span *ngIf="c.followUp">Follow-up: {{ c.followUp['followUpDate'] }}</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section *ngIf="activeTab === 'prescriptions'" class="clinical-section">
+        <div class="card-list" *ngIf="history.prescriptions.length > 0; else emptyPrescriptions">
+          <div class="presc-card clinic-card" *ngFor="let p of history.prescriptions">
+            <div class="presc-card__header" *ngIf="p.prescriptionDate"><strong>{{ p.prescriptionDate }}</strong><span *ngIf="p.notes">{{ p.notes }}</span></div>
+            <div class="presc-item" *ngFor="let item of p.items">
+              <div class="presc-item__name">{{ item.medicationName }}</div>
+              <div class="presc-item__detail">
+                <span *ngIf="item.strength">{{ item.strength }}</span>
+                <span *ngIf="item.dosage">{{ item.dosage }}</span>
+                <span *ngIf="item.frequency">{{ item.frequency }}</span>
+                <span *ngIf="item.duration">{{ item.duration }}</span>
+              </div>
+              <div class="presc-item__inst" *ngIf="item.instructions">{{ item.instructions }}</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section *ngIf="activeTab === 'labs'" class="clinical-section">
+        <div class="card-list" *ngIf="history.labResults.length > 0; else emptyLabs">
+          <div class="doc-card clinic-card" *ngFor="let lr of history.labResults">
+            <div class="doc-card__header"><strong>{{ lr.resultTitle || 'Lab Result' }}</strong><span>{{ lr.createdAt | date:'MMM d, y' }}</span></div>
+            <p *ngIf="lr.resultText">{{ lr.resultText }}</p>
+            <button *ngIf="lr.fileUrl" class="btn-sm" (click)="viewFile(lr.fileUrl, lr.resultTitle || lr.fileName || 'lab-result')">View</button>
+          </div>
+        </div>
+      </section>
+
+      <section *ngIf="activeTab === 'documents'" class="clinical-section">
+        <div class="card-list" *ngIf="history.documents.length > 0; else emptyDocuments">
+          <div class="doc-card clinic-card" *ngFor="let d of history.documents">
+            <div class="doc-card__header"><strong>{{ d.title || d.documentType }}</strong><span>{{ d.createdAt | date:'MMM d, y' }}</span></div>
+            <p *ngIf="d.description">{{ d.description }}</p>
+            <span class="doc-card__type">{{ d.documentType }}</span>
+            <button *ngIf="d.fileUrl" class="btn-sm" (click)="viewFile(d.fileUrl, d.fileName || d.title || 'file')">View</button>
+          </div>
+        </div>
+      </section>
+
+      <section *ngIf="activeTab === 'vaccinations'" class="clinical-section">
+        <div class="card-list" *ngIf="history.vaccinations.length > 0; else emptyVaccinations">
+          <div class="vac-card clinic-card" *ngFor="let v of history.vaccinations">
+            <div class="vac-card__header"><strong>{{ v.vaccineName }}</strong><span>{{ v.administeredDate }}</span></div>
+            <div class="vac-card__meta">
+              <span *ngIf="v.doseNumber">Dose: {{ v.doseNumber }}</span>
+              <span *ngIf="v.manufacturer">{{ v.manufacturer }}</span>
+              <span *ngIf="v.lotNumber">Lot: {{ v.lotNumber }}</span>
+              <span>{{ v.status }}</span>
+              <span *ngIf="v.nextDueDate">Next: {{ v.nextDueDate }}</span>
+            </div>
+            <p *ngIf="v.notes" class="vac-card__notes">{{ v.notes }}</p>
+          </div>
         </div>
       </section>
     </ng-container>
 
-    <ng-template #notFound>
-      <app-empty-state
-        icon="people-outline"
-        title="Patient not found"
-        description="This patient is not assigned to your bookings."
-        ctaLabel="Back to Patients"
-        ctaRoute="/doctor/patients"
-      ></app-empty-state>
+    <ng-template #loadingTpl>
+      <div class="loading-state" *ngIf="!errorMessage; else errorTpl">
+        <div class="loading-spinner"></div>
+        <p>Loading clinical history...</p>
+      </div>
     </ng-template>
+
+    <ng-template #errorTpl>
+      <div class="loading-state">
+        <p class="error-text">{{ errorMessage }}</p>
+        <button class="btn-sm" (click)="retry()">Retry</button>
+      </div>
+    </ng-template>
+
+    <ng-template #emptyTimeline><app-empty-state icon="time-outline" title="No records yet" description="Clinical records will appear here once the patient has appointments."></app-empty-state></ng-template>
+    <ng-template #emptyConsultations><app-empty-state icon="medical-outline" title="No consultation records yet"></app-empty-state></ng-template>
+    <ng-template #emptyPrescriptions><app-empty-state icon="document-text-outline" title="No prescriptions yet"></app-empty-state></ng-template>
+    <ng-template #emptyDocuments><app-empty-state icon="folder-outline" title="No documents yet"></app-empty-state></ng-template>
+    <ng-template #emptyLabs><app-empty-state icon="flask-outline" title="No lab results yet"></app-empty-state></ng-template>
+    <ng-template #emptyVaccinations><app-empty-state icon="shield-checkmark-outline" title="No vaccinations recorded"></app-empty-state></ng-template>
+    <ng-template #emptyAppointments><app-empty-state icon="calendar-outline" title="No appointments"></app-empty-state></ng-template>
   `,
   styleUrl: './doctor-patient-detail.page.scss'
 })
 export class DoctorPatientDetailPage {
-  private readonly authState = inject(AuthStateService);
-  private readonly bookingService = inject(BookingService);
-  private readonly doctorState = inject(DoctorStateService);
-  private readonly medicalRecords = inject(MedicalRecordsService);
   private readonly apiService = inject(ApiService);
   private readonly route = inject(ActivatedRoute);
-  private readonly vaccinationService = inject(PatientVaccinationsService);
-  private readonly toastController = inject(ToastController);
+  private readonly modalCtrl = inject(ModalController);
 
-  activeTab: 'overview' | 'records' | 'vaccinations' = 'overview';
-  consultations: Consultation[] = [];
-  prescriptions: Prescription[] = [];
-  allergies: Allergy[] = [];
-  labResults: LabResult[] = [];
-  vaccinations: PatientVaccinationDto[] = [];
-  followUps: FollowUp[] = [];
-  isSavingVaccination = false;
-  isLoadingVaccinations = false;
-  pendingVaccinations: CreatePatientVaccinationRequest[] = [];
+  activeTab: ClinicalTab = 'timeline';
+  errorMessage = '';
 
-  readonly currentDoctor$ = this.authState.currentUser$.pipe(
-    switchMap((user) => (user ? this.doctorState.getDoctorByUserId(user.id) : of(undefined)))
-  );
-
-  readonly detail$ = combineLatest([
-    this.route.paramMap.pipe(map((paramMap) => paramMap.get('id') ?? '')),
-    this.currentDoctor$
-  ]).pipe(
-    switchMap(([patientId, doctor]) =>
-      patientId && doctor
-        ? combineLatest([
-            this.fetchPatient(patientId),
-            this.bookingService.getBookingsByDoctorId(doctor.id)
-          ])
-        : of([undefined, []] as const)
-    ),
-    map(([patient, bookings]) => {
-      if (!patient) {
-        return null;
-      }
-      const doctorBookings = bookings
-        .filter((booking) => booking.patientId === patient.id)
-        .sort((a, b) => `${b.appointmentDate} ${b.slotStartTime}`.localeCompare(`${a.appointmentDate} ${a.slotStartTime}`));
-      return { patient, bookings: doctorBookings };
+  readonly history$ = this.route.paramMap.pipe(
+    map((paramMap) => paramMap.get('id') ?? ''),
+    switchMap((patientId) => {
+      if (!patientId) return of(null);
+      this.errorMessage = '';
+      return this.apiService.get<PatientClinicalHistoryDto>(`/patients/${patientId}/clinical-history`).pipe(
+        catchError((err: any) => {
+          console.error('Clinical history error:', err);
+          const msg = err?.error?.message || err?.message || '';
+          this.errorMessage = msg
+            ? `Failed to load clinical history: ${msg}`
+            : 'Failed to load clinical history. Check that backend is running.';
+          return of(null);
+        })
+      );
     })
   );
 
-  patientName(patient: Patient): string {
-    return `${patient.firstName} ${patient.lastName}`;
+  calcAge(dateOfBirth: string): number {
+    const birthDate = new Date(dateOfBirth);
+    if (isNaN(birthDate.getTime())) return 0;
+    const ageDifMs = Date.now() - birthDate.getTime();
+    const ageDate = new Date(ageDifMs);
+    return Math.abs(ageDate.getUTCFullYear() - 1970);
   }
 
-  ageLabel(patient: Patient): string {
-    const birthDate = new Date(patient.dateOfBirth);
-    if (Number.isNaN(birthDate.getTime())) {
-      return 'Age unavailable';
-    }
-    return `${new Date().getFullYear() - birthDate.getFullYear()} years old`;
+  retry(): void {
+    window.location.reload();
   }
 
-  emergencyContact(patient: Patient): string {
-    const name = patient.emergencyContactName || 'N/A';
-    const number = patient.emergencyContactNumber || '';
-    const relationship = patient.emergencyContactRelationship || '';
-    return [name, relationship, number].filter(Boolean).join(' &bull; ') || 'N/A';
-  }
-
-  lastCompletedVisit(bookings: Booking[]): string {
-    const completed = bookings.filter((booking) => booking.status === 'Completed');
-    return completed[0]?.appointmentDate ?? '';
-  }
-
-  onVaccinationsAdded(payloads: CreatePatientVaccinationRequest[]): void {
-    this.pendingVaccinations = payloads;
-  }
-
-  async editExistingVaccination(v: PatientVaccinationDto): Promise<void> {
-    void this.presentToast('Edit via Vaccinations tab in admin portal.', 'warning');
-  }
-
-  async deleteVaccination(v: PatientVaccinationDto): Promise<void> {
-    try {
-      await firstValueFrom(this.vaccinationService.deletePatientVaccination(v.patientId, v.id));
-      this.vaccinations = this.vaccinations.filter((item) => item.id !== v.id);
-      await this.presentToast('Vaccination record deleted.', 'success');
-    } catch (error) {
-      await this.presentToast('Failed to delete vaccination record.', 'danger');
-    }
-  }
-
-  private fetchPatient(id: string) {
-    return this.apiService.get<any>(`/patients/${id}`).pipe(
-      map((dto) => ({
-        id: dto.id ?? id,
-        patientCode: dto.patientCode ?? '',
-        firstName: dto.firstName ?? '',
-        middleName: dto.middleName ?? '',
-        lastName: dto.lastName ?? '',
-        dateOfBirth: dto.dateOfBirth ?? '',
-        sex: dto.sex ?? '',
-        contactNumber: dto.contactNumber ?? '',
-        email: dto.email ?? '',
-        address: dto.address ?? '',
-        bloodType: dto.bloodType ?? '',
-        philHealthNumber: dto.philHealthNumber ?? '',
-        hmoProvider: dto.hmoProvider ?? '',
-        emergencyContactName: dto.emergencyContactName ?? '',
-        emergencyContactNumber: dto.emergencyContactNumber ?? '',
-        emergencyContactRelationship: dto.emergencyContactRelationship ?? ''
-      } as Patient)),
-      catchError(() => of(undefined))
-    );
-  }
-
-  ngOnInit(): void {
-    const patientId = this.route.snapshot.paramMap.get('id') ?? '';
-    this.medicalRecords.refresh();
-    this.medicalRecords.getConsultationsByPatientId(patientId).subscribe((consultations) => (this.consultations = consultations));
-    this.medicalRecords.getPrescriptionsByPatientId(patientId).subscribe((prescriptions) => (this.prescriptions = prescriptions));
-    this.medicalRecords.getAllergiesByPatientId(patientId).subscribe((allergies) => (this.allergies = allergies));
-    this.medicalRecords.getLabResultsByPatientId(patientId).subscribe((labResults) => (this.labResults = labResults));
-    this.medicalRecords.getFollowUpsByPatientId(patientId).subscribe((followUps) => (this.followUps = followUps));
-    this.loadVaccinations(patientId);
-  }
-
-  private loadVaccinations(patientId: string): void {
-    this.isLoadingVaccinations = true;
-    this.vaccinationService.getPatientVaccinations(patientId).subscribe({
-      next: (vaccinations) => {
-        this.vaccinations = vaccinations;
-        this.isLoadingVaccinations = false;
+  viewFile(fileUrl: string, displayName: string): void {
+    this.apiService.getBlob(fileUrl).subscribe({
+      next: (blob) => {
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
       },
       error: () => {
-        this.isLoadingVaccinations = false;
+        // fallback: try opening directly
+        window.open('https://localhost:44384' + fileUrl, '_blank');
       }
     });
-  }
-
-  private async presentToast(
-    message: string,
-    color: 'success' | 'danger' | 'warning' = 'success'
-  ): Promise<void> {
-    const toast = await this.toastController.create({
-      message,
-      duration: 2200,
-      position: 'top',
-      color
-    });
-    await toast.present();
   }
 }
