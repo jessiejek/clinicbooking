@@ -9,6 +9,7 @@ import { Booking, PatientDetail } from '../../../core/models';
 import { BookingService } from '../../../core/services/booking.service';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { PatientMediaPanelComponent } from '../../../shared/components/patient-media-panel/patient-media-panel.component';
 import { SkeletonComponent } from '../../../shared/components/skeleton/skeleton.component';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 import { StaffService } from '../services/staff.service';
@@ -23,6 +24,7 @@ import { passwordStrengthValidator } from '../../../shared/validators/password-s
     ReactiveFormsModule,
     AvatarComponent,
     EmptyStateComponent,
+    PatientMediaPanelComponent,
     SkeletonComponent,
     StatusBadgeComponent,
     IonLabel,

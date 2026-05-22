@@ -1,6 +1,14 @@
 import { Injectable, inject } from '@angular/core';
 import { map, Observable } from 'rxjs';
-import { PatientFollowUp, PatientMedicalRecord, PatientPrescription } from '../models';
+import {
+  PatientDocument,
+  PatientDocumentUploadRequest,
+  PatientFollowUp,
+  PatientLabResult,
+  PatientLabResultUploadRequest,
+  PatientMedicalRecord,
+  PatientPrescription
+} from '../models';
 import { ApiService } from './api.service';
 
 type NullableString = string | null | undefined;
@@ -74,6 +82,41 @@ interface PatientFollowUpDto {
   createdAt: string;
 }
 
+interface PatientDocumentDto {
+  id: string;
+  patientId: string;
+  bookingId?: NullableString;
+  consultationId?: NullableString;
+  documentType?: NullableString;
+  title?: NullableString;
+  description?: NullableString;
+  fileUrl?: NullableString;
+  fileName?: NullableString;
+  fileContentType?: NullableString;
+  fileSize?: number | null;
+  source?: NullableString;
+  uploadedByUserId?: NullableString;
+  uploadedAt: string;
+  createdAt: string;
+}
+
+interface PatientLabResultDto {
+  id: string;
+  patientId: string;
+  bookingId?: NullableString;
+  consultationId?: NullableString;
+  labOrderItemId?: NullableString;
+  resultTitle?: NullableString;
+  resultText?: NullableString;
+  fileUrl?: NullableString;
+  fileName?: NullableString;
+  fileContentType?: NullableString;
+  status?: NullableString;
+  uploadedByUserId?: NullableString;
+  uploadedAt: string;
+  createdAt: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class PatientDocumentsService {
   private readonly apiService = inject(ApiService);
@@ -94,6 +137,64 @@ export class PatientDocumentsService {
     return this.apiService.get<PatientFollowUpDto[]>('/follow-ups/me').pipe(
       map((records) => (Array.isArray(records) ? records.map((record) => mapFollowUp(record)) : []))
     );
+  }
+
+  getMyDocuments(): Observable<PatientDocument[]> {
+    return this.apiService.get<PatientDocumentDto[]>('/patients/me/documents').pipe(
+      map((records) => (Array.isArray(records) ? records.map((record) => mapDocument(record)) : []))
+    );
+  }
+
+  getPatientDocuments(patientId: string): Observable<PatientDocument[]> {
+    return this.apiService.get<PatientDocumentDto[]>(`/patients/${encodeURIComponent(patientId)}/documents`).pipe(
+      map((records) => (Array.isArray(records) ? records.map((record) => mapDocument(record)) : []))
+    );
+  }
+
+  getMyLabResults(): Observable<PatientLabResult[]> {
+    return this.apiService.get<PatientLabResultDto[]>('/patients/me/lab-results').pipe(
+      map((records) => (Array.isArray(records) ? records.map((record) => mapLabResult(record)) : []))
+    );
+  }
+
+  getPatientLabResults(patientId: string): Observable<PatientLabResult[]> {
+    return this.apiService.get<PatientLabResultDto[]>(`/patients/${encodeURIComponent(patientId)}/lab-results`).pipe(
+      map((records) => (Array.isArray(records) ? records.map((record) => mapLabResult(record)) : []))
+    );
+  }
+
+  uploadMyDocument(request: PatientDocumentUploadRequest): Observable<PatientDocument> {
+    return this.apiService.post<PatientDocumentDto>('/patients/me/documents', buildDocumentUploadFormData(request)).pipe(
+      map((record) => mapDocument(record))
+    );
+  }
+
+  uploadPatientDocument(patientId: string, request: PatientDocumentUploadRequest): Observable<PatientDocument> {
+    return this.apiService
+      .post<PatientDocumentDto>(
+        `/patients/${encodeURIComponent(patientId)}/documents`,
+        buildDocumentUploadFormData(request)
+      )
+      .pipe(map((record) => mapDocument(record)));
+  }
+
+  uploadMyLabResult(request: PatientLabResultUploadRequest): Observable<PatientLabResult> {
+    return this.apiService
+      .post<PatientLabResultDto>('/patients/me/lab-results', buildLabResultUploadFormData(request))
+      .pipe(map((record) => mapLabResult(record)));
+  }
+
+  uploadPatientLabResult(patientId: string, request: PatientLabResultUploadRequest): Observable<PatientLabResult> {
+    return this.apiService
+      .post<PatientLabResultDto>(
+        `/patients/${encodeURIComponent(patientId)}/lab-results`,
+        buildLabResultUploadFormData(request)
+      )
+      .pipe(map((record) => mapLabResult(record)));
+  }
+
+  downloadFile(url: string): Observable<Blob> {
+    return this.apiService.getBlob(url);
   }
 
   downloadConsultationSummaryPdf(bookingId: string): Observable<Blob> {
@@ -188,6 +289,77 @@ function mapFollowUp(dto: PatientFollowUpDto): PatientFollowUp {
     notes: normalizeString(dto.notes),
     createdAt: dto.createdAt
   };
+}
+
+function mapDocument(dto: PatientDocumentDto): PatientDocument {
+  return {
+    id: dto.id,
+    patientId: dto.patientId,
+    bookingId: normalizeString(dto.bookingId),
+    consultationId: normalizeString(dto.consultationId),
+    documentType: normalizeString(dto.documentType) ?? 'Other',
+    title: normalizeString(dto.title),
+    description: normalizeString(dto.description),
+    fileUrl: normalizeString(dto.fileUrl) ?? '',
+    fileName: normalizeString(dto.fileName) ?? '',
+    fileContentType: normalizeString(dto.fileContentType),
+    fileSize: normalizeNumber(dto.fileSize),
+    source: normalizeString(dto.source) ?? 'StaffUpload',
+    uploadedByUserId: normalizeString(dto.uploadedByUserId),
+    uploadedAt: dto.uploadedAt,
+    createdAt: dto.createdAt
+  };
+}
+
+function mapLabResult(dto: PatientLabResultDto): PatientLabResult {
+  return {
+    id: dto.id,
+    patientId: dto.patientId,
+    bookingId: normalizeString(dto.bookingId),
+    consultationId: normalizeString(dto.consultationId),
+    labOrderItemId: normalizeString(dto.labOrderItemId),
+    resultTitle: normalizeString(dto.resultTitle),
+    resultText: normalizeString(dto.resultText),
+    fileUrl: normalizeString(dto.fileUrl) ?? '',
+    fileName: normalizeString(dto.fileName) ?? '',
+    fileContentType: normalizeString(dto.fileContentType),
+    status: normalizeString(dto.status) ?? 'Uploaded',
+    uploadedByUserId: normalizeString(dto.uploadedByUserId),
+    uploadedAt: dto.uploadedAt,
+    createdAt: dto.createdAt
+  };
+}
+
+function buildDocumentUploadFormData(request: PatientDocumentUploadRequest): FormData {
+  const formData = new FormData();
+  appendOptional(formData, 'bookingId', request.bookingId);
+  appendOptional(formData, 'consultationId', request.consultationId);
+  appendOptional(formData, 'documentType', request.documentType);
+  appendOptional(formData, 'title', request.title);
+  appendOptional(formData, 'description', request.description);
+  formData.append('file', request.file, request.file.name);
+  return formData;
+}
+
+function buildLabResultUploadFormData(request: PatientLabResultUploadRequest): FormData {
+  const formData = new FormData();
+  appendOptional(formData, 'bookingId', request.bookingId);
+  appendOptional(formData, 'consultationId', request.consultationId);
+  appendOptional(formData, 'resultTitle', request.resultTitle);
+  appendOptional(formData, 'resultText', request.resultText);
+  formData.append('file', request.file, request.file.name);
+  return formData;
+}
+
+function appendOptional(formData: FormData, name: string, value: string | undefined): void {
+  const trimmed = value?.trim();
+  if (trimmed) {
+    formData.append(name, trimmed);
+  }
+}
+
+function normalizeNumber(value: number | null | undefined): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
 }
 
 function normalizeString(value: NullableString): string | undefined {

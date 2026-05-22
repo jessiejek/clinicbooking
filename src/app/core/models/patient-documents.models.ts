@@ -66,3 +66,55 @@ export interface PatientFollowUp {
   notes?: string;
   createdAt: string;
 }
+
+export interface PatientDocument {
+  id: string;
+  patientId: string;
+  bookingId?: string;
+  consultationId?: string;
+  documentType: string;
+  title?: string;
+  description?: string;
+  fileUrl: string;
+  fileName: string;
+  fileContentType?: string;
+  fileSize?: number;
+  source: string;
+  uploadedByUserId?: string;
+  uploadedAt: string;
+  createdAt: string;
+}
+
+export interface PatientLabResult {
+  id: string;
+  patientId: string;
+  bookingId?: string;
+  consultationId?: string;
+  labOrderItemId?: string;
+  resultTitle?: string;
+  resultText?: string;
+  fileUrl: string;
+  fileName: string;
+  fileContentType?: string;
+  status: string;
+  uploadedByUserId?: string;
+  uploadedAt: string;
+  createdAt: string;
+}
+
+export interface PatientDocumentUploadRequest {
+  file: File;
+  bookingId?: string;
+  consultationId?: string;
+  documentType?: string;
+  title?: string;
+  description?: string;
+}
+
+export interface PatientLabResultUploadRequest {
+  file: File;
+  bookingId?: string;
+  consultationId?: string;
+  resultTitle?: string;
+  resultText?: string;
+}

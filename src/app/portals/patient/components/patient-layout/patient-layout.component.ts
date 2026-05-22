@@ -1,5 +1,5 @@
 import { Component, DestroyRef, OnInit, inject } from '@angular/core';
-import { ActivatedRoute, NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import { ActivatedRoute, NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
 import { addIcons } from 'ionicons';
 import {
@@ -25,7 +25,7 @@ import { PATIENT_NAV_ITEMS } from '../../patient.routes';
 @Component({
   selector: 'app-patient-layout',
   standalone: true,
-  imports: [RouterOutlet, SidebarComponent, TopbarComponent],
+  imports: [RouterOutlet, RouterLink, SidebarComponent, TopbarComponent],
   template: `
     <div class="portal-layout">
       <app-admin-sidebar
@@ -56,6 +56,10 @@ import { PATIENT_NAV_ITEMS } from '../../patient.routes';
             <div class="patient-quick-action__title">Download all clinical records</div>
             <div class="patient-quick-action__subtitle">
               One PDF with completed consultations, prescriptions, and follow-up notes.
+            </div>
+            <div class="patient-quick-action__links">
+              <a routerLink="/patient/documents" class="btn-ghost">My Documents</a>
+              <a routerLink="/patient/lab-results" class="btn-ghost">My Lab Results</a>
             </div>
           </div>
           <button

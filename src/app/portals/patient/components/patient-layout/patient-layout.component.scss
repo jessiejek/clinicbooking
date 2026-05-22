@@ -45,6 +45,13 @@
   color: var(--clinic-slate-600);
 }
 
+.patient-quick-action__links {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-top: var(--space-3);
+}
+
 .patient-quick-action__button {
   flex: none;
   white-space: nowrap;

@@ -246,13 +246,14 @@ ion-segment {
   min-width: 12rem;
 }
 
-.clinic-table {
-  width: 100%;
-}
-
 .clinic-table-wrap {
   width: 100%;
   overflow-x: auto;
+}
+
+.media-stack {
+  display: grid;
+  gap: var(--space-5);
 }
 
 @media (max-width: 900px) {

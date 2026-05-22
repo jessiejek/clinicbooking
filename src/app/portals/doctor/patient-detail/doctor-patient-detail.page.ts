@@ -10,6 +10,7 @@ import { DoctorStateService } from '../../../core/services/doctor-state.service'
 import { MedicalRecordsService } from '../../../core/services/medical-records.service';
 import { PatientStateService } from '../../../core/services/patient-state.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { PatientMediaPanelComponent } from '../../../shared/components/patient-media-panel/patient-media-panel.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 import { FormsModule } from '@angular/forms';
@@ -30,6 +31,7 @@ import { VitalsTrendChartComponent } from '../components/vitals-trend-chart/vita
     IonSegmentButton,
     PageHeaderComponent,
     EmptyStateComponent,
+    PatientMediaPanelComponent,
     ConsultationTimelineComponent,
     VitalsTrendChartComponent,
     StatusBadgeComponent
@@ -99,6 +101,24 @@ import { VitalsTrendChartComponent } from '../components/vitals-trend-chart/vita
         <div class="records-grid">
           <app-consultation-timeline [consultations]="consultations"></app-consultation-timeline>
           <app-vitals-trend-chart [consultations]="consultations"></app-vitals-trend-chart>
+          <app-patient-media-panel
+            class="records-grid__full"
+            *ngIf="detail.patient"
+            kind="document"
+            [patientId]="detail.patient.id"
+            [allowUpload]="false"
+            heading="Patient Documents"
+            subheading="View supporting documents uploaded by the patient or staff."
+          ></app-patient-media-panel>
+          <app-patient-media-panel
+            class="records-grid__full"
+            *ngIf="detail.patient"
+            kind="lab-result"
+            [patientId]="detail.patient.id"
+            [allowUpload]="false"
+            heading="Patient Lab Results"
+            subheading="View uploaded lab reports and result files."
+          ></app-patient-media-panel>
           <section class="clinic-card">
             <h3>Allergies</h3>
             <p *ngFor="let allergy of allergies">{{ allergy.allergen }} • {{ allergy.severity }}</p>

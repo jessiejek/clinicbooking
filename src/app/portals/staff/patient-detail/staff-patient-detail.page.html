@@ -262,12 +262,24 @@
       ></app-empty-state>
     </div>
 
-    <div *ngIf="selectedTab === 'records'" class="clinic-card detail-card">
-      <app-empty-state
-        icon="document-text-outline"
-        title="Medical Records"
-        description="Medical records module coming in Phase 9."
-      ></app-empty-state>
+    <div *ngIf="selectedTab === 'records'" class="media-stack">
+      <app-patient-media-panel
+        *ngIf="patient"
+        kind="document"
+        [patientId]="patient.id"
+        [allowUpload]="true"
+        heading="Patient Documents"
+        subheading="Upload referrals, certificates, and supporting documents. Booking and consultation IDs are optional."
+      ></app-patient-media-panel>
+
+      <app-patient-media-panel
+        *ngIf="patient"
+        kind="lab-result"
+        [patientId]="patient.id"
+        [allowUpload]="true"
+        heading="Patient Lab Results"
+        subheading="Upload lab reports and test results without requiring a booking."
+      ></app-patient-media-panel>
     </div>
   </ng-container>
 </section>

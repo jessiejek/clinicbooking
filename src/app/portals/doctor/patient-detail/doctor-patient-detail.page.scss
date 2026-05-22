@@ -33,6 +33,16 @@
   font-size: 13px;
 }
 
+.records-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.records-grid__full {
+  grid-column: 1 / -1;
+}
+
 .history-list {
   display: grid;
   gap: var(--space-3);
@@ -50,7 +60,12 @@
 
 @media (max-width: 900px) {
   .detail-grid,
+  .records-grid,
   .info-grid {
     grid-template-columns: 1fr;
+  }
+
+  .records-grid__full {
+    grid-column: auto;
   }
 }

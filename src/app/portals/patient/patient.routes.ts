@@ -9,6 +9,8 @@ export const PATIENT_NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', route: '/patient/dashboard', icon: 'grid-outline' },
   { label: 'Doctors', route: '/patient/doctors', icon: 'medical-outline' },
   { label: 'Bookings', route: '/patient/bookings', icon: 'calendar-outline' },
+  { label: 'My Documents', route: '/patient/documents', icon: 'document-text-outline', section: 'Records' },
+  { label: 'My Lab Results', route: '/patient/lab-results', icon: 'medkit-outline' },
   { label: 'Medical Records', route: '/patient/medical-records', icon: 'medical-outline' },
   { label: 'Prescriptions', route: '/patient/prescriptions', icon: 'document-text-outline' },
   { label: 'Profile', route: '/patient/profile', icon: 'person-outline' }
@@ -49,6 +51,18 @@ export const PATIENT_ROUTES: Routes = [
         loadComponent: () =>
           import('./bookings/patient-bookings.page').then((m) => m.PatientBookingsPage),
         data: { title: 'Bookings' }
+      },
+      {
+        path: 'documents',
+        loadComponent: () =>
+          import('./documents/patient-documents.page').then((m) => m.PatientDocumentsPage),
+        data: { title: 'My Documents' }
+      },
+      {
+        path: 'lab-results',
+        loadComponent: () =>
+          import('./lab-results/patient-lab-results.page').then((m) => m.PatientLabResultsPage),
+        data: { title: 'My Lab Results' }
       },
       {
         path: 'bookings/:id',
