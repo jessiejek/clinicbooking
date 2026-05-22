@@ -14,6 +14,7 @@ import {
   PrescriptionItem,
   VitalSigns
 } from '../../../core/models';
+import { CreatePatientVaccinationRequest } from '../../../core/models/vaccination.models';
 import { ApiService } from '../../../core/services/api.service';
 import { AuthStateService } from '../../../core/services/auth-state.service';
 import { BookingService, DoctorCompleteBookingRequest } from '../../../core/services/booking.service';
@@ -22,6 +23,7 @@ import {
   MedicalRecordsState
 } from '../../../core/services/medical-records.service';
 import { PatientStateService } from '../../../core/services/patient-state.service';
+import { PatientVaccinationsService } from '../../../core/services/patient-vaccinations.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 import { FollowUpDraftView } from '../components/follow-up-form/follow-up-form.component';
@@ -171,6 +173,7 @@ type ConsultationInteractionMode = 'complete' | 'view' | 'amend';
                 (prescriptionItemsChange)="onPrescriptionItemsChange($event)"
                 (labRequestsChange)="onLabRequestsChange($event)"
                 (followUpChange)="onFollowUpChange($event)"
+                (vaccinationsAdded)="onVaccinationsAdded($event)"
               ></app-consultation-workspace>
             </div>
           </div>
@@ -214,6 +217,7 @@ export class DoctorConsultationPage {
   private readonly medicalRecords = inject(MedicalRecordsService);
   private readonly modalCtrl = inject(ModalController);
   private readonly patientState = inject(PatientStateService);
+  private readonly vaccinationService = inject(PatientVaccinationsService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly toastController = inject(ToastController);
@@ -242,6 +246,7 @@ export class DoctorConsultationPage {
   prescriptionItems: PrescriptionItem[] = [];
   labRequests: LabRequestDraftView[] = [];
   followUpValue: FollowUpDraftView | null = null;
+  pendingVaccinations: CreatePatientVaccinationRequest[] = [];
 
   readonly vm$ = combineLatest([
     this.route.paramMap.pipe(map((paramMap) => paramMap.get('bookingId') ?? '')),
@@ -277,14 +282,18 @@ export class DoctorConsultationPage {
                 catchError(() => of(EMPTY_RECORDS)),
                 switchMap((records) =>
                   this.loadConsultationRecord$(resolvedBooking).pipe(
-                    map((consultationRecord) =>
-                      this.buildVm({
-                        booking: resolvedBooking,
-                        patient,
-                        doctor,
-                        records,
-                        consultationRecord
-                      })
+                    switchMap((consultationRecord) =>
+                      this.loadVaccinations$(patient.id).pipe(
+                        map((apiVaccinations) =>
+                          this.buildVm({
+                            booking: resolvedBooking,
+                            patient,
+                            doctor,
+                            records: { ...records, vaccinations: apiVaccinations },
+                            consultationRecord
+                          })
+                        )
+                      )
                     )
                   )
                 )
@@ -318,6 +327,10 @@ export class DoctorConsultationPage {
 
   onFollowUpChange(value: FollowUpDraftView | null): void {
     this.followUpValue = value;
+  }
+
+  onVaccinationsAdded(payloads: CreatePatientVaccinationRequest[]): void {
+    this.pendingVaccinations = payloads;
   }
 
   saveDraft(vm: ConsultationPageVm): void {
@@ -409,6 +422,12 @@ export class DoctorConsultationPage {
 
     try {
       await firstValueFrom(this.bookingService.doctorCompleteBooking(booking.id, payload));
+
+      // Save pending vaccinations
+      if (this.pendingVaccinations.length > 0) {
+        await this.savePendingVaccinations(booking.patientId, booking);
+      }
+
       this.clearLocalDraft(booking.id);
       this.resetCompletionModalState();
       this.reload();
@@ -895,6 +914,23 @@ export class DoctorConsultationPage {
     }
   }
 
+  private async savePendingVaccinations(patientId: string, booking: Booking): Promise<void> {
+    for (const payload of this.pendingVaccinations) {
+      try {
+        await firstValueFrom(
+          this.vaccinationService.createPatientVaccination(patientId, {
+            ...payload,
+            bookingId: booking.id,
+            doctorId: booking.doctorId
+          })
+        );
+      } catch (error) {
+        console.error('Failed to save vaccination:', error);
+      }
+    }
+    this.pendingVaccinations = [];
+  }
+
   private clearLocalDraft(bookingId: string): void {
     if (typeof localStorage === 'undefined') {
       return;
@@ -912,6 +948,12 @@ export class DoctorConsultationPage {
 
   private loadConsultationRecord$(booking: Booking): Observable<ConsultationRecordResponse | null> {
     return this.bookingService.fetchConsultationRecordByBookingId(booking.id).pipe(catchError(() => of(null)));
+  }
+
+  private loadVaccinations$(patientId: string): Observable<any[]> {
+    return this.vaccinationService.getPatientVaccinations(patientId).pipe(
+      catchError(() => of([]))
+    );
   }
 
   private resolvePatient$(booking: Booking): Observable<Patient | undefined> {

@@ -13,6 +13,7 @@ export const PATIENT_NAV_ITEMS: NavItem[] = [
   { label: 'My Lab Results', route: '/patient/lab-results', icon: 'medkit-outline' },
   { label: 'Medical Records', route: '/patient/medical-records', icon: 'medical-outline' },
   { label: 'Prescriptions', route: '/patient/prescriptions', icon: 'document-text-outline' },
+  { label: 'Vaccinations', route: '/patient/vaccinations', icon: 'shield-checkmark-outline' },
   { label: 'Profile', route: '/patient/profile', icon: 'person-outline' }
 ];
 
@@ -92,6 +93,14 @@ export const PATIENT_ROUTES: Routes = [
             (m) => m.PatientPrescriptionsPage
           ),
         data: { title: 'Prescriptions' }
+      },
+      {
+        path: 'vaccinations',
+        loadComponent: () =>
+          import('./vaccinations/patient-vaccinations.page').then(
+            (m) => m.PatientVaccinationsPage
+          ),
+        data: { title: 'My Vaccinations' }
       },
       {
         path: 'profile',

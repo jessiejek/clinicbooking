@@ -1,28 +1,32 @@
-import { AsyncPipe, NgFor, NgIf } from '@angular/common';
+import { AsyncPipe, DatePipe, NgFor, NgIf } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import { catchError, combineLatest, of } from 'rxjs';
+import { catchError, combineLatest, firstValueFrom, of } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
-import { Allergy, Booking, Consultation, FollowUp, LabResult, Patient, Prescription, VaccinationRecord } from '../../../core/models';
+import { FormsModule } from '@angular/forms';
+import { IonLabel, IonSegment, IonSegmentButton, ModalController, ToastController } from '@ionic/angular/standalone';
+import { Allergy, Booking, Consultation, FollowUp, LabResult, Patient, Prescription } from '../../../core/models';
+import { PatientVaccinationDto, CreatePatientVaccinationRequest } from '../../../core/models/vaccination.models';
 import { ApiService } from '../../../core/services/api.service';
 import { AuthStateService } from '../../../core/services/auth-state.service';
 import { BookingService } from '../../../core/services/booking.service';
 import { DoctorStateService } from '../../../core/services/doctor-state.service';
 import { MedicalRecordsService } from '../../../core/services/medical-records.service';
+import { PatientVaccinationsService } from '../../../core/services/patient-vaccinations.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { PatientMediaPanelComponent } from '../../../shared/components/patient-media-panel/patient-media-panel.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
-import { FormsModule } from '@angular/forms';
-import { IonLabel, IonSegment, IonSegmentButton } from '@ionic/angular/standalone';
 import { ConsultationTimelineComponent } from '../../admin/components/consultation-timeline/consultation-timeline.component';
 import { VitalsTrendChartComponent } from '../components/vitals-trend-chart/vitals-trend-chart.component';
+import { VaccinationFormComponent } from '../components/vaccination-form/vaccination-form.component';
 
 @Component({
   standalone: true,
   selector: 'app-doctor-patient-detail-page',
   imports: [
     AsyncPipe,
+    DatePipe,
     FormsModule,
     NgFor,
     NgIf,
@@ -34,7 +38,8 @@ import { VitalsTrendChartComponent } from '../components/vitals-trend-chart/vita
     PatientMediaPanelComponent,
     ConsultationTimelineComponent,
     VitalsTrendChartComponent,
-    StatusBadgeComponent
+    StatusBadgeComponent,
+    VaccinationFormComponent
   ],
   template: `
     <ng-container *ngIf="detail$ | async as detail; else notFound">
@@ -49,6 +54,9 @@ import { VitalsTrendChartComponent } from '../components/vitals-trend-chart/vita
         <ion-segment [(ngModel)]="activeTab">
           <ion-segment-button value="overview">
             <ion-label>Overview</ion-label>
+          </ion-segment-button>
+          <ion-segment-button value="vaccinations">
+            <ion-label>Vaccinations</ion-label>
           </ion-segment-button>
           <ion-segment-button value="records">
             <ion-label>Medical Records</ion-label>
@@ -66,7 +74,7 @@ import { VitalsTrendChartComponent } from '../components/vitals-trend-chart/vita
               <div><span>Contact</span><strong>{{ detail.patient.contactNumber || 'N/A' }}</strong></div>
               <div><span>Email</span><strong>{{ detail.patient.email || 'N/A' }}</strong></div>
               <div><span>Emergency Contact</span><strong>{{ emergencyContact(detail.patient) }}</strong></div>
-              <div><span>Allergies</span><strong>No allergies recorded in mock data</strong></div>
+              <div><span>Allergies</span><strong>{{ allergies.length > 0 ? allergies.length + ' recorded' : 'None recorded' }}</strong></div>
               <div><span>PhilHealth</span><strong>{{ detail.patient.philHealthNumber || 'N/A' }}</strong></div>
               <div><span>HMO</span><strong>{{ detail.patient.hmoProvider || 'N/A' }}</strong></div>
             </div>
@@ -78,7 +86,7 @@ import { VitalsTrendChartComponent } from '../components/vitals-trend-chart/vita
               <article class="history-item" *ngFor="let booking of detail.bookings">
                 <div>
                   <strong>{{ booking.appointmentDate }} {{ booking.slotStartTime }}</strong>
-                  <p>{{ booking.status }} • {{ booking.paymentStatus }}</p>
+                  <p>{{ booking.status }} &bull; {{ booking.paymentStatus }}</p>
                 </div>
                 <app-status-badge [status]="booking.status"></app-status-badge>
               </article>
@@ -95,6 +103,40 @@ import { VitalsTrendChartComponent } from '../components/vitals-trend-chart/vita
             <p class="muted-text">{{ lastCompletedVisit(detail.bookings) || 'No completed visits yet.' }}</p>
           </div>
         </aside>
+      </section>
+
+      <section *ngIf="activeTab === 'vaccinations'">
+        <div class="records-grid">
+          <app-vaccination-form
+            class="records-grid__full"
+            [locked]="isSavingVaccination"
+            [existingVaccinations]="vaccinations"
+            (vaccinationsAdded)="onVaccinationsAdded($event)"
+          ></app-vaccination-form>
+
+          <section class="clinic-card records-grid__full">
+            <h3>Vaccination Records</h3>
+            <p class="muted-text" *ngIf="isLoadingVaccinations">Loading vaccinations...</p>
+            <div class="vac-record-list" *ngIf="!isLoadingVaccinations">
+              <div class="vac-record" *ngFor="let v of vaccinations">
+                <div class="vac-record__info">
+                  <strong>{{ v.vaccineName }}</strong>
+                  <span>{{ v.administeredDate | date:'MMM d, y' }} &bull; {{ v.status }}</span>
+                  <span class="vac-record__detail" *ngIf="v.doseNumber">Dose: {{ v.doseNumber }}</span>
+                  <span class="vac-record__detail" *ngIf="v.manufacturer">{{ v.manufacturer }}</span>
+                  <span class="vac-record__detail" *ngIf="v.lotNumber">Lot: {{ v.lotNumber }}</span>
+                  <span class="vac-record__detail" *ngIf="v.nextDueDate">Next due: {{ v.nextDueDate | date:'MMM d, y' }}</span>
+                  <span class="vac-record__detail" *ngIf="v.notes">{{ v.notes }}</span>
+                </div>
+                <div class="vac-record__acts">
+                  <button type="button" (click)="editExistingVaccination(v)">Edit</button>
+                  <button type="button" class="vac-remove" (click)="deleteVaccination(v)">Delete</button>
+                </div>
+              </div>
+              <p *ngIf="vaccinations.length === 0">No vaccination records found.</p>
+            </div>
+          </section>
+        </div>
       </section>
 
       <section *ngIf="activeTab === 'records'">
@@ -121,7 +163,7 @@ import { VitalsTrendChartComponent } from '../components/vitals-trend-chart/vita
           ></app-patient-media-panel>
           <section class="clinic-card">
             <h3>Allergies</h3>
-            <p *ngFor="let allergy of allergies">{{ allergy.allergen }} • {{ allergy.severity }}</p>
+            <p *ngFor="let allergy of allergies">{{ allergy.allergen }} &bull; {{ allergy.severity }}</p>
             <p *ngIf="allergies.length === 0">No allergies recorded.</p>
           </section>
           <section class="clinic-card">
@@ -130,18 +172,8 @@ import { VitalsTrendChartComponent } from '../components/vitals-trend-chart/vita
             <p *ngIf="prescriptions.length === 0">No prescriptions recorded.</p>
           </section>
           <section class="clinic-card">
-            <h3>Lab Results</h3>
-            <p *ngFor="let labResult of labResults">{{ labResult.fileName }} • {{ labResult.resultDate }}</p>
-            <p *ngIf="labResults.length === 0">No lab results recorded.</p>
-          </section>
-          <section class="clinic-card">
-            <h3>Vaccinations</h3>
-            <p *ngFor="let vaccination of vaccinations">{{ vaccination.vaccineName }} • {{ vaccination.dateGiven }}</p>
-            <p *ngIf="vaccinations.length === 0">No vaccination records.</p>
-          </section>
-          <section class="clinic-card">
             <h3>Follow-Ups</h3>
-            <p *ngFor="let followUp of followUps">{{ followUp.followUpDate }} • {{ followUp.reason }}</p>
+            <p *ngFor="let followUp of followUps">{{ followUp.followUpDate }} &bull; {{ followUp.reason }}</p>
             <p *ngIf="followUps.length === 0">No follow-ups scheduled.</p>
           </section>
         </div>
@@ -167,14 +199,19 @@ export class DoctorPatientDetailPage {
   private readonly medicalRecords = inject(MedicalRecordsService);
   private readonly apiService = inject(ApiService);
   private readonly route = inject(ActivatedRoute);
+  private readonly vaccinationService = inject(PatientVaccinationsService);
+  private readonly toastController = inject(ToastController);
 
-  activeTab: 'overview' | 'records' = 'overview';
+  activeTab: 'overview' | 'records' | 'vaccinations' = 'overview';
   consultations: Consultation[] = [];
   prescriptions: Prescription[] = [];
   allergies: Allergy[] = [];
   labResults: LabResult[] = [];
-  vaccinations: VaccinationRecord[] = [];
+  vaccinations: PatientVaccinationDto[] = [];
   followUps: FollowUp[] = [];
+  isSavingVaccination = false;
+  isLoadingVaccinations = false;
+  pendingVaccinations: CreatePatientVaccinationRequest[] = [];
 
   readonly currentDoctor$ = this.authState.currentUser$.pipe(
     switchMap((user) => (user ? this.doctorState.getDoctorByUserId(user.id) : of(undefined)))
@@ -219,7 +256,7 @@ export class DoctorPatientDetailPage {
     const name = patient.emergencyContactName || 'N/A';
     const number = patient.emergencyContactNumber || '';
     const relationship = patient.emergencyContactRelationship || '';
-    return [name, relationship, number].filter(Boolean).join(' • ') || 'N/A';
+    return [name, relationship, number].filter(Boolean).join(' &bull; ') || 'N/A';
   }
 
   lastCompletedVisit(bookings: Booking[]): string {
@@ -227,7 +264,24 @@ export class DoctorPatientDetailPage {
     return completed[0]?.appointmentDate ?? '';
   }
 
-  /** Fetch patient from real API. */
+  onVaccinationsAdded(payloads: CreatePatientVaccinationRequest[]): void {
+    this.pendingVaccinations = payloads;
+  }
+
+  async editExistingVaccination(v: PatientVaccinationDto): Promise<void> {
+    void this.presentToast('Edit via Vaccinations tab in admin portal.', 'warning');
+  }
+
+  async deleteVaccination(v: PatientVaccinationDto): Promise<void> {
+    try {
+      await firstValueFrom(this.vaccinationService.deletePatientVaccination(v.patientId, v.id));
+      this.vaccinations = this.vaccinations.filter((item) => item.id !== v.id);
+      await this.presentToast('Vaccination record deleted.', 'success');
+    } catch (error) {
+      await this.presentToast('Failed to delete vaccination record.', 'danger');
+    }
+  }
+
   private fetchPatient(id: string) {
     return this.apiService.get<any>(`/patients/${id}`).pipe(
       map((dto) => ({
@@ -259,7 +313,33 @@ export class DoctorPatientDetailPage {
     this.medicalRecords.getPrescriptionsByPatientId(patientId).subscribe((prescriptions) => (this.prescriptions = prescriptions));
     this.medicalRecords.getAllergiesByPatientId(patientId).subscribe((allergies) => (this.allergies = allergies));
     this.medicalRecords.getLabResultsByPatientId(patientId).subscribe((labResults) => (this.labResults = labResults));
-    this.medicalRecords.getVaccinationsByPatientId(patientId).subscribe((vaccinations) => (this.vaccinations = vaccinations));
     this.medicalRecords.getFollowUpsByPatientId(patientId).subscribe((followUps) => (this.followUps = followUps));
+    this.loadVaccinations(patientId);
+  }
+
+  private loadVaccinations(patientId: string): void {
+    this.isLoadingVaccinations = true;
+    this.vaccinationService.getPatientVaccinations(patientId).subscribe({
+      next: (vaccinations) => {
+        this.vaccinations = vaccinations;
+        this.isLoadingVaccinations = false;
+      },
+      error: () => {
+        this.isLoadingVaccinations = false;
+      }
+    });
+  }
+
+  private async presentToast(
+    message: string,
+    color: 'success' | 'danger' | 'warning' = 'success'
+  ): Promise<void> {
+    const toast = await this.toastController.create({
+      message,
+      duration: 2200,
+      position: 'top',
+      color
+    });
+    await toast.present();
   }
 }

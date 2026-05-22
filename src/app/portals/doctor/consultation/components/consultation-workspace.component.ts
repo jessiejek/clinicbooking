@@ -1,12 +1,14 @@
 import { DatePipe, NgFor, NgIf } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { Diagnosis, PrescriptionItem, VitalSigns } from '../../../../core/models';
+import { CreatePatientVaccinationRequest } from '../../../../core/models/vaccination.models';
 import { AllergyWarningBannerComponent } from '../../components/allergy-warning-banner/allergy-warning-banner.component';
 import { DiagnosisPickerComponent } from '../../components/diagnosis-picker/diagnosis-picker.component';
 import { FollowUpDraftView, FollowUpFormComponent } from '../../components/follow-up-form/follow-up-form.component';
 import { LabRequestDraftView, LabRequestFormComponent } from '../../components/lab-request-form/lab-request-form.component';
 import { PrescriptionFormComponent } from '../../components/prescription-form/prescription-form.component';
 import { SoapFormComponent, SoapFormValue } from '../../components/soap-form/soap-form.component';
+import { VaccinationFormComponent } from '../../components/vaccination-form/vaccination-form.component';
 import { VitalSignsFormComponent } from '../../components/vital-signs-form/vital-signs-form.component';
 import { VitalsTrendChartComponent } from '../../components/vitals-trend-chart/vitals-trend-chart.component';
 import { ConsultationPageVm } from '../doctor-consultation.types';
@@ -25,6 +27,7 @@ import { ConsultationPageVm } from '../doctor-consultation.types';
     PrescriptionFormComponent,
     LabRequestFormComponent,
     FollowUpFormComponent,
+    VaccinationFormComponent,
     VitalsTrendChartComponent
   ],
   template: `
@@ -75,6 +78,12 @@ import { ConsultationPageVm } from '../doctor-consultation.types';
             <p>{{ request.reason || 'No reason' }} &bull; {{ request.status }}</p>
           </article>
         </div>
+
+        <app-vaccination-form
+          [locked]="locked"
+          [existingVaccinations]="vm.vaccinations"
+          (vaccinationsAdded)="vaccinationsAdded.emit($event)"
+        ></app-vaccination-form>
 
         <app-follow-up-form
           [value]="vm.followUpDraft"
@@ -134,6 +143,7 @@ export class ConsultationWorkspaceComponent {
   @Output() prescriptionItemsChange = new EventEmitter<PrescriptionItem[]>();
   @Output() labRequestsChange = new EventEmitter<LabRequestDraftView[]>();
   @Output() followUpChange = new EventEmitter<FollowUpDraftView | null>();
+  @Output() vaccinationsAdded = new EventEmitter<CreatePatientVaccinationRequest[]>();
 
   readonly emptyDiagnoses: Diagnosis[] = [];
   readonly emptyPrescriptionItems: PrescriptionItem[] = [];

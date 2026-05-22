@@ -6,3 +6,4 @@ export * from './medical-record.models';
 export * from './patient-documents.models';
 export * from './notification.models';
 export * from './patient.models';
+export * from './vaccination.models';
