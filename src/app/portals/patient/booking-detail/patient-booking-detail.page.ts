@@ -1,7 +1,7 @@
 import { DatePipe, NgFor, NgIf } from '@angular/common';
 import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { ToastController } from '@ionic/angular/standalone';
+import { ToastController, IonIcon } from '@ionic/angular/standalone';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { catchError, combineLatest, firstValueFrom, of, switchMap, take } from 'rxjs';
 import { Booking, ReceiptData } from '../../../core/models';
@@ -25,7 +25,8 @@ import { PatientService } from '../services/patient.service';
     ConfirmModalComponent,
     StatusBadgeComponent,
     EmptyStateComponent,
-    ReceiptModalComponent
+    ReceiptModalComponent,
+    IonIcon
   ],
   template: `
     <section class="page-shell" *ngIf="booking; else emptyTpl">
@@ -113,6 +114,18 @@ import { PatientService } from '../services/patient.service';
                 <span>Service</span>
                 <strong>{{ serviceName }}</strong>
               </div>
+            </div>
+          </div>
+
+          <div class="clinic-card">
+            <div class="section-heading">Quick Links</div>
+            <div class="action-list">
+              <button type="button" class="btn-ghost" style="width: 100%; text-align: left; padding-left: 0;" (click)="navigateToDocuments()">
+                <ion-icon name="document-text-outline" style="margin-right: 8px; vertical-align: middle;"></ion-icon> My Documents
+              </button>
+              <button type="button" class="btn-ghost" style="width: 100%; text-align: left; padding-left: 0;" (click)="navigateToLabResults()">
+                <ion-icon name="flask-outline" style="margin-right: 8px; vertical-align: middle;"></ion-icon> My Labs
+              </button>
             </div>
           </div>
         </div>
@@ -325,6 +338,14 @@ export class PatientBookingDetailPage implements OnInit {
 
   back(): void {
     void this.router.navigate(['/patient/bookings']);
+  }
+
+  navigateToDocuments(): void {
+    void this.router.navigate(['/patient/documents'], { queryParams: { bookingId: this.booking?.id } });
+  }
+
+  navigateToLabResults(): void {
+    void this.router.navigate(['/patient/lab-results'], { queryParams: { bookingId: this.booking?.id } });
   }
 
   async openReceipt(): Promise<void> {

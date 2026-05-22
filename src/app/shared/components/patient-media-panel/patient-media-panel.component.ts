@@ -2,14 +2,18 @@ import { DatePipe, NgFor, NgIf } from '@angular/common';
 import { Component, DestroyRef, Input, OnChanges, OnInit, SimpleChanges, inject } from '@angular/core';
 import { ReactiveFormsModule, FormBuilder } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { catchError, map, of } from 'rxjs';
+import { ActivatedRoute } from '@angular/router';
 import { IonSearchbar, IonSpinner, ToastController } from '@ionic/angular/standalone';
 import {
   PatientDocument,
   PatientDocumentUploadRequest,
   PatientLabResult,
-  PatientLabResultUploadRequest
+  PatientLabResultUploadRequest,
+  Booking
 } from '../../../core/models';
 import { PatientDocumentsService } from '../../../core/services/patient-documents.service';
+import { BookingService } from '../../../core/services/booking.service';
 
 type MediaKind = 'document' | 'lab-result';
 type PatientMediaItem = PatientDocument | PatientLabResult;
@@ -38,7 +42,7 @@ type PatientMediaItem = PatientDocument | PatientLabResult;
             <span>{{ fileFieldLabel }}</span>
             <div class="file-picker" (click)="fileInput.click()">
               <strong>{{ selectedFileName || 'Choose a file' }}</strong>
-              <small>No booking is required. Booking and consultation IDs are optional.</small>
+              <small>Select a booking below to link this file. Consultation ID is optional.</small>
             </div>
             <input #fileInput type="file" class="visually-hidden" (change)="onFileSelected($event)" />
           </label>
@@ -54,8 +58,13 @@ type PatientMediaItem = PatientDocument | PatientLabResult;
           </label>
 
           <label class="media-field">
-            <span>Booking ID (optional)</span>
-            <input class="filter-input" [formControl]="form.controls.bookingId" placeholder="Booking ID" />
+            <span>Booking (optional)</span>
+            <select class="filter-input" [formControl]="form.controls.bookingId">
+              <option value="">Select a booking</option>
+              <option *ngFor="let booking of bookings" [value]="booking.id">
+                {{ formatBooking(booking) }}
+              </option>
+            </select>
           </label>
 
           <label class="media-field">
@@ -163,6 +172,8 @@ export class PatientMediaPanelComponent implements OnInit, OnChanges {
   private readonly fb = inject(FormBuilder);
   private readonly toastCtrl = inject(ToastController);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly route = inject(ActivatedRoute);
+  private readonly bookingService = inject(BookingService);
 
   readonly form = this.fb.nonNullable.group({
     title: [''],
@@ -173,6 +184,7 @@ export class PatientMediaPanelComponent implements OnInit, OnChanges {
 
   items: PatientMediaItem[] = [];
   filteredItems: PatientMediaItem[] = [];
+  bookings: Booking[] = [];
   loading = false;
   uploading = false;
   error = '';
@@ -184,6 +196,24 @@ export class PatientMediaPanelComponent implements OnInit, OnChanges {
 
   ngOnInit(): void {
     this.loadRecords();
+
+    if (this.allowUpload) {
+      const bookings$ = this.patientId
+        ? this.bookingService.getBookingsByPatientId(this.patientId).pipe(catchError(() => of([])))
+        : this.bookingService.getMyBookings(1, 100).pipe(
+            map((result) => result.items),
+            catchError(() => of([]))
+          );
+
+      bookings$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((items) => {
+        this.bookings = items;
+      });
+
+      const queryBookingId = this.route.snapshot.queryParamMap.get('bookingId');
+      if (queryBookingId) {
+        this.form.patchValue({ bookingId: queryBookingId });
+      }
+    }
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -241,6 +271,28 @@ export class PatientMediaPanelComponent implements OnInit, OnChanges {
 
   get secondaryMetaLabel(): string {
     return this.kind === 'document' ? 'Source' : 'Status';
+  }
+
+  formatBooking(booking: Booking): string {
+    const date = new Date(booking.appointmentDate).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+    const doctor = booking.doctorName || 'Doctor';
+    const time = this.formatTime(booking.slotStartTime);
+    return `${date} — ${doctor} — ${time}`;
+  }
+
+  private formatTime(timeStr?: string): string {
+    if (!timeStr) return '';
+    const parts = timeStr.split(':');
+    if (parts.length < 2) return timeStr;
+    const hours = parseInt(parts[0], 10);
+    const minutes = parts[1];
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const hr = hours % 12 || 12;
+    return `${hr}:${minutes} ${ampm}`;
   }
 
   onSearchChange(value: string): void {
