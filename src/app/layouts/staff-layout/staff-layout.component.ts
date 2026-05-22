@@ -15,10 +15,13 @@ import { TopbarComponent } from '../../portals/admin/components/topbar/topbar.co
     <div class="portal-layout">
       <app-admin-sidebar
         class="portal-layout__sidebar"
+        [class.is-open]="isSidebarOpen"
         [navItems]="navItems"
         [portalLabel]="portalLabel"
         [clinicName]="clinicName"
         [currentUser]="currentUser()"
+        [isOpen]="isSidebarOpen"
+        (navClick)="closeSidebar()"
         (logout)="logout()"
       ></app-admin-sidebar>
 
@@ -28,6 +31,7 @@ import { TopbarComponent } from '../../portals/admin/components/topbar/topbar.co
           [portalLabel]="portalLabel"
           [currentUser]="currentUser()"
           [unreadCount]="unreadCount()"
+          (menuToggle)="isSidebarOpen = !isSidebarOpen"
           (logout)="logout()"
         ></app-admin-topbar>
 
@@ -35,6 +39,13 @@ import { TopbarComponent } from '../../portals/admin/components/topbar/topbar.co
           <router-outlet></router-outlet>
         </main>
       </div>
+
+      <div
+        class="sidebar-overlay"
+        [class.is-visible]="isSidebarOpen"
+        (click)="closeSidebar()"
+        aria-hidden="true"
+      ></div>
     </div>
   `,
   styleUrl: './staff-layout.component.scss',
@@ -46,22 +57,12 @@ export class StaffLayoutComponent implements OnInit {
   private readonly notificationService = inject(NotificationService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly route = inject(ActivatedRoute);
   private readonly clinicSettingsService = inject(ClinicSettingsService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly currentUser = this.authState.currentUser;
   readonly unreadCount = this.notificationService.unreadCount;
-
-  clinicName = '';
-  portalLabel = 'Staff Portal';
-  portalTitle = 'Dashboard';
-  pageTitle = 'Dashboard';
-
-  readonly navItems: NavItem[] = [
-    { section: 'CORE', label: 'Dashboard', route: '/staff/dashboard', icon: 'grid-outline' },
-    { section: 'CORE', label: 'Bookings', route: '/staff/bookings', icon: 'calendar-outline' },
-    { section: 'CORE', label: 'Walk-In', route: '/staff/walk-in', icon: 'walk-outline' },
-    { section: 'MANAGEMENT', label: 'Patients', route: '/staff/patients', icon: 'people-outline' },
     {
       section: 'TOOLS',
       label: 'Doctor Status',

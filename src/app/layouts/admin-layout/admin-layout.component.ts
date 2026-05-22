@@ -16,6 +16,7 @@ import { TopbarComponent } from '../../portals/admin/components/topbar/topbar.co
     <div class="portal-layout">
       <app-admin-sidebar
         class="portal-layout__sidebar"
+        [class.is-open]="isSidebarOpen"
         [navItems]="navItems"
         [portalLabel]="portalLabel"
         [clinicName]="clinicName"
