@@ -22,7 +22,7 @@
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: var(--space-4);
   margin-bottom: var(--space-6);
 }
@@ -33,7 +33,7 @@
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: var(--space-6);
 }
 
@@ -44,7 +44,7 @@
 
 .dashboard-doctors {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: var(--space-4);
 }
 
@@ -52,31 +52,14 @@
   font-size: 22px;
 }
 
+/* Media queries for other responsive adjustments (retain if needed) */
 @media (max-width: 960px) {
-  .stats-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .dashboard-grid {
-    grid-template-columns: 1fr;
-  }
-
   .dashboard-hero {
     flex-direction: column;
     align-items: flex-start;
   }
-
-  .dashboard-doctors {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
 @media (max-width: 580px) {
-  .stats-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .dashboard-doctors {
-    grid-template-columns: 1fr;
-  }
+  /* No additional grid changes needed due to auto-fit grids */
 }
