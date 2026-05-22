@@ -40,37 +40,44 @@ interface CollectPaymentMethodOption {
     ReceiptModalComponent
   ],
   template: `
-    <section class="page-shell payment-page">
+    <section class="pp">
       <app-page-header
         title="Payment Queue"
         subtitle="Collect payment for completed consultations with an amount due"
       ></app-page-header>
 
-      <div class="payment-summary-grid" *ngIf="!isLoading">
-        <article class="stat-card stat-card--green clinic-card">
-          <p class="stat-card__label">Ready to collect</p>
-          <div class="stat-card__value">{{ readyForPaymentCount }}</div>
-          <div class="stat-card__trend">Completed consultations still waiting on payment.</div>
+      <div class="sg" *ngIf="!isLoading">
+        <article class="stat-card stat-card--green">
+          <div class="stat-card__accent"></div>
+          <div class="stat-card__body">
+            <p class="stat-card__label">Ready to collect</p>
+            <div class="stat-card__value">{{ readyForPaymentCount }}</div>
+            <p class="stat-card__trend">Completed consultations still waiting on payment.</p>
+          </div>
         </article>
-
-        <article class="stat-card stat-card--red clinic-card">
-          <p class="stat-card__label">Total due on page</p>
-          <div class="stat-card__value">PHP {{ totalDueOnPage | number : '1.0-0' }}</div>
-          <div class="stat-card__trend">Current batch only, before pagination.</div>
+        <article class="stat-card stat-card--red">
+          <div class="stat-card__accent"></div>
+          <div class="stat-card__body">
+            <p class="stat-card__label">Total due on page</p>
+            <div class="stat-card__value">PHP {{ totalDueOnPage | number : '1.0-0' }}</div>
+            <p class="stat-card__trend">Current batch only, before pagination.</p>
+          </div>
         </article>
-
-        <article class="stat-card stat-card--blue clinic-card">
-          <p class="stat-card__label">Page view</p>
-          <div class="stat-card__value">{{ currentPage }} / {{ totalPages }}</div>
-          <div class="stat-card__trend">Showing {{ items.length }} record(s) on this page.</div>
+        <article class="stat-card stat-card--blue">
+          <div class="stat-card__accent"></div>
+          <div class="stat-card__body">
+            <p class="stat-card__label">Page view</p>
+            <div class="stat-card__value">{{ currentPage }} / {{ totalPages }}</div>
+            <p class="stat-card__trend">Showing {{ items.length }} record(s) on this page.</p>
+          </div>
         </article>
       </div>
 
-      <div class="clinic-card payment-loading" *ngIf="isLoading">Loading payment queue...</div>
+      <div class="payment-loading" *ngIf="isLoading">Loading payment queue...</div>
 
       <ng-container *ngIf="!isLoading">
-        <section class="clinic-card payment-card" *ngIf="items.length > 0; else emptyState">
-          <div class="payment-card__header">
+        <section class="pc" *ngIf="items.length > 0; else emptyState">
+          <div class="pch">
             <div>
               <div class="section-heading">Outstanding professional fees</div>
               <p class="page-subtitle">Review completed consultations and collect or waive the professional fee.</p>
@@ -78,117 +85,88 @@ interface CollectPaymentMethodOption {
             <div class="data-mono">Page {{ currentPage }} of {{ totalPages }}</div>
           </div>
 
-        <div class="table-wrap">
-          <table class="clinic-table payment-table">
+        <div class="tw">
+          <table class="pt">
             <thead>
               <tr>
                 <th>Patient</th>
-                <th>Doctor</th>
-                <th>Services</th>
+                <th>Doctor / Services</th>
                 <th>Date / Time</th>
                 <th>Queue</th>
                 <th>Status</th>
                 <th>Payment</th>
                 <th>Amount Due</th>
-                <th>Doctor Completed</th>
+                <th>Dr Completed</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               <tr *ngFor="let item of items">
-                <td class="payment-table__cell payment-table__cell--patient"><strong>{{ patientLabel(item) }}</strong></td>
-                <td class="payment-table__cell payment-table__cell--doctor">{{ doctorLabel(item) }}</td>
-                <td class="payment-table__cell payment-table__cell--services">{{ servicesLabel(item) }}</td>
-                <td class="payment-table__cell payment-table__cell--time">
+                <td><strong>{{ patientLabel(item) }}</strong></td>
+                <td>
+                  <div class="cd"><span class="cn">{{ doctorLabel(item) }}</span><span class="cs">{{ servicesLabel(item) }}</span></div>
+                </td>
+                <td>
                   <div>{{ item.appointmentDate | date : 'MMM d, y' }}</div>
-                  <div class="table-time">{{ item.slotStartTime }}</div>
+                  <div class="data-mono">{{ item.slotStartTime }}</div>
                 </td>
-                <td class="payment-table__cell payment-table__cell--queue data-mono">{{ queueLabel(item) }}</td>
-                <td class="payment-table__cell payment-table__cell--status">
-                  <app-status-badge [status]="item.status"></app-status-badge>
+                <td class="qn"><strong>{{ queueLabel(item) }}</strong></td>
+                <td class="st">
+                  <app-status-badge portal="staff" [status]="item.status"></app-status-badge>
                 </td>
-                <td class="payment-table__cell payment-table__cell--payment">
-                  <app-status-badge [status]="item.paymentStatus"></app-status-badge>
+                <td class="pm">
+                  <app-status-badge portal="staff" [status]="item.paymentStatus"></app-status-badge>
                 </td>
-                <td class="payment-table__cell payment-table__cell--amount">PHP {{ item.amountDue | number : '1.0-0' }}</td>
-                <td class="payment-table__cell payment-table__cell--completed">
+                <td class="am">PHP {{ item.amountDue | number : '1.0-0' }}</td>
+                <td class="dc">
                   {{ item.doctorCompletedAt ? (item.doctorCompletedAt | date : 'MMM d, y h:mm a') : '-' }}
                 </td>
-                <td class="payment-table__cell payment-table__cell--actions">
+                <td class="ac">
                   <ng-container *ngIf="canTakePaymentAction(item); else noDesktopAction">
-                    <div class="payment-actions">
-                      <button type="button" class="btn-primary" (click)="openPaymentModal(item)">
-                        Confirm Payment
-                      </button>
-                      <button type="button" class="btn-outline" (click)="openWaiveModal(item)">
-                        Waive PF
-                      </button>
+                    <div class="ar">
+                      <button type="button" class="btn-primary" (click)="openPaymentModal(item)">Confirm Payment</button>
+                      <button type="button" class="btn-outline" (click)="openWaiveModal(item)">Waive PF</button>
                     </div>
                   </ng-container>
-                  <ng-template #noDesktopAction>-</ng-template>
+                  <ng-template #noDesktopAction>&mdash;</ng-template>
                 </td>
               </tr>
             </tbody>
           </table>
         </div>
 
-        <div class="payment-mobile-list">
-          <article class="mobile-card payment-mobile-card" *ngFor="let item of items">
-            <div class="mobile-card__header">
-              <div>
-                <div class="mobile-card__name">{{ patientLabel(item) }}</div>
-                <div class="mobile-card__code data-mono">{{ queueLabel(item) }}</div>
+        <div class="ml">
+          <div class="mc" *ngFor="let item of items">
+            <div class="mch">
+              <div class="mci">
+                <strong>{{ patientLabel(item) }}</strong>
               </div>
-
-              <div class="payment-mobile-card__badges">
-                <app-status-badge [status]="item.status"></app-status-badge>
-                <app-status-badge [status]="item.paymentStatus"></app-status-badge>
+              <div class="mcb">
+                <app-status-badge portal="staff" [status]="item.status"></app-status-badge>
+                <app-status-badge portal="staff" [status]="item.paymentStatus"></app-status-badge>
               </div>
             </div>
-
-            <div class="mobile-card__row">
-              <span class="mobile-card__label">Doctor</span>
-              <span>{{ doctorLabel(item) }}</span>
-            </div>
-            <div class="mobile-card__row">
-              <span class="mobile-card__label">Services</span>
-              <span>{{ servicesLabel(item) }}</span>
-            </div>
-            <div class="mobile-card__row">
-              <span class="mobile-card__label">Time</span>
-              <span class="data-mono">{{ item.appointmentDate | date : 'MMM d, y' }} {{ item.slotStartTime }}</span>
-            </div>
-            <div class="mobile-card__row">
-              <span class="mobile-card__label">Amount Due</span>
-              <span>PHP {{ item.amountDue | number : '1.0-0' }}</span>
-            </div>
-            <div class="mobile-card__row">
-              <span class="mobile-card__label">Completed</span>
-              <span>{{ item.doctorCompletedAt ? (item.doctorCompletedAt | date : 'MMM d, y h:mm a') : '-' }}</span>
-            </div>
-
-            <div class="payment-actions payment-mobile-card__actions">
+            <dl class="mcd">
+              <div><dt>Doctor</dt><dd>{{ doctorLabel(item) }}</dd></div>
+              <div><dt>Services</dt><dd>{{ servicesLabel(item) }}</dd></div>
+              <div><dt>Date/Time</dt><dd>{{ item.appointmentDate | date : 'MMM d, y' }} {{ item.slotStartTime }}</dd></div>
+              <div><dt>Amount Due</dt><dd>PHP {{ item.amountDue | number : '1.0-0' }}</dd></div>
+              <div><dt>Completed</dt><dd>{{ item.doctorCompletedAt ? (item.doctorCompletedAt | date : 'MMM d, y h:mm a') : '-' }}</dd></div>
+            </dl>
+            <div class="mca">
               <ng-container *ngIf="canTakePaymentAction(item); else noMobileAction">
-                <button type="button" class="btn-primary" (click)="openPaymentModal(item)">
-                  Confirm Payment
-                </button>
-                <button type="button" class="btn-outline" (click)="openWaiveModal(item)">
-                  Waive PF
-                </button>
+                <button type="button" class="btn-primary" (click)="openPaymentModal(item)">Confirm Payment</button>
+                <button type="button" class="btn-outline" (click)="openWaiveModal(item)">Waive PF</button>
               </ng-container>
-              <ng-template #noMobileAction>-</ng-template>
+              <ng-template #noMobileAction>&mdash;</ng-template>
             </div>
-          </article>
+          </div>
         </div>
 
-        <div class="bookings-pagination" *ngIf="totalPages > 1">
-          <button class="btn-ghost bookings-pagination__button" type="button" (click)="previousPage()" [disabled]="currentPage <= 1 || isLoading">
-            Previous
-          </button>
-          <span class="bookings-pagination__page">Page {{ currentPage }} of {{ totalPages }}</span>
-          <button class="btn-ghost bookings-pagination__button" type="button" (click)="nextPage()" [disabled]="currentPage >= totalPages || isLoading">
-            Next
-          </button>
+        <div class="pg" *ngIf="totalPages > 1">
+          <button type="button" class="btn-ghost" (click)="previousPage()" [disabled]="currentPage <= 1 || isLoading">Previous</button>
+          <span>Page {{ currentPage }} of {{ totalPages }}</span>
+          <button type="button" class="btn-ghost" (click)="nextPage()" [disabled]="currentPage >= totalPages || isLoading">Next</button>
         </div>
       </section>
       </ng-container>
@@ -201,116 +179,47 @@ interface CollectPaymentMethodOption {
         ></app-empty-state>
       </ng-template>
 
-      <div
-        *ngIf="paymentModalOpen"
-        class="payment-modal__backdrop"
-        (click)="closePaymentModal()"
-      >
-        <section
-          class="clinic-card payment-modal"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="collect-payment-title"
-          (click)="$event.stopPropagation()"
-        >
-          <div class="payment-modal__header">
-            <div>
-              <div class="section-heading">Collect payment</div>
-              <h3 id="collect-payment-title" class="page-title payment-modal__title">
-                {{ selectedItem?.patientName || 'Unknown Patient' }}
-              </h3>
-              <p class="page-subtitle">{{ selectedItem?.doctorName }}</p>
-            </div>
-            <button type="button" class="btn-ghost payment-modal__close" (click)="closePaymentModal()">Close</button>
+      <div *ngIf="paymentModalOpen" class="pb" (click)="closePaymentModal()">
+        <section class="pw" role="dialog" aria-modal="true" aria-labelledby="collect-payment-title" (click)="$event.stopPropagation()">
+          <div class="ph">
+            <h3 class="section-heading" id="collect-payment-title" style="margin-bottom:0">Collect Payment</h3>
+            <button type="button" class="btn-ghost" (click)="closePaymentModal()">&times;</button>
           </div>
-
-          <div class="payment-modal__summary" *ngIf="selectedItem as item">
-            <div>
-              <small>Services</small>
-              <strong>{{ servicesLabel(item) }}</strong>
-            </div>
-            <div>
-              <small>Amount due</small>
-              <strong>PHP {{ item.amountDue | number : '1.0-0' }}</strong>
-            </div>
-            <div>
-              <small>Queue</small>
-              <strong>{{ queueLabel(item) }}</strong>
-            </div>
+          <div class="ps" *ngIf="selectedItem as item">
+            <div><small>Patient</small><strong>{{ item.patientName || 'Unknown Patient' }}</strong></div>
+            <div><small>Doctor</small><strong>{{ item.doctorName || 'Doctor' }}</strong></div>
+            <div><small>Services</small><strong>{{ servicesLabel(item) }}</strong></div>
+            <div><small>Amount Due</small><strong>PHP {{ item.amountDue | number : '1.0-0' }}</strong></div>
+            <div><small>Queue</small><strong>{{ queueLabel(item) }}</strong></div>
           </div>
-
-          <div class="payment-modal__form">
-            <div class="clinic-card payment-modal__field">
-              <label class="payment-modal__label">Payment Method</label>
-              <select
-                class="filter-input"
-                name="paymentMethod"
-                [(ngModel)]="paymentMethod"
-                [ngModelOptions]="{ standalone: true }"
-              >
-                <option *ngFor="let method of paymentMethods" [value]="method.value">{{ method.label }}</option>
-              </select>
-            </div>
-
-            <div class="clinic-card payment-modal__field">
-              <label class="payment-modal__label">Amount Received</label>
-              <input
-                class="filter-input"
-                type="number"
-                min="0"
-                name="amountReceived"
-                [(ngModel)]="amountReceived"
-                [ngModelOptions]="{ standalone: true }"
-              />
-            </div>
-
-            <div class="clinic-card payment-modal__field">
-              <label class="payment-modal__label">Reference Number</label>
-              <input
-                class="filter-input"
-                type="text"
-                name="referenceNumber"
-                [(ngModel)]="referenceNumber"
-                [ngModelOptions]="{ standalone: true }"
-              />
-            </div>
-
-            <div class="clinic-card payment-modal__field payment-modal__field--wide">
-              <label class="payment-modal__label">Notes</label>
-              <textarea
-                class="filter-input"
-                rows="3"
-                name="paymentNotes"
-                [(ngModel)]="notes"
-                [ngModelOptions]="{ standalone: true }"
-              ></textarea>
-            </div>
+          <div class="pf">
+            <div class="pd"><label>Payment Method</label><select class="filter-input" name="paymentMethod" [(ngModel)]="paymentMethod" [ngModelOptions]="{ standalone: true }"><option *ngFor="let method of paymentMethods" [value]="method.value">{{ method.label }}</option></select></div>
+            <div class="pd"><label>Amount Received</label><input class="filter-input" type="number" min="0" name="amountReceived" [(ngModel)]="amountReceived" [ngModelOptions]="{ standalone: true }" /></div>
+            <div class="pd"><label>Reference Number <span style="color:#94a3b8;font-weight:400">(optional)</span></label><input class="filter-input" type="text" name="referenceNumber" [(ngModel)]="referenceNumber" [ngModelOptions]="{ standalone: true }" /></div>
+            <div class="pd" style="grid-column:1/-1"><label>Notes <span style="color:#94a3b8;font-weight:400">(optional)</span></label><textarea class="filter-input" rows="3" name="paymentNotes" [(ngModel)]="notes" [ngModelOptions]="{ standalone: true }"></textarea></div>
           </div>
-
-          <div class="wizard-actions wizard-actions--split payment-modal__actions">
+          <div class="flex" style="display:flex;gap:var(--space-3);margin-top:var(--space-6);justify-content:space-between">
             <button type="button" class="btn-outline" (click)="closePaymentModal()">Cancel</button>
-            <button type="button" class="btn-primary" [disabled]="isSubmitting" (click)="confirmPayment()">
-              {{ isSubmitting ? 'Confirming...' : 'Confirm Payment' }}
-            </button>
+            <button type="button" class="btn-primary" [disabled]="isSubmitting" (click)="confirmPayment()">{{ isSubmitting ? 'Confirming...' : 'Confirm Payment' }}</button>
           </div>
         </section>
       </div>
 
-    <app-confirm-modal
-      *ngIf="waiveModalOpen"
-      [isOpen]="waiveModalOpen"
-      title="Waive PF"
-      message="Waive the professional fee for this completed consultation?"
-      confirmLabel="Waive PF"
-      [isDanger]="true"
-      [requireReason]="true"
-      [reasonMinLength]="waiverReasonMinLength"
-      reasonLabel="Waive reason"
-      (confirmed)="confirmWaive($event)"
-      (cancelled)="closeWaiveModal()"
-    ></app-confirm-modal>
+      <app-confirm-modal
+        *ngIf="waiveModalOpen"
+        [isOpen]="waiveModalOpen"
+        title="Waive PF"
+        message="Waive the professional fee for this completed consultation?"
+        confirmLabel="Waive PF"
+        [isDanger]="true"
+        [requireReason]="true"
+        [reasonMinLength]="waiverReasonMinLength"
+        reasonLabel="Waive reason"
+        (confirmed)="confirmWaive($event)"
+        (cancelled)="closeWaiveModal()"
+      ></app-confirm-modal>
 
-    <app-receipt-modal [isOpen]="receiptModalOpen" [data]="receiptData" (closed)="receiptModalOpen = false"></app-receipt-modal>
+      <app-receipt-modal [isOpen]="receiptModalOpen" [data]="receiptData" (closed)="receiptModalOpen = false"></app-receipt-modal>
     </section>
   `,
   styleUrl: './staff-payments.page.scss'
