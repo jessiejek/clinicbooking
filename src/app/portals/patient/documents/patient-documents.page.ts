@@ -6,11 +6,11 @@ import { PatientMediaPanelComponent } from '../../../shared/components/patient-m
   selector: 'app-patient-documents-page',
   imports: [PatientMediaPanelComponent],
   template: `
-    <section class="page-shell">
+    <section class="documents-page">
       <app-patient-media-panel
         kind="document"
-        heading="My Documents"
-        subheading="Upload referrals, certificates, prescriptions, and other files linked to your appointments."
+        heading="Uploaded Documents"
+        subheading="Choose a file, link it to a booking, then preview uploaded images or download files when needed."
       ></app-patient-media-panel>
     </section>
   `,

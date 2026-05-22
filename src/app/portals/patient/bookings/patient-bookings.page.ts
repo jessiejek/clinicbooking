@@ -70,7 +70,6 @@ type BookingFilter = 'all' | 'upcoming' | 'for-payment' | 'completed' | 'cancell
           <table class="clinic-table">
             <thead>
               <tr>
-                <th>Booking ID</th>
                 <th>Doctor</th>
                 <th>Services</th>
                 <th>Date / Time</th>
@@ -82,7 +81,6 @@ type BookingFilter = 'all' | 'upcoming' | 'for-payment' | 'completed' | 'cancell
             </thead>
             <tbody>
               <tr *ngFor="let booking of filteredBookings">
-                <td class="data-mono">{{ booking.id }}</td>
                 <td>{{ doctorName(booking) }}</td>
                 <td>{{ servicesLabel(booking) }}</td>
                 <td>

@@ -139,7 +139,7 @@ type PatientMediaItem = PatientDocument | PatientLabResult;
       }
 
       .preview-modal-body {
-        --background: #f1f5f9;
+        --background: #f5f2fa;
       }
 
       .preview-shell {
@@ -154,8 +154,8 @@ type PatientMediaItem = PatientDocument | PatientLabResult;
         min-height: min(62vh, 560px);
         border-radius: 16px;
         overflow: hidden;
-        border: 1px solid #dbe3ef;
-        box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
+        border: 1px solid rgba(93, 62, 142, 0.12);
+        box-shadow: 0 18px 40px rgba(93, 62, 142, 0.1);
         background: #111827;
       }
 
@@ -173,8 +173,8 @@ type PatientMediaItem = PatientDocument | PatientLabResult;
         padding: 2.5rem 1.5rem;
         border-radius: 16px;
         background: #ffffff;
-        border: 1px solid #dbe3ef;
-        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+        border: 1px solid rgba(93, 62, 142, 0.1);
+        box-shadow: 0 10px 24px rgba(93, 62, 142, 0.06);
       }
 
       .preview-file-card__icon {
@@ -183,8 +183,8 @@ type PatientMediaItem = PatientDocument | PatientLabResult;
         border-radius: 18px;
         display: grid;
         place-items: center;
-        background: rgba(37, 99, 235, 0.1);
-        color: #2563eb;
+        background: rgba(93, 62, 142, 0.1);
+        color: #5d3e8e;
         font-size: 2rem;
       }
 
@@ -212,7 +212,7 @@ type PatientMediaItem = PatientDocument | PatientLabResult;
         padding: 1rem 1.1rem;
         border-radius: 14px;
         background: #ffffff;
-        border: 1px solid #dbe3ef;
+        border: 1px solid rgba(93, 62, 142, 0.1);
       }
 
       .preview-meta-row {
@@ -248,12 +248,18 @@ type PatientMediaItem = PatientDocument | PatientLabResult;
         gap: 0.35rem;
         min-height: 42px;
         padding: 0.55rem 0.95rem;
-        border: 1px solid #cbd5e1;
+        border: 1px solid rgba(93, 62, 142, 0.2);
         border-radius: 999px;
         background: #ffffff;
         color: #0f172a;
         font-weight: 600;
         font-size: 0.88rem;
+        transition: border-color var(--transition-fast), background var(--transition-fast);
+      }
+
+      .preview-nav-btn:hover:not(:disabled) {
+        border-color: #5d3e8e;
+        background: rgba(93, 62, 142, 0.04);
       }
 
       .preview-nav-btn:disabled {

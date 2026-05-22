@@ -52,29 +52,28 @@ import { PATIENT_NAV_ITEMS } from '../../patient.routes';
           (logout)="logout()"
         ></app-admin-topbar>
 
-        <div class="patient-quick-action">
-          <div>
-            <div class="patient-quick-action__eyebrow">Patient Documents</div>
-            <div class="patient-quick-action__title">Download all clinical records</div>
-            <div class="patient-quick-action__subtitle">
-              One PDF with completed consultations, prescriptions, and follow-up notes.
-            </div>
-            <div class="patient-quick-action__links">
-              <a routerLink="/patient/documents" class="btn-ghost">My Documents</a>
-              <a routerLink="/patient/lab-results" class="btn-ghost">My Lab Results</a>
-            </div>
-          </div>
-          <button
-            type="button"
-            class="btn-primary patient-quick-action__button"
-            [disabled]="downloadingClinicalRecords"
-            (click)="downloadAllClinicalRecords()"
-          >
-            {{ downloadingClinicalRecords ? 'Preparing PDF...' : 'Download All Clinical Records' }}
-          </button>
-        </div>
-
         <main class="page-content">
+          <div class="patient-quick-action">
+            <div>
+              <div class="patient-quick-action__eyebrow">Patient Documents</div>
+              <div class="patient-quick-action__title">Download all clinical records</div>
+              <div class="patient-quick-action__subtitle">
+                One PDF with completed consultations, prescriptions, and follow-up notes.
+              </div>
+              <div class="patient-quick-action__links">
+                <a routerLink="/patient/documents" class="btn-ghost">My Documents</a>
+                <a routerLink="/patient/lab-results" class="btn-ghost">My Lab Results</a>
+              </div>
+            </div>
+            <button
+              type="button"
+              class="btn-primary patient-quick-action__button"
+              [disabled]="downloadingClinicalRecords"
+              (click)="downloadAllClinicalRecords()"
+            >
+              {{ downloadingClinicalRecords ? 'Preparing PDF...' : 'Download All Clinical Records' }}
+            </button>
+          </div>
           <router-outlet></router-outlet>
         </main>
       </div>

@@ -6,7 +6,17 @@ import { catchError, map, of } from 'rxjs';
 import { ActivatedRoute } from '@angular/router';
 import { IonSearchbar, IonSpinner, ToastController, IonIcon, ModalController } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { documentTextOutline, flaskOutline } from 'ionicons/icons';
+import {
+  documentTextOutline,
+  flaskOutline,
+  cloudUploadOutline,
+  documentAttachOutline,
+  imageOutline,
+  searchOutline,
+  calendarOutline,
+  checkmarkCircleOutline,
+  eyeOutline
+} from 'ionicons/icons';
 import {
   PatientDocument,
   PatientDocumentUploadRequest,
@@ -41,12 +51,25 @@ type PatientMediaItem = PatientDocument | PatientLabResult;
       </div>
 
       <form *ngIf="allowUpload" class="patient-media-panel__upload" [formGroup]="form" (ngSubmit)="upload()">
+        <div class="upload-section-header">
+          <div class="upload-section-header__icon">
+            <ion-icon [name]="kind === 'document' ? 'cloud-upload-outline' : 'flask-outline'"></ion-icon>
+          </div>
+          <div>
+            <h4>{{ kind === 'document' ? 'Upload a document' : 'Upload a lab result' }}</h4>
+            <p>Files should be linked to the correct booking.</p>
+          </div>
+        </div>
+
         <div class="patient-media-panel__upload-grid">
           <label class="media-field media-field--full">
             <span>{{ fileFieldLabel }}</span>
             <div class="file-picker" (click)="fileInput.click()">
-              <strong>{{ selectedFileName || 'Choose a file' }}</strong>
-              <small *ngIf="!fromQueryParam">Select a booking below to link this file.</small>
+              <ion-icon [name]="selectedFileName ? 'document-attach-outline' : 'cloud-upload-outline'"></ion-icon>
+              <div class="file-picker__text">
+                <strong>{{ selectedFileName || 'Choose a file' }}</strong>
+                <small>Images and PDF files are recommended.</small>
+              </div>
             </div>
             <input #fileInput type="file" class="visually-hidden" (change)="onFileSelected($event)" />
           </label>
@@ -69,8 +92,13 @@ type PatientMediaItem = PatientDocument | PatientLabResult;
                 {{ formatBooking(booking) }}
               </option>
             </select>
-            <small class="booking-helper" *ngIf="fromQueryParam">This upload will be linked to the selected booking.</small>
-            <small class="booking-helper">{{ helperText }}</small>
+            <div class="booking-helper-row">
+              <small class="booking-helper" *ngIf="fromQueryParam">
+                <ion-icon name="checkmark-circle-outline"></ion-icon>
+                Booking preselected from appointment details.
+              </small>
+              <small class="booking-helper">{{ helperText }}</small>
+            </div>
           </label>
         </div>
 
@@ -119,12 +147,20 @@ type PatientMediaItem = PatientDocument | PatientLabResult;
                 <div class="gallery-card__icon" *ngIf="!isImage(item)">
                   <ion-icon [name]="kind === 'document' ? 'document-text-outline' : 'flask-outline'"></ion-icon>
                 </div>
+                <div class="gallery-card__preview-hint" *ngIf="isImage(item)">
+                  <ion-icon name="eye-outline"></ion-icon>
+                </div>
               </div>
               <div class="gallery-card__info" (click)="openPreview(item)">
-                <div class="gallery-card__date">{{ item.uploadedAt | date : 'MMM d, y' }}</div>
+                <div class="gallery-card__meta-row">
+                  <span class="gallery-card__date">{{ item.uploadedAt | date : 'MMM d, y' }}</span>
+                  <span class="gallery-card__type-badge">{{ tagLabel(item) }}</span>
+                </div>
                 <h4>{{ displayTitle(item) }}</h4>
-                <div class="gallery-card__tag" *ngIf="bookingLabelFor(item)">{{ bookingLabelFor(item) }}</div>
-                <div class="gallery-card__tag gallery-card__tag--muted" *ngIf="!bookingLabelFor(item)">{{ tagLabel(item) }}</div>
+                <div class="gallery-card__booking-row" *ngIf="bookingLabelFor(item)">
+                  <ion-icon name="calendar-outline"></ion-icon>
+                  <span>{{ bookingLabelFor(item) }}</span>
+                </div>
               </div>
             </article>
           </div>
@@ -133,6 +169,7 @@ type PatientMediaItem = PatientDocument | PatientLabResult;
 
       <ng-template #emptyTpl>
         <div class="patient-media-panel__empty">
+          <ion-icon [name]="kind === 'document' ? 'document-text-outline' : 'flask-outline'"></ion-icon>
           <p class="patient-media-panel__empty-title">{{ emptyTitle }}</p>
           <p>{{ emptyDescription }}</p>
         </div>
@@ -184,7 +221,17 @@ export class PatientMediaPanelComponent implements OnInit, OnChanges {
   private loadToken = 0;
 
   constructor() {
-    addIcons({ documentTextOutline, flaskOutline });
+    addIcons({
+      documentTextOutline,
+      flaskOutline,
+      cloudUploadOutline,
+      documentAttachOutline,
+      imageOutline,
+      searchOutline,
+      calendarOutline,
+      checkmarkCircleOutline,
+      eyeOutline
+    });
   }
 
   get canSubmitUpload(): boolean {
