@@ -1,6 +1,6 @@
-import { AsyncPipe, NgIf } from '@angular/common';
+import { AsyncPipe, DatePipe, NgIf } from '@angular/common';
 import { Component, inject } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ModalController, ToastController } from '@ionic/angular/standalone';
 import { BehaviorSubject, Observable, combineLatest, firstValueFrom, of } from 'rxjs';
 import { catchError, map, switchMap, take } from 'rxjs/operators';
@@ -22,8 +22,8 @@ import {
   MedicalRecordsState
 } from '../../../core/services/medical-records.service';
 import { PatientStateService } from '../../../core/services/patient-state.service';
-import { BannerComponent } from '../../../shared/components/banner/banner.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 import { FollowUpDraftView } from '../components/follow-up-form/follow-up-form.component';
 import { LabRequestDraftView } from '../components/lab-request-form/lab-request-form.component';
 import { SoapFormValue } from '../components/soap-form/soap-form.component';
@@ -107,104 +107,101 @@ type ConsultationInteractionMode = 'complete' | 'view' | 'amend';
   standalone: true,
   selector: 'app-doctor-consultation-page',
   imports: [
-    AsyncPipe,
-    NgIf,
+    AsyncPipe, DatePipe, NgIf, RouterLink,
     EmptyStateComponent,
-    BannerComponent,
-    ConsultationHeaderComponent,
     ConsultationOverviewComponent,
     ConsultationWorkspaceComponent,
-    PatientMediaPanelComponent
+    PatientMediaPanelComponent,
+    StatusBadgeComponent
   ],
   template: `
     <ng-container *ngIf="vm$ | async as vm; else notFound">
-      <app-consultation-header
-        [booking]="vm.booking"
-        [patient]="vm.patient"
-        [mode]="headerMode(vm)"
-        [locked]="isWorkspaceLocked(vm)"
-        [saveDisabled]="isWorkspaceLocked(vm) || isSavingDraft"
-        [completeDisabled]="isCompleteActionDisabled(vm)"
-        [amendDisabled]="isAmendActionDisabled(vm)"
-        [isSavingDraft]="isSavingDraft"
-        [isCompleting]="isSubmittingComplete"
-        [isSavingAmendment]="isSavingAmendment"
-        (saveDraft)="saveDraft(vm)"
-        (completeTransaction)="requestCompletion(vm)"
-        (enterAmendMode)="enterAmendMode()"
-        (cancelAmendMode)="cancelAmendMode()"
-        (saveAmendment)="saveAmendment(vm)"
-      ></app-consultation-header>
+      <div class="cr">
+        <div class="cr-top">
+          <div class="cr-hdr">
+            <div class="cr-hdr__left">
+              <h1 class="cr-hdr__title">Consultation Room</h1>
+              <p class="cr-hdr__sub">{{ vm.patient.firstName || 'Patient' }} {{ vm.patient.lastName || '' }} &middot; {{ vm.booking.appointmentDate | date:'MMM d, y' }} &middot; Queue #{{ vm.booking.queueNumber ?? '--' }}</p>
+            </div>
+            <div class="cr-hdr__right">
+              <app-status-badge [status]="vm.booking.status"></app-status-badge>
+              <a class="cr-btn" routerLink="/doctor/appointments">Back to Appointments</a>
+              <button class="cr-btn cr-btn--primary" (click)="saveDraft(vm)" [disabled]="isWorkspaceLocked(vm) || isSavingDraft">{{ isSavingDraft ? 'Saving...' : 'Save Draft' }}</button>
+              <button class="cr-btn cr-btn--complete" (click)="requestCompletion(vm)" [disabled]="isCompleteActionDisabled(vm)" *ngIf="!isCompletedConsultation(vm) || isAmendMode">Complete Consultation</button>
+            </div>
+          </div>
 
-      <app-banner
-        *ngIf="isAmendMode && isCompletedConsultation(vm)"
-        variant="warning"
-        message="Amendment mode is active. Payment and PF details remain unchanged."
-      ></app-banner>
-
-      <app-banner
-        *ngIf="isCompletedConsultation(vm) && !isAmendMode"
-        variant="success"
-        message="Completed Consultation"
-      ></app-banner>
-
-      <app-consultation-overview
-        [patient]="vm.patient"
-        [consultation]="vm.consultation"
-        [existingPrescription]="vm.existingPrescription"
-        [allergies]="vm.allergies"
-        [followUps]="vm.followUps"
-        [recentConsultations]="vm.recentConsultations"
-      ></app-consultation-overview>
-
-      <section class="clinic-card patient-uploads-section">
-        <h3>Patient Uploads</h3>
-        <p class="patient-uploads-section__intro">All documents and lab results uploaded by this patient.</p>
-        <div class="patient-uploads-section__panels">
-          <app-patient-media-panel
-            kind="document"
-            [patientId]="vm.patient.id"
-            [filterByBooking]="false"
-            [allowUpload]="false"
-            heading="Documents"
-            subheading="Referrals, certificates, prescriptions, and supporting files."
-          ></app-patient-media-panel>
-          <app-patient-media-panel
-            kind="lab-result"
-            [patientId]="vm.patient.id"
-            [filterByBooking]="false"
-            [allowUpload]="false"
-            heading="Lab Results"
-            subheading="Uploaded lab reports and test result files."
-          ></app-patient-media-panel>
+          <div class="cr-patient">
+            <div class="cr-avatar">{{ (vm.patient.firstName?.charAt(0) || '?') }}{{ (vm.patient.lastName?.charAt(0) || '') }}</div>
+            <div class="cr-patient__info">
+              <strong>{{ vm.patient.firstName }} {{ vm.patient.lastName }}</strong>
+              <span>{{ vm.patient.sex || '--' }} &middot; {{ vm.patient.dateOfBirth ? (calcAge(vm.patient.dateOfBirth) + ' yrs') : '--' }}</span>
+              <span>{{ vm.booking.serviceNames?.join(', ') || vm.booking.serviceName || 'Service' }}</span>
+            </div>
+            <div class="cr-patient__meta">
+              <div><span class="ml">Fee</span><span class="mv">PHP {{ vm.booking.consultationFeeSnapshot ?? vm.booking.totalFee ?? 0 }}</span></div>
+              <div><span class="ml">Mode</span><span class="mv">{{ vm.booking.paymentMode || '--' }}</span></div>
+              <div><span class="ml">Payment</span><app-status-badge [status]="vm.booking.paymentStatus || 'Unpaid'"></app-status-badge></div>
+            </div>
+          </div>
         </div>
-      </section>
 
-      <app-consultation-workspace
-        [vm]="vm"
-        [locked]="isWorkspaceLocked(vm)"
-        [prescriptionItems]="prescriptionItems"
-        (vitalSignsChange)="onVitalsChange($event)"
-        (vitalsValidityChange)="vitalsValid = $event"
-        (soapChange)="onSoapChange($event)"
-        (soapValidityChange)="soapValid = $event"
-        (diagnosesChange)="onDiagnosesChange($event)"
-        (diagnosisValidityChange)="diagnosisValid = $event"
-        (prescriptionItemsChange)="onPrescriptionItemsChange($event)"
-        (labRequestsChange)="onLabRequestsChange($event)"
-        (followUpChange)="onFollowUpChange($event)"
-      ></app-consultation-workspace>
+        <div class="cr-body">
+          <div class="cr-workspace">
+            <app-consultation-overview
+              [patient]="vm.patient"
+              [consultation]="vm.consultation"
+              [existingPrescription]="vm.existingPrescription"
+              [allergies]="vm.allergies"
+              [followUps]="vm.followUps"
+              [recentConsultations]="vm.recentConsultations"
+            ></app-consultation-overview>
 
+            <div class="cr-section">
+              <app-consultation-workspace
+                [vm]="vm"
+                [locked]="isWorkspaceLocked(vm)"
+                [prescriptionItems]="prescriptionItems"
+                (vitalSignsChange)="onVitalsChange($event)"
+                (vitalsValidityChange)="vitalsValid = $event"
+                (soapChange)="onSoapChange($event)"
+                (soapValidityChange)="soapValid = $event"
+                (diagnosesChange)="onDiagnosesChange($event)"
+                (diagnosisValidityChange)="diagnosisValid = $event"
+                (prescriptionItemsChange)="onPrescriptionItemsChange($event)"
+                (labRequestsChange)="onLabRequestsChange($event)"
+                (followUpChange)="onFollowUpChange($event)"
+              ></app-consultation-workspace>
+            </div>
+          </div>
+
+          <div class="cr-side">
+            <div class="cr-side-card">
+              <h3>Consultation Progress</h3>
+              <ul class="cr-progress">
+                <li class="cr-progress__item" [class.done]="soapValid">Notes &amp; SOAP</li>
+                <li class="cr-progress__item" [class.done]="true">Vitals</li>
+                <li class="cr-progress__item" [class.done]="diagnosisValid">Diagnosis</li>
+                <li class="cr-progress__item" [class.done]="prescriptionItems.length > 0">Prescription</li>
+                <li class="cr-progress__item">Follow-up</li>
+                <li class="cr-progress__item">PF Decision</li>
+              </ul>
+              <button class="cr-btn cr-btn--primary cr-btn--full" (click)="saveDraft(vm)" [disabled]="isWorkspaceLocked(vm) || isSavingDraft">{{ isSavingDraft ? 'Saving Draft...' : 'Save Draft' }}</button>
+              <button class="cr-btn cr-btn--complete cr-btn--full" (click)="requestCompletion(vm)" [disabled]="isCompleteActionDisabled(vm)" *ngIf="!isCompletedConsultation(vm) || isAmendMode" style="margin-top:8px">Complete Consultation</button>
+            </div>
+
+            <div class="cr-side-card">
+              <h3>Patient Uploads</h3>
+              <app-patient-media-panel kind="document" [patientId]="vm.patient.id" [filterByBooking]="false" [allowUpload]="false" heading="Documents" subheading="Referrals, certificates, and files."></app-patient-media-panel>
+              <app-patient-media-panel kind="lab-result" [patientId]="vm.patient.id" [filterByBooking]="false" [allowUpload]="false" heading="Lab Results" subheading="Uploaded lab reports."></app-patient-media-panel>
+            </div>
+          </div>
+        </div>
+      </div>
     </ng-container>
 
     <ng-template #notFound>
-      <app-empty-state
-        icon="document-text-outline"
-        title="Consultation unavailable"
-        description="This appointment is either missing or belongs to another doctor."
-        ctaLabel="Back to Appointments"
-        ctaRoute="/doctor/appointments"
-      ></app-empty-state>
+      <app-empty-state icon="document-text-outline" title="Consultation unavailable" description="This appointment is either missing or belongs to another doctor." ctaLabel="Back to Appointments" ctaRoute="/doctor/appointments"></app-empty-state>
     </ng-template>
   `,
   styleUrl: './doctor-consultation.page.scss'
@@ -509,6 +506,16 @@ export class DoctorConsultationPage {
     }
 
     return 'complete';
+  }
+
+  calcAge(dob: string): number {
+    if (!dob) return 0;
+    const b = new Date(dob);
+    const t = new Date();
+    let a = t.getFullYear() - b.getFullYear();
+    const m = t.getMonth() - b.getMonth();
+    if (m < 0 || (m === 0 && t.getDate() < b.getDate())) a--;
+    return a;
   }
 
   private buildVm(args: {

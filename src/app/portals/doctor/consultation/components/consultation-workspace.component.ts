@@ -5,7 +5,7 @@ import { AllergyWarningBannerComponent } from '../../components/allergy-warning-
 import { DiagnosisPickerComponent } from '../../components/diagnosis-picker/diagnosis-picker.component';
 import { FollowUpDraftView, FollowUpFormComponent } from '../../components/follow-up-form/follow-up-form.component';
 import { LabRequestDraftView, LabRequestFormComponent } from '../../components/lab-request-form/lab-request-form.component';
-import { PrescriptionBuilderComponent } from '../../components/prescription-builder/prescription-builder.component';
+import { PrescriptionFormComponent } from '../../components/prescription-form/prescription-form.component';
 import { SoapFormComponent, SoapFormValue } from '../../components/soap-form/soap-form.component';
 import { VitalSignsFormComponent } from '../../components/vital-signs-form/vital-signs-form.component';
 import { VitalsTrendChartComponent } from '../../components/vitals-trend-chart/vitals-trend-chart.component';
@@ -22,7 +22,7 @@ import { ConsultationPageVm } from '../doctor-consultation.types';
     VitalSignsFormComponent,
     SoapFormComponent,
     DiagnosisPickerComponent,
-    PrescriptionBuilderComponent,
+    PrescriptionFormComponent,
     LabRequestFormComponent,
     FollowUpFormComponent,
     VitalsTrendChartComponent
@@ -56,11 +56,11 @@ import { ConsultationPageVm } from '../doctor-consultation.types';
           [prescriptionItems]="prescriptionItems"
         ></app-allergy-warning-banner>
 
-        <app-prescription-builder
+        <app-prescription-form
           [items]="vm.existingPrescription?.items ?? emptyPrescriptionItems"
           [locked]="locked"
           (itemsChange)="prescriptionItemsChange.emit($event)"
-        ></app-prescription-builder>
+        ></app-prescription-form>
 
         <app-lab-request-form
           [value]="vm.labRequestDrafts"
