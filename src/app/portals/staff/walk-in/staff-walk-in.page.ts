@@ -553,13 +553,13 @@ type BookingControl = 'doctorId' | 'serviceId' | 'appointmentDate';
             </ng-container>
 
             <ng-template #summaryEmptyTpl>
-              <div class="mobile-card summary-card__section summary-card__section--empty" style="text-align:center;">
+              <div class="mobile-card summary-card__section summary-card__section--empty">
                 <div class="summary-card__empty-title">No patient selected yet</div>
                 <p>Search or register a patient to start the walk-in booking.</p>
               </div>
             </ng-template>
 
-            <div class="summary-card__queue-note" style="padding:var(--space-4);border:1px solid var(--color-secondary-100);border-radius:var(--radius-lg);background:var(--color-secondary-50);color:var(--ion-color-secondary);font-size:var(--text-sm);line-height:var(--leading-relaxed);">
+            <div class="summary-card__queue-note">
               Walk-in bookings will be added to today's queue once submitted.
             </div>
           </div>

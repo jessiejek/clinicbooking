@@ -1,5 +1,5 @@
 import { Component, Input } from '@angular/core';
-import { NgClass, NgIf } from '@angular/common';
+import { NgClass } from '@angular/common';
 import { BookingStatus, DoctorStatus, PaymentStatus } from '../../../core/models';
 
 @Component({
@@ -14,16 +14,31 @@ import { BookingStatus, DoctorStatus, PaymentStatus } from '../../../core/models
 export class StatusBadgeComponent {
   @Input({ required: true }) status!: BookingStatus | PaymentStatus | DoctorStatus | string;
   @Input() labelOverride?: string;
+  @Input() portal?: 'patient' | 'staff' | 'doctor' | 'admin';
+  @Input() paymentStatus?: PaymentStatus | string | null;
 
+  /** Compute CSS class based on portal, status and payment status */
   get cssClass(): string {
-    const raw = String(this.status);
-    const kebab = raw
+    const portalPrefix = this.portal ? `${this.portal}-` : '';
+    const statusKey = this._statusKey();
+    const kebab = statusKey
       .replace(/([a-z])([A-Z])/g, '$1-$2')
       .replace(/\s+/g, '-')
       .replace(/\//g, '-')
       .replace(/_/g, '-')
       .toLowerCase();
-    return `badge--${kebab}`;
+    return `badge--${portalPrefix}${kebab}`;
+  }
+
+  /** Resolve a unique key for CSS class generation */
+  private _statusKey(): string {
+    const raw = String(this.status);
+    // For booking statuses that need payment status differentiation
+    const payment = this.paymentStatus ? String(this.paymentStatus) : '';
+    if (raw === 'Completed' && payment) {
+      return `${raw}-${payment}`;
+    }
+    return raw;
   }
 
   get displayLabel(): string {
@@ -31,28 +46,56 @@ export class StatusBadgeComponent {
     if (override) {
       return override;
     }
-
     const raw = String(this.status);
-    const map: Record<string, string> = {
+    const portal = this.portal ?? 'admin';
+    const payment = this.paymentStatus;
+
+    // Booking status mapping
+    const bookingMap: Record<string, string> = {
+      Pending: 'Pending',
       ProofSubmitted: 'Proof Submitted',
-      OnHold: 'On Hold',
-      NoShow: 'No Show',
-      OnLeave: 'On Leave',
+      Confirmed: 'Confirmed',
       CheckedIn: 'Checked In',
-      InClinic: 'In Clinic',
-      ForPayment: 'For Payment',
-      Waived: 'PF Waived',
-      PFWaived: 'PF Waived',
-      CompletedPaid: 'Completed / Paid'
+      OnHold: 'On Hold',
+      Cancelled: 'Cancelled',
+      Completed: 'Completed',
+      Expired: 'Expired',
+      NoShow: 'No Show',
+      Rescheduled: 'Rescheduled'
     };
-    if (map[raw]) {
-      return map[raw];
+    // Payment status mapping
+    const paymentMap: Record<string, string> = {
+      Unpaid: 'Unpaid',
+      Paid: 'Paid',
+      Waived: 'Waived',
+      Refunded: 'Refunded'
+    };
+
+    // Portal‑specific display logic
+    if (portal === 'patient') {
+      if (raw === 'Confirmed') return 'Booked';
+      if (raw === 'CheckedIn') return 'In Clinic';
+      if (raw === 'Completed' && payment === 'Unpaid') return 'For Payment';
+      if (raw === 'Completed' && payment === 'Paid') return 'Completed / Paid';
+      if (raw === 'Completed' && payment === 'Waived') return 'PF Waived';
     }
-    return raw
-      .replace(/([A-Z])/g, ' $1')
-      .replace(/^\s+/, '')
-      .split(' ')
-      .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-      .join(' ');
+    if (portal === 'staff') {
+      if (raw === 'Confirmed') return 'Booked';
+      if (raw === 'CheckedIn') return 'In Clinic';
+      if (raw === 'Completed' && payment === 'Unpaid') return 'For Payment';
+      if (raw === 'Paid') return 'Paid';
+      if (raw === 'Waived') return 'PF Waived';
+    }
+    if (portal === 'doctor') {
+      if (raw === 'Confirmed') return 'Waiting';
+      if (raw === 'CheckedIn') return 'In Clinic';
+      if (raw === 'Completed') return 'Completed';
+    }
+    if (portal === 'admin') {
+      // Use generic readable mapping for admin
+      return bookingMap[raw] || raw;
+    }
+    // Fallback generic mapping
+    return bookingMap[raw] || paymentMap[raw] || raw;
   }
 }
