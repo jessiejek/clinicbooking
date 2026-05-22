@@ -81,20 +81,12 @@ type BookingControl = 'doctorId' | 'serviceId' | 'appointmentDate';
         </div>
       </div>
 
-      <div
-        class="walk-in-layout"
-        style="display:grid;grid-template-columns:minmax(0,1.65fr) minmax(320px,.95fr);gap:var(--space-6);align-items:start;min-width:0;"
-      >
-        <div class="walk-in-layout__main" style="display:grid;gap:var(--space-5);min-width:0;">
-          <nav
-            class="stepper"
-            aria-label="Walk-in booking steps"
-            style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-3);min-width:0;"
-          >
+      <div class="walk-in-layout">
+        <div class="walk-in-layout__main">
+          <nav class="stepper" aria-label="Walk-in booking steps">
             <button
               type="button"
               class="stepper__step"
-              style="display:grid;grid-template-columns:auto minmax(0,1fr);gap:var(--space-3);align-items:center;padding:var(--space-4);min-height:108px;border:1px solid var(--clinic-border);border-radius:var(--radius-lg);background:var(--clinic-bg-elevated);box-shadow:var(--shadow-xs);cursor:pointer;text-align:left;"
               [class.is-active]="currentWalkInStep === 1"
               [class.is-complete]="isStepComplete(1)"
               [disabled]="!canAccessStep(1)"
@@ -110,7 +102,6 @@ type BookingControl = 'doctorId' | 'serviceId' | 'appointmentDate';
             <button
               type="button"
               class="stepper__step"
-              style="display:grid;grid-template-columns:auto minmax(0,1fr);gap:var(--space-3);align-items:center;padding:var(--space-4);min-height:108px;border:1px solid var(--clinic-border);border-radius:var(--radius-lg);background:var(--clinic-bg-elevated);box-shadow:var(--shadow-xs);cursor:pointer;text-align:left;"
               [class.is-active]="currentWalkInStep === 2"
               [class.is-complete]="isStepComplete(2)"
               [disabled]="!canAccessStep(2)"
@@ -126,7 +117,6 @@ type BookingControl = 'doctorId' | 'serviceId' | 'appointmentDate';
             <button
               type="button"
               class="stepper__step"
-              style="display:grid;grid-template-columns:auto minmax(0,1fr);gap:var(--space-3);align-items:center;padding:var(--space-4);min-height:108px;border:1px solid var(--clinic-border);border-radius:var(--radius-lg);background:var(--clinic-bg-elevated);box-shadow:var(--shadow-xs);cursor:pointer;text-align:left;"
               [class.is-active]="currentWalkInStep === 3"
               [class.is-complete]="isStepComplete(3)"
               [disabled]="!canAccessStep(3)"
@@ -140,13 +130,13 @@ type BookingControl = 'doctorId' | 'serviceId' | 'appointmentDate';
             </button>
           </nav>
 
-          <section class="clinic-card walk-in-panel" style="display:grid;gap:var(--space-5);min-width:0;" *ngIf="currentWalkInStep === 1">
+          <section class="clinic-card walk-in-panel" *ngIf="currentWalkInStep === 1">
             <div class="walk-in-panel__head">
               <div>
                 <div class="section-heading">Patient Search</div>
                 <p class="panel-hint">Search by patient name, code, phone, or email.</p>
               </div>
-              <span class="panel-meta" *ngIf="isSearchingPatients" style="display:inline-flex;align-items:center;gap:var(--space-2);padding:6px 10px;border:1px solid var(--clinic-border);border-radius:var(--radius-full);background:var(--color-neutral-50);color:var(--clinic-text-secondary);font-size:var(--text-xs);white-space:nowrap;">
+              <span class="panel-meta" *ngIf="isSearchingPatients">
                 <ion-spinner name="dots"></ion-spinner>
                 Searching
               </span>
@@ -165,19 +155,12 @@ type BookingControl = 'doctorId' | 'serviceId' | 'appointmentDate';
             </div>
 
             <ng-container *ngIf="!searchErrorMessage">
-              <div class="search-tip" *ngIf="showSearchPrompt" style="color:var(--clinic-text-secondary);font-size:var(--text-sm);line-height:var(--leading-normal);">
+              <div class="search-tip" *ngIf="showSearchPrompt">
                 Search for an existing patient to continue.
               </div>
 
-              <div class="patient-results" *ngIf="!isSearchingPatients && searchResults.length > 0" style="display:grid;gap:var(--space-3);">
-                <button
-                  type="button"
-                  class="mobile-card patient-result"
-                  *ngFor="let patient of searchResults; trackBy: trackById"
-                  [attr.aria-label]="'Select patient ' + patientDisplayName(patient)"
-                  style="cursor:pointer;text-align:left;"
-                  (click)="selectPatient(patient)"
-                >
+              <div class="patient-results" *ngIf="!isSearchingPatients && searchResults.length > 0">
+                <button type="button" class="mobile-card patient-result" *ngFor="let patient of searchResults; trackBy: trackById" [attr.aria-label]="'Select patient ' + patientDisplayName(patient)" (click)="selectPatient(patient)">
                   <div class="mobile-card__header">
                     <div>
                       <div class="mobile-card__name">{{ patientDisplayName(patient) }}</div>
@@ -219,7 +202,7 @@ type BookingControl = 'doctorId' | 'serviceId' | 'appointmentDate';
               ></app-empty-state>
 
               <form class="quick-register" *ngIf="showQuickRegister" [formGroup]="quickRegisterForm" novalidate (ngSubmit)="createPatient()">
-                <div class="quick-register__grid" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-4);min-width:0;">
+                <div class="quick-register__grid">
                   <div class="form-field">
                     <div class="form-field__label">First Name *</div>
                     <ion-item class="clinic-input" lines="none" [class.is-invalid]="showQuickRegisterError('firstName')">
@@ -308,7 +291,7 @@ type BookingControl = 'doctorId' | 'serviceId' | 'appointmentDate';
                   </p>
                 </section>
 
-                <div class="quick-register__actions" style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);flex-wrap:wrap;">
+                <div class="quick-register__actions">
                   <button type="button" class="btn-ghost" (click)="cancelQuickRegister()">Cancel</button>
                   <button type="submit" class="btn-primary" [disabled]="isSavingPatient">
                     {{ isSavingPatient ? 'Creating...' : 'Create Patient' }}
@@ -327,20 +310,16 @@ type BookingControl = 'doctorId' | 'serviceId' | 'appointmentDate';
             ></app-empty-state>
           </section>
 
-          <section class="clinic-card walk-in-panel" style="display:grid;gap:var(--space-5);min-width:0;" *ngIf="currentWalkInStep === 2">
+          <section class="clinic-card walk-in-panel" *ngIf="currentWalkInStep === 2">
             <div class="walk-in-panel__head">
               <div>
                 <div class="section-heading">Slot Selection</div>
                 <p class="panel-hint">Choose the doctor, service, and available same-day slot.</p>
               </div>
-              <span class="panel-meta" style="display:inline-flex;align-items:center;gap:var(--space-2);padding:6px 10px;border:1px solid var(--clinic-border);border-radius:var(--radius-full);background:var(--color-neutral-50);color:var(--clinic-text-secondary);font-size:var(--text-xs);white-space:nowrap;">Walk-in will be added to today's queue.</span>
+              <span class="panel-meta">Walk-in will be added to today's queue.</span>
             </div>
 
-            <div
-              class="selected-patient-strip"
-              *ngIf="selectedPatient"
-              style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:var(--space-3);align-items:center;padding:var(--space-4);border:1px solid var(--clinic-border);border-radius:var(--radius-lg);background:linear-gradient(180deg,#fff 0%,#f8fafc 100%);box-shadow:var(--shadow-xs);"
-            >
+            <div class="selected-patient-strip" *ngIf="selectedPatient">
               <div class="selected-patient-strip__body">
                 <div class="selected-patient-strip__title">Selected Patient</div>
                 <div class="selected-patient-strip__name">{{ patientDisplayName(selectedPatient) }}</div>
@@ -351,16 +330,13 @@ type BookingControl = 'doctorId' | 'serviceId' | 'appointmentDate';
                 </div>
               </div>
 
-              <div
-                class="selected-patient-strip__actions"
-                style="display:flex;align-items:center;justify-content:flex-end;gap:var(--space-2);flex-wrap:wrap;"
-              >
+              <div class="selected-patient-strip__actions">
                 <app-status-badge [status]="patientAccountStatus(selectedPatient)" [labelOverride]="patientAccountLabel(selectedPatient)"></app-status-badge>
                 <button type="button" class="btn-outline" (click)="clearSelectedPatient()">Change Patient</button>
               </div>
             </div>
 
-            <form class="selection-grid" [formGroup]="bookingForm" novalidate style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-4);min-width:0;">
+            <form class="selection-grid" [formGroup]="bookingForm" novalidate>
               <div class="form-field">
                 <div class="form-field__label">Doctor *</div>
                 <ion-item class="clinic-input" lines="none" [class.is-invalid]="showBookingError('doctorId')">
@@ -432,25 +408,21 @@ type BookingControl = 'doctorId' | 'serviceId' | 'appointmentDate';
               </ng-template>
             </div>
 
-            <div class="step-actions" style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);flex-wrap:wrap;">
+            <div class="step-actions">
               <button type="button" class="btn-ghost" (click)="goToStep(1)">Back</button>
             </div>
           </section>
 
-          <section class="clinic-card walk-in-panel" style="display:grid;gap:var(--space-5);min-width:0;" *ngIf="currentWalkInStep === 3">
+          <section class="clinic-card walk-in-panel" *ngIf="currentWalkInStep === 3">
             <div class="walk-in-panel__head">
               <div>
                 <div class="section-heading">Payment</div>
                 <p class="panel-hint">Payment will be settled after consultation.</p>
               </div>
-              <span class="panel-meta" style="display:inline-flex;align-items:center;gap:var(--space-2);padding:6px 10px;border:1px solid var(--clinic-border);border-radius:var(--radius-full);background:var(--color-neutral-50);color:var(--clinic-text-secondary);font-size:var(--text-xs);white-space:nowrap;">Review the booking before submission.</span>
+              <span class="panel-meta">Review the booking before submission.</span>
             </div>
 
-            <div
-              class="selected-patient-strip"
-              *ngIf="selectedPatient"
-              style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:var(--space-3);align-items:center;padding:var(--space-4);border:1px solid var(--clinic-border);border-radius:var(--radius-lg);background:linear-gradient(180deg,#fff 0%,#f8fafc 100%);box-shadow:var(--shadow-xs);"
-            >
+            <div class="selected-patient-strip" *ngIf="selectedPatient">
               <div class="selected-patient-strip__body">
                 <div class="selected-patient-strip__title">Selected Patient</div>
                 <div class="selected-patient-strip__name">{{ patientDisplayName(selectedPatient) }}</div>
@@ -461,16 +433,13 @@ type BookingControl = 'doctorId' | 'serviceId' | 'appointmentDate';
                 </div>
               </div>
 
-              <div
-                class="selected-patient-strip__actions"
-                style="display:flex;align-items:center;justify-content:flex-end;gap:var(--space-2);flex-wrap:wrap;"
-              >
+              <div class="selected-patient-strip__actions">
                 <app-status-badge [status]="patientAccountStatus(selectedPatient)" [labelOverride]="patientAccountLabel(selectedPatient)"></app-status-badge>
                 <button type="button" class="btn-outline" (click)="clearSelectedPatient()">Change Patient</button>
               </div>
             </div>
 
-            <div class="review-grid" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-4);min-width:0;">
+            <div class="review-grid">
               <div class="mobile-card review-card">
                 <div class="review-card__label">Patient</div>
                 <div class="review-card__value">{{ patientDisplayName(selectedPatient) }}</div>
@@ -526,11 +495,11 @@ type BookingControl = 'doctorId' | 'serviceId' | 'appointmentDate';
               </div>
             </div>
 
-            <div class="payment-note" style="padding:var(--space-4);border:1px solid var(--color-warning-100);border-radius:var(--radius-lg);background:var(--color-warning-50);color:#92400e;line-height:var(--leading-relaxed);">
+            <div class="payment-note">
               Payment will be settled after consultation. Walk-in bookings will be added to today's queue once submitted.
             </div>
 
-            <div class="step-actions" style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);flex-wrap:wrap;">
+            <div class="step-actions">
               <button type="button" class="btn-ghost" (click)="goToStep(2)">Back</button>
               <button type="button" class="btn-primary" [disabled]="!canSubmitBooking || isSavingBooking" (click)="createBooking()">
                 {{ isSavingBooking ? 'Creating...' : 'Create Booking' }}
@@ -539,8 +508,8 @@ type BookingControl = 'doctorId' | 'serviceId' | 'appointmentDate';
           </section>
         </div>
 
-        <aside class="walk-in-layout__summary" style="min-width:0;position:sticky;top:var(--space-6);">
-          <div class="clinic-card summary-card" style="display:grid;gap:var(--space-4);">
+        <aside class="walk-in-layout__summary">
+          <div class="clinic-card summary-card">
             <div class="section-heading">Booking Summary</div>
 
             <ng-container *ngIf="selectedPatient; else summaryEmptyTpl">
