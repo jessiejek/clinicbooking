@@ -413,7 +413,8 @@ export class DoctorConsultationPage {
       this.resetCompletionModalState();
       this.reload();
       await this.presentToast('Consultation completed successfully.', 'success');
-      void this.router.navigate(['/doctor/appointments']);
+      const bookingId = this.route.snapshot.paramMap.get('bookingId') || booking.id;
+      void this.router.navigate(['/doctor/appointments', bookingId]);
       return true;
     } catch (error) {
       await this.presentToast(extractApiErrorMessage(error, 'Failed to complete consultation.'), 'danger');

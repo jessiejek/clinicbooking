@@ -1,14 +1,14 @@
 import { AsyncPipe, NgFor, NgIf } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import { combineLatest, of } from 'rxjs';
+import { catchError, combineLatest, of } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
 import { Allergy, Booking, Consultation, FollowUp, LabResult, Patient, Prescription, VaccinationRecord } from '../../../core/models';
+import { ApiService } from '../../../core/services/api.service';
 import { AuthStateService } from '../../../core/services/auth-state.service';
 import { BookingService } from '../../../core/services/booking.service';
 import { DoctorStateService } from '../../../core/services/doctor-state.service';
 import { MedicalRecordsService } from '../../../core/services/medical-records.service';
-import { PatientStateService } from '../../../core/services/patient-state.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { PatientMediaPanelComponent } from '../../../shared/components/patient-media-panel/patient-media-panel.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
@@ -165,7 +165,7 @@ export class DoctorPatientDetailPage {
   private readonly bookingService = inject(BookingService);
   private readonly doctorState = inject(DoctorStateService);
   private readonly medicalRecords = inject(MedicalRecordsService);
-  private readonly patientState = inject(PatientStateService);
+  private readonly apiService = inject(ApiService);
   private readonly route = inject(ActivatedRoute);
 
   activeTab: 'overview' | 'records' = 'overview';
@@ -187,7 +187,7 @@ export class DoctorPatientDetailPage {
     switchMap(([patientId, doctor]) =>
       patientId && doctor
         ? combineLatest([
-            this.patientState.getPatientById(patientId),
+            this.fetchPatient(patientId),
             this.bookingService.getBookingsByDoctorId(doctor.id)
           ])
         : of([undefined, []] as const)
@@ -199,9 +199,6 @@ export class DoctorPatientDetailPage {
       const doctorBookings = bookings
         .filter((booking) => booking.patientId === patient.id)
         .sort((a, b) => `${b.appointmentDate} ${b.slotStartTime}`.localeCompare(`${a.appointmentDate} ${a.slotStartTime}`));
-      if (doctorBookings.length === 0) {
-        return null;
-      }
       return { patient, bookings: doctorBookings };
     })
   );
@@ -228,6 +225,31 @@ export class DoctorPatientDetailPage {
   lastCompletedVisit(bookings: Booking[]): string {
     const completed = bookings.filter((booking) => booking.status === 'Completed');
     return completed[0]?.appointmentDate ?? '';
+  }
+
+  /** Fetch patient from real API. */
+  private fetchPatient(id: string) {
+    return this.apiService.get<any>(`/patients/${id}`).pipe(
+      map((dto) => ({
+        id: dto.id ?? id,
+        patientCode: dto.patientCode ?? '',
+        firstName: dto.firstName ?? '',
+        middleName: dto.middleName ?? '',
+        lastName: dto.lastName ?? '',
+        dateOfBirth: dto.dateOfBirth ?? '',
+        sex: dto.sex ?? '',
+        contactNumber: dto.contactNumber ?? '',
+        email: dto.email ?? '',
+        address: dto.address ?? '',
+        bloodType: dto.bloodType ?? '',
+        philHealthNumber: dto.philHealthNumber ?? '',
+        hmoProvider: dto.hmoProvider ?? '',
+        emergencyContactName: dto.emergencyContactName ?? '',
+        emergencyContactNumber: dto.emergencyContactNumber ?? '',
+        emergencyContactRelationship: dto.emergencyContactRelationship ?? ''
+      } as Patient)),
+      catchError(() => of(undefined))
+    );
   }
 
   ngOnInit(): void {
