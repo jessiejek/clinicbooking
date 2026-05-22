@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { BehaviorSubject, Observable, map } from 'rxjs';
+import { BehaviorSubject, Observable, map, catchError, of, forkJoin } from 'rxjs';
 import {
   AvailabilityStatus,
   Doctor,
@@ -9,6 +9,7 @@ import {
   DoctorSchedule,
   DoctorStatus
 } from '../models';
+import { ApiService } from './api.service';
 import { MockDataService } from './mock-data.service';
 
 const toLocalIsoDate = (): string => {
@@ -17,9 +18,28 @@ const toLocalIsoDate = (): string => {
   return new Date(date.getTime() - offset).toISOString().slice(0, 10);
 };
 
+/** Map API DoctorSummaryDto to frontend Doctor model. */
+function mapDoctor(dto: any): Doctor {
+  return {
+    id: dto.id,
+    userId: dto.userId ?? '',
+    fullName: dto.fullName ?? 'Unnamed Doctor',
+    specialization: dto.specialization ?? '',
+    consultationFee: dto.consultationFee ?? 0,
+    slotDurationMinutes: 30,
+    slotCapacity: 1,
+    dailyPatientLimit: null,
+    status: dto.status ?? 'Active',
+    profilePhotoUrl: dto.profilePhotoUrl,
+    averageRating: dto.averageRating,
+    reviewCount: dto.reviewCount ?? 0
+  };
+}
+
 @Injectable({ providedIn: 'root' })
 export class DoctorStateService {
   private readonly mockData = inject(MockDataService);
+  private readonly api = inject(ApiService);
   private readonly doctorsSubject = new BehaviorSubject<Doctor[]>(this.mockData.getDoctors());
   private readonly schedulesSubject = new BehaviorSubject<DoctorSchedule[]>(
     this.mockData.getDoctorSchedules()
@@ -69,6 +89,66 @@ export class DoctorStateService {
 
   getDoctorDayStatusSignal(doctorId: string) {
     return toSignal(this.getDoctorDayStatus(doctorId), { initialValue: undefined });
+  }
+
+  // ─── REAL API METHODS ──────────────────────────────
+
+  /** Load all doctors from real API (for staff pages). */
+  loadDoctorsFromApi(): void {
+    this.loadingSubject.next(true);
+    this.api.get<any[]>('/api/doctors/admin').pipe(
+      map((items) => items.map(mapDoctor)),
+      catchError(() => {
+        this.loadingSubject.next(false);
+        return of([]);
+      })
+    ).subscribe((doctors) => {
+      this.doctorsSubject.next(doctors);
+      this.loadingSubject.next(false);
+      // Load day statuses for each doctor
+      if (doctors.length > 0) {
+        forkJoin(doctors.map((d) => this.loadSingleDayStatus(d.id))).subscribe();
+      }
+    });
+  }
+
+  /** Load today's day status for a single doctor from real API. */
+  loadSingleDayStatus(doctorId: string): Observable<void> {
+    return this.api.get<any[]>(`/api/doctors/${doctorId}/day-status`).pipe(
+      map((statuses) => {
+        const today = toLocalIsoDate();
+        const todayStatus = statuses?.find((s: any) => s.date === today);
+        if (todayStatus) {
+          this.dayStatusesSubject.next({
+            ...this.dayStatusesSubject.value,
+            [doctorId]: {
+              id: todayStatus.id ?? '',
+              doctorId,
+              date: today,
+              status: todayStatus.status as AvailabilityStatus,
+              runningLateMinutes: todayStatus.runningLateMinutes
+            }
+          });
+        }
+      }),
+      catchError(() => of(void 0))
+    );
+  }
+
+  /** Update day status via real API, then refresh local state. */
+  updateDayStatusViaApi(doctorId: string, status: AvailabilityStatus, runningLateMinutes?: number): Observable<any> {
+    const body: Record<string, any> = { date: toLocalIsoDate(), status };
+    if (runningLateMinutes !== undefined) {
+      body['runningLateMinutes'] = runningLateMinutes;
+    }
+    return this.api.post(`/api/doctors/${doctorId}/day-status`, body).pipe(
+      map(() => {
+        this.dayStatusesSubject.next({
+          ...this.dayStatusesSubject.value,
+          [doctorId]: { id: '', doctorId, date: toLocalIsoDate(), status, runningLateMinutes }
+        });
+      })
+    );
   }
 
   addDoctor(doctor: Omit<Doctor, 'id'>): Doctor {

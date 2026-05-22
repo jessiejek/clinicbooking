@@ -15,28 +15,26 @@ import { StaffService } from '../services/staff.service';
   standalone: true,
   imports: [NgFor, NgIf, ReactiveFormsModule, EmptyStateComponent, SkeletonComponent, StatusBadgeComponent],
   template: `
-    <section class="page-shell">
-      <div class="page-shell__header">
+    <section class="ps">
+      <div class="psh">
         <div>
-          <h2 class="page-title">Patients</h2>
-          <p class="page-subtitle">Search records and review patient profiles.</p>
+          <h2 class="pt">Patients</h2>
+          <p class="psub">Search records and review patient profiles.</p>
         </div>
       </div>
 
-      <input
-        class="filter-input"
-        [formControl]="searchControl"
-        placeholder="Search by name, code, contact, or email"
-        aria-label="Search patients"
-      />
+      <div class="sc">
+        <input class="fi" [formControl]="searchControl" placeholder="Search by name, code, contact, or email" aria-label="Search patients" />
+        <button *ngIf="searchControl.value" type="button" class="btn-ghost" (click)="searchControl.setValue(''); $event.stopPropagation()">Clear</button>
+      </div>
 
-      <div class="patients-meta" *ngIf="!isLoading">
+      <div class="pm" *ngIf="!isLoading">
         <span>{{ countLabel }}</span>
       </div>
 
-      <div class="clinic-card patients-card" *ngIf="!isLoading && patients.length > 0">
-        <div class="patients-table-wrap">
-          <table class="clinic-table patients-table">
+      <div class="tc" *ngIf="!isLoading && patients.length > 0">
+        <div class="tw">
+          <table class="pt">
             <thead>
               <tr>
                 <th>Code</th>
@@ -49,71 +47,35 @@ import { StaffService } from '../services/staff.service';
               </tr>
             </thead>
             <tbody>
-              <tr
-                *ngFor="let patient of patients"
-                tabindex="0"
-                role="button"
-                [attr.aria-label]="'Open patient record for ' + patientDisplayName(patient)"
-                (click)="openDetail(patient.id)"
-                (keydown.enter)="openDetail(patient.id)"
-              >
-                <td class="data-mono">{{ patient.patientCode }}</td>
-                <td>{{ patientDisplayName(patient) }}</td>
+              <tr *ngFor="let patient of patients" tabindex="0" role="button" [attr.aria-label]="'Open patient record for ' + patientDisplayName(patient)" (click)="openDetail(patient.id)" (keydown.enter)="openDetail(patient.id)">
+                <td class="pc">{{ patient.patientCode }}</td>
+                <td class="pn">{{ patientDisplayName(patient) }}</td>
                 <td>{{ patient.sex }}</td>
                 <td>{{ patient.dateOfBirth }}</td>
                 <td>{{ patient.contactNumber || 'No phone provided' }}</td>
                 <td>{{ patient.email || 'No email provided' }}</td>
-                <td>
-                  <app-status-badge
-                    [status]="patientAccountStatus(patient)"
-                    [labelOverride]="patientAccountLabel(patient)"
-                  ></app-status-badge>
-                </td>
+                <td><app-status-badge [status]="patientAccountStatus(patient)" [labelOverride]="patientAccountLabel(patient)"></app-status-badge></td>
               </tr>
             </tbody>
           </table>
         </div>
 
-        <div class="patients-mobile-list">
-          <article
-            class="patient-mobile-card"
-            *ngFor="let patient of patients"
-            tabindex="0"
-            role="button"
-            [attr.aria-label]="'Open patient record for ' + patientDisplayName(patient)"
-            (click)="openDetail(patient.id)"
-            (keydown.enter)="openDetail(patient.id)"
-          >
-            <div class="patient-mobile-card__header">
-              <div>
+        <div class="ml">
+          <div class="mc" *ngFor="let patient of patients" tabindex="0" role="button" [attr.aria-label]="'Open patient record for ' + patientDisplayName(patient)" (click)="openDetail(patient.id)" (keydown.enter)="openDetail(patient.id)">
+            <div class="mch">
+              <div class="mci">
                 <strong>{{ patientDisplayName(patient) }}</strong>
-                <span class="data-mono">{{ patient.patientCode }}</span>
+                <span class="mc-c">{{ patient.patientCode }}</span>
               </div>
-              <app-status-badge
-                [status]="patientAccountStatus(patient)"
-                [labelOverride]="patientAccountLabel(patient)"
-              ></app-status-badge>
+              <div class="mcb"><app-status-badge [status]="patientAccountStatus(patient)" [labelOverride]="patientAccountLabel(patient)"></app-status-badge></div>
             </div>
-
-            <dl class="patient-mobile-card__details">
-              <div>
-                <dt>Sex</dt>
-                <dd>{{ patient.sex }}</dd>
-              </div>
-              <div>
-                <dt>DOB</dt>
-                <dd>{{ patient.dateOfBirth }}</dd>
-              </div>
-              <div>
-                <dt>Contact</dt>
-                <dd>{{ patient.contactNumber || 'No phone provided' }}</dd>
-              </div>
-              <div>
-                <dt>Email</dt>
-                <dd>{{ patient.email || 'No email provided' }}</dd>
-              </div>
+            <dl class="mcd">
+              <div><dt>Sex</dt><dd>{{ patient.sex }}</dd></div>
+              <div><dt>DOB</dt><dd>{{ patient.dateOfBirth }}</dd></div>
+              <div><dt>Contact</dt><dd>{{ patient.contactNumber || 'No phone provided' }}</dd></div>
+              <div><dt>Email</dt><dd>{{ patient.email || 'No email provided' }}</dd></div>
             </dl>
-          </article>
+          </div>
         </div>
       </div>
 
@@ -123,7 +85,7 @@ import { StaffService } from '../services/staff.service';
         *ngIf="!isLoading && patients.length === 0"
         icon="people-outline"
         title="No patients found"
-        description="Try a different search term."
+        description="Try adjusting your search or register a new patient from Walk-In."
       ></app-empty-state>
     </section>
   `,
