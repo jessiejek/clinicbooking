@@ -35,10 +35,26 @@
 }
 
 .request-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-3);
   padding: var(--space-3);
   border-radius: var(--radius-lg);
   border: 1px solid var(--clinic-border);
   background: var(--color-neutral-50);
+}
+
+.request-item__info {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.request-item__actions {
+  display: flex;
+  gap: var(--space-1);
+  flex-shrink: 0;
 }
 
 .field {

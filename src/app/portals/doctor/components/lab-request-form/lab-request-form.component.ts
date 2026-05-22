@@ -61,16 +61,22 @@ export interface LabRequestDraftView {
           <span>{{ form.get('fileName')?.value || 'No file selected' }}</span>
         </div>
 
-        <button type="button" class="btn-primary" [disabled]="locked" (click)="addRequest()">
-          Add Request
+        <button type="button" class="btn-primary" [disabled]="locked" (click)="editIndex >= 0 ? updateRequest() : addRequest()">
+          {{ editIndex >= 0 ? 'Update Request' : 'Add Request' }}
         </button>
       </form>
 
       <div class="request-list" *ngIf="requests.length > 0">
-        <article class="request-item" *ngFor="let request of requests">
-          <strong>{{ request.testName }}</strong>
-          <p>{{ request.reason || 'No reason provided' }}</p>
-          <span *ngIf="request.fileName">Attachment: {{ request.fileName }}</span>
+        <article class="request-item" *ngFor="let request of requests; let i = index">
+          <div class="request-item__info">
+            <strong>{{ request.testName }}</strong>
+            <p>{{ request.reason || 'No reason provided' }}</p>
+            <span *ngIf="request.fileName">Attachment: {{ request.fileName }}</span>
+          </div>
+          <div class="request-item__actions">
+            <button type="button" class="btn-ghost" [disabled]="locked" (click)="editRequest(i)">Edit</button>
+            <button type="button" class="btn-ghost" [disabled]="locked" (click)="removeRequest(i)" style="color:#dc2626">Remove</button>
+          </div>
         </article>
       </div>
     </section>
@@ -96,6 +102,7 @@ export class LabRequestFormComponent implements OnChanges {
   });
 
   requests: LabRequestDraftView[] = [];
+  editIndex = -1;
 
   constructor() {
     this.form.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
@@ -153,6 +160,36 @@ export class LabRequestFormComponent implements OnChanges {
       }
     ];
     this.requestsChange.emit([...this.requests]);
+    this.clearForm();
+  }
+
+  editRequest(index: number): void {
+    const req = this.requests[index];
+    if (!req) return;
+    this.editIndex = index;
+    this.form.patchValue({ testName: req.testName, reason: req.reason || '', fileName: req.fileName || '' });
+  }
+
+  updateRequest(): void {
+    if (this.editIndex < 0 || this.editIndex >= this.requests.length) return;
+    const v = this.form.getRawValue();
+    if (!v.testName) return;
+    this.requests = this.requests.map((r, i) => i === this.editIndex
+      ? { ...r, testName: v.testName || '', reason: v.reason || undefined, fileName: v.fileName || undefined }
+      : r);
+    this.requestsChange.emit([...this.requests]);
+    this.editIndex = -1;
+    this.clearForm();
+  }
+
+  removeRequest(index: number): void {
+    this.requests = this.requests.filter((_, i) => i !== index);
+    if (this.editIndex === index) this.editIndex = -1;
+    else if (this.editIndex > index) this.editIndex--;
+    this.requestsChange.emit([...this.requests]);
+  }
+
+  private clearForm(): void {
     this.form.patchValue({ testName: '', reason: '', fileName: '' }, { emitEvent: false });
   }
 }
