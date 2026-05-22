@@ -1,6 +1,15 @@
 .upcoming-card {
   display: grid;
   gap: var(--space-5);
+  background: #fff;
+  border: 1px solid var(--clinic-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  transition: box-shadow 0.2s ease;
+}
+
+.upcoming-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
 }
 
 .upcoming-card__header {

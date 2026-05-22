@@ -1,6 +1,9 @@
 import { AsyncPipe, DatePipe, NgFor, NgIf } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
+import { IonIcon } from '@ionic/angular/standalone';
+import { addIcons } from 'ionicons';
+import { calendarOutline, checkmarkCircleOutline, medkitOutline, receiptOutline } from 'ionicons/icons';
 import { catchError, combineLatest, map, of, switchMap } from 'rxjs';
 import { AuthUser, Booking, Consultation, Doctor, Patient, Prescription, Service } from '../../../core/models';
 import { AuthStateService } from '../../../core/services/auth-state.service';
@@ -38,7 +41,7 @@ interface DashboardVm {
 }
 
 @Component({
-  selector: 'app-patient-dashboard-page',
+    selector: 'app-patient-dashboard-page',
   standalone: true,
   imports: [
     AsyncPipe,
@@ -46,6 +49,7 @@ interface DashboardVm {
     NgFor,
     NgIf,
     RouterLink,
+    IonIcon,
     BannerComponent,
     EmptyStateComponent,
     DoctorCardComponent,
@@ -55,11 +59,19 @@ interface DashboardVm {
   ],
   template: `
     <section class="page-shell" *ngIf="vm$ | async as vm">
-      <div class="dashboard-hero">
-        <div>
+            <div class="dashboard-hero">
+        <div class="dashboard-hero__content">
           <div class="dashboard-hero__eyebrow">Patient Portal</div>
           <h2 class="page-title">Welcome back, {{ vm.patient?.firstName || getWelcomeName(vm.user) || 'Juan' }}</h2>
-          <p class="page-subtitle">Manage your appointments and health records.</p>
+          <p class="page-subtitle">View your appointments, documents, prescriptions, and medical records in one place.</p>
+          <div class="dashboard-hero__actions">
+            <button type="button" class="btn-primary" routerLink="/patient/doctors">
+              Book Appointment
+            </button>
+            <button type="button" class="btn-outline" routerLink="/patient/bookings">
+              View My Bookings
+            </button>
+          </div>
         </div>
       </div>
 
@@ -80,31 +92,34 @@ interface DashboardVm {
         </button>
       </div>
 
-      <div class="stats-grid">
+            <div class="stats-grid">
         <div class="stat-card stat-card--blue">
-          <div class="stat-card__icon">&#128197;</div>
+          <ion-icon name="calendar-outline" class="stat-card__icon"></ion-icon>
           <div class="stat-card__value">{{ vm.upcomingCount }}</div>
           <div class="stat-card__label">Upcoming Appointments</div>
         </div>
         <div class="stat-card stat-card--amber">
-          <div class="stat-card__icon">&#128221;</div>
+          <ion-icon name="receipt-outline" class="stat-card__icon"></ion-icon>
           <div class="stat-card__value">{{ vm.pendingProofCount }}</div>
           <div class="stat-card__label">Pending Payment Proof</div>
         </div>
         <div class="stat-card stat-card--green">
-          <div class="stat-card__icon">&#10003;</div>
+          <ion-icon name="checkmark-circle-outline" class="stat-card__icon"></ion-icon>
           <div class="stat-card__value">{{ vm.completedVisitCount }}</div>
           <div class="stat-card__label">Completed Visits</div>
         </div>
         <div class="stat-card stat-card--red">
-          <div class="stat-card__icon">&#128138;</div>
+          <ion-icon name="medkit-outline" class="stat-card__icon"></ion-icon>
           <div class="stat-card__value">{{ vm.activePrescriptionCount }}</div>
           <div class="stat-card__label">Active Prescriptions</div>
         </div>
       </div>
 
-      <div class="dashboard-section">
-        <div class="section-heading">Book With a Doctor</div>
+            <div class="dashboard-section">
+        <div class="section-heading section-heading--with-action">
+          <span>Book With a Doctor</span>
+          <a class="section-action-link" routerLink="/patient/doctors">View all doctors &rarr;</a>
+        </div>
         <div class="dashboard-doctors" *ngIf="vm.doctors.length > 0; else noDoctorsTpl">
           <app-doctor-card *ngFor="let doctor of vm.doctors" [doctor]="doctor"></app-doctor-card>
         </div>
@@ -184,6 +199,10 @@ interface DashboardVm {
   styleUrl: './patient-dashboard.page.scss'
 })
 export class PatientDashboardPage implements OnInit {
+  constructor() {
+    addIcons({ calendarOutline, checkmarkCircleOutline, medkitOutline, receiptOutline });
+  }
+
   private readonly authState = inject(AuthStateService);
   private readonly bookingService = inject(BookingService);
   private readonly doctorState = inject(DoctorStateService);

@@ -3,7 +3,7 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { IonIcon, ToastController } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { calendarOutline, timeOutline } from 'ionicons/icons';
+import { calendarOutline, gridOutline, timeOutline } from 'ionicons/icons';
 import { Booking, Doctor, Service } from '../../../../core/models';
 import { BookingTimerComponent } from '../../../../shared/components/booking-timer/booking-timer.component';
 import { StatusBadgeComponent } from '../../../../shared/components/status-badge/status-badge.component';
@@ -92,7 +92,7 @@ export class UpcomingAppointmentCardComponent {
   @Output() cancelBooking = new EventEmitter<string>();
 
   constructor() {
-    addIcons({ calendarOutline, timeOutline });
+    addIcons({ calendarOutline, gridOutline, timeOutline });
   }
 
   get doctorDisplayName(): string {
