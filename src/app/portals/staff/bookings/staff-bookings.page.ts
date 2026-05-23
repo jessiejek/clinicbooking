@@ -7,7 +7,7 @@ import { Booking } from '../../../core/models';
 import {
   BookingService,
   PagedResult,
-  StaffTodayBookingsFilters
+  StaffBookingsFilterParams,
 } from '../../../core/services/booking.service';
 import { ClinicDashboardRealtimeService } from '../../../core/services/clinic-dashboard-realtime.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -23,9 +23,12 @@ type StaffTodayStatus = 'all' | 'Confirmed' | 'CheckedIn' | 'Completed' | 'NoSho
   standalone: true,
   imports: [DatePipe, NgFor, NgIf, FormsModule, PageHeaderComponent, EmptyStateComponent, StatusBadgeComponent],
   template: `
-    <app-page-header title="Today Bookings" subtitle="Check in confirmed patients and monitor today’s queue"></app-page-header>
+    <app-page-header
+      [title]="'Bookings' + (selectedDate ? ' — ' + (selectedDate | date : 'MMM d, y') : '')"
+      subtitle="View and manage patient bookings across all dates"
+    ></app-page-header>
 
-    <section class="clinic-card filter-bar">
+    <section class="filter-bar">
       <select class="filter-input" [(ngModel)]="doctorFilter" (ngModelChange)="onFiltersChanged()">
         <option value="">All Doctors</option>
         <option *ngFor="let doctor of doctors" [value]="doctor.id">{{ doctor.fullName }}</option>
@@ -35,89 +38,177 @@ type StaffTodayStatus = 'all' | 'Confirmed' | 'CheckedIn' | 'Completed' | 'NoSho
         <option *ngFor="let status of statuses" [value]="status.value">{{ status.label }}</option>
       </select>
 
-      <button type="button" class="btn-ghost" (click)="refresh()" [disabled]="isLoading">Refresh</button>
+      <input
+        type="date"
+        class="filter-input filter-date"
+        [(ngModel)]="dateValue"
+        (ngModelChange)="onDateChanged()"
+      />
+
+      <button type="button" class="btn-icon" (click)="refresh()" [disabled]="isLoading">
+        <span class="btn-icon__text">⟳</span> Refresh
+      </button>
     </section>
 
-    <div class="clinic-card" *ngIf="isLoading">Loading today’s bookings...</div>
+    <div class="loading-card" *ngIf="isLoading">Loading bookings…</div>
 
     <ng-container *ngIf="!isLoading">
-      <section class="clinic-card" *ngIf="bookings.length > 0; else emptyState">
-        <table class="clinic-table">
-          <thead>
-            <tr>
-              <th>Patient</th>
-              <th>Doctor</th>
-              <th>Services</th>
-              <th>Date / Time</th>
-              <th>Queue</th>
-              <th>Status</th>
-              <th>Payment</th>
-              <th>Mode</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              *ngFor="let booking of bookings"
-              class="booking-row"
-              tabindex="0"
-              role="button"
-              [attr.aria-label]="'Open booking for ' + (booking.patientName || 'patient')"
-              (click)="openBooking(booking.id)"
-              (keydown.enter)="openBooking(booking.id)"
-            >
-              <td>
-                <button type="button" class="booking-link" (click)="openBooking(booking.id, $event)">
-                  {{ booking.patientName || 'Patient' }}
-                </button>
-              </td>
-              <td>{{ booking.doctorName || 'Doctor' }}</td>
-              <td>{{ servicesLabel(booking) }}</td>
-              <td>
-                <div>{{ booking.appointmentDate | date : 'MMM d, y' }}</div>
-                <div class="table-time">{{ timeRangeLabel(booking) }}</div>
-              </td>
-              <td>{{ booking.queueNumber !== null ? '#' + booking.queueNumber : '-' }}</td>
-              <td>
-                <app-status-badge
-                  [status]="booking.status"
-                  [labelOverride]="bookingStatusLabel(booking.status)"
-                ></app-status-badge>
-              </td>
-              <td><app-status-badge [status]="booking.paymentStatus"></app-status-badge></td>
-              <td>{{ booking.paymentMode }}</td>
-              <td>
-                <div class="action-row">
-                  <button
-                    *ngIf="booking.status === 'Confirmed'"
-                    type="button"
-                    class="btn-primary"
-                    (click)="checkIn(booking, $event)"
-                    [disabled]="actionBookingId === booking.id"
-                  >
-                    Check In
+      <section class="table-card" *ngIf="bookings.length > 0; else emptyState">
+        <div class="table-scroll">
+          <table class="bookings-table">
+            <thead>
+              <tr>
+                <th>Patient</th>
+                <th>Doctor / Services</th>
+                <th>Date / Time</th>
+                <th>Queue</th>
+                <th>Status</th>
+                <th>Payment</th>
+                <th>Mode</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                *ngFor="let booking of bookings"
+                class="booking-row"
+                tabindex="0"
+                role="button"
+                [attr.aria-label]="'Open booking for ' + (booking.patientName || 'patient')"
+                (click)="openBooking(booking.id)"
+                (keydown.enter)="openBooking(booking.id)"
+              >
+                <td>
+                  <button type="button" class="booking-link" (click)="openBooking(booking.id, $event)">
+                    {{ booking.patientName || 'Patient' }}
                   </button>
-                  <button
-                    *ngIf="booking.status === 'CheckedIn'"
-                    type="button"
-                    class="btn-outline"
-                    (click)="undoCheckIn(booking, $event)"
-                    [disabled]="actionBookingId === booking.id"
-                  >
-                    Undo Check-In
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+                </td>
+                <td>
+                  <div class="doctor-name">{{ booking.doctorName || 'Doctor' }}</div>
+                  <div class="doctor-services">{{ servicesLabel(booking) }}</div>
+                </td>
+                <td>
+                  <div>{{ booking.appointmentDate | date : 'MMM d, y' }}</div>
+                  <div class="time-range">{{ timeRangeLabel(booking) }}</div>
+                </td>
+                <td class="col-queue">{{ booking.queueNumber !== null ? '#' + booking.queueNumber : '-' }}</td>
+                <td class="col-center">
+                  <app-status-badge
+                    [status]="booking.status"
+                    [labelOverride]="bookingStatusLabel(booking.status)"
+                  ></app-status-badge>
+                </td>
+                <td class="col-center"><app-status-badge [status]="booking.paymentStatus"></app-status-badge></td>
+                <td class="col-center">{{ booking.paymentMode }}</td>
+                <td class="col-actions">
+                  <div class="action-row">
+                    <button
+                      *ngIf="booking.status === 'Confirmed'"
+                      type="button"
+                      class="btn-primary"
+                      (click)="checkIn(booking, $event)"
+                      [disabled]="actionBookingId === booking.id"
+                    >
+                      Check In
+                    </button>
+                    <button
+                      *ngIf="booking.status === 'CheckedIn'"
+                      type="button"
+                      class="btn-outline"
+                      (click)="undoCheckIn(booking, $event)"
+                      [disabled]="actionBookingId === booking.id"
+                    >
+                      Undo Check-In
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
-        <div class="bookings-pagination" *ngIf="totalPages > 1">
-          <button class="btn-ghost bookings-pagination__button" type="button" (click)="previousPage()" [disabled]="currentPage <= 1 || isLoading">
+        <div class="pagination" *ngIf="totalPages > 1">
+          <button class="btn-ghost pagination__button" type="button" (click)="previousPage()" [disabled]="currentPage <= 1 || isLoading">
             Previous
           </button>
-          <span class="bookings-pagination__page">Page {{ currentPage }} of {{ totalPages }}</span>
-          <button class="btn-ghost bookings-pagination__button" type="button" (click)="nextPage()" [disabled]="currentPage >= totalPages || isLoading">
+          <span class="pagination__page">Page {{ currentPage }} of {{ totalPages }}</span>
+          <button class="btn-ghost pagination__button" type="button" (click)="nextPage()" [disabled]="currentPage >= totalPages || isLoading">
+            Next
+          </button>
+        </div>
+      </section>
+
+      <!-- Mobile card layout -->
+      <section class="mobile-layout" *ngIf="bookings.length > 0">
+        <div
+          class="mobile-card"
+          *ngFor="let booking of bookings"
+          tabindex="0"
+          role="button"
+          [attr.aria-label]="'Open booking for ' + (booking.patientName || 'patient')"
+          (click)="openBooking(booking.id)"
+          (keydown.enter)="openBooking(booking.id)"
+        >
+          <div class="mobile-card__header">
+            <div class="mobile-card__info">
+              <strong>{{ booking.patientName || 'Patient' }}</strong>
+              <span class="mobile-card__doctor">{{ booking.doctorName || 'Doctor' }}</span>
+              <span class="mobile-card__services">{{ servicesLabel(booking) }}</span>
+              <span class="mobile-card__queue">{{ booking.queueNumber !== null ? '#' + booking.queueNumber : '-' }}</span>
+            </div>
+            <div class="mobile-card__badge">
+              <app-status-badge
+                [status]="booking.status"
+                [labelOverride]="bookingStatusLabel(booking.status)"
+              ></app-status-badge>
+            </div>
+          </div>
+          <div class="mobile-card__details">
+            <div>
+              <dt>Date</dt>
+              <dd>{{ booking.appointmentDate | date : 'MMM d, y' }}</dd>
+            </div>
+            <div>
+              <dt>Time</dt>
+              <dd>{{ timeRangeLabel(booking) }}</dd>
+            </div>
+            <div>
+              <dt>Payment</dt>
+              <dd><app-status-badge [status]="booking.paymentStatus"></app-status-badge></dd>
+            </div>
+            <div>
+              <dt>Mode</dt>
+              <dd>{{ booking.paymentMode }}</dd>
+            </div>
+          </div>
+          <div class="mobile-card__actions">
+            <button
+              *ngIf="booking.status === 'Confirmed'"
+              type="button"
+              class="btn-primary btn-full"
+              (click)="checkIn(booking, $event)"
+              [disabled]="actionBookingId === booking.id"
+            >
+              Check In
+            </button>
+            <button
+              *ngIf="booking.status === 'CheckedIn'"
+              type="button"
+              class="btn-outline btn-full"
+              (click)="undoCheckIn(booking, $event)"
+              [disabled]="actionBookingId === booking.id"
+            >
+              Undo Check-In
+            </button>
+          </div>
+        </div>
+
+        <div class="pagination" *ngIf="totalPages > 1">
+          <button class="btn-ghost pagination__button" type="button" (click)="previousPage()" [disabled]="currentPage <= 1 || isLoading">
+            Previous
+          </button>
+          <span class="pagination__page">Page {{ currentPage }} of {{ totalPages }}</span>
+          <button class="btn-ghost pagination__button" type="button" (click)="nextPage()" [disabled]="currentPage >= totalPages || isLoading">
             Next
           </button>
         </div>
@@ -128,7 +219,7 @@ type StaffTodayStatus = 'all' | 'Confirmed' | 'CheckedIn' | 'Completed' | 'NoSho
       <app-empty-state
         icon="calendar-outline"
         title="No bookings found"
-        description="There are no today bookings for the selected filters."
+        description="There are no bookings for the selected date and filters."
       ></app-empty-state>
     </ng-template>
   `,
@@ -152,6 +243,14 @@ export class StaffBookingsPage implements OnInit {
   currentPage = 1;
   pageSize = 20;
   totalPages = 1;
+  selectedDate: string = this.toLocalIsoDate();
+
+  get dateValue(): string {
+    return this.selectedDate;
+  }
+  set dateValue(value: string) {
+    this.selectedDate = value;
+  }
 
   readonly statuses: Array<{ label: string; value: StaffTodayStatus }> = [
     { label: 'All Statuses', value: 'all' },
@@ -195,6 +294,11 @@ export class StaffBookingsPage implements OnInit {
           this.loadBookings();
         }
       });
+  }
+
+  onDateChanged(): void {
+    this.currentPage = 1;
+    this.loadBookings();
   }
 
   onFiltersChanged(): void {
@@ -299,15 +403,16 @@ export class StaffBookingsPage implements OnInit {
   }
 
   private loadBookings(): void {
-    const filters: StaffTodayBookingsFilters = {
+    const filters: StaffBookingsFilterParams = {
       doctorId: this.doctorFilter || undefined,
       status: this.statusFilter === 'all' ? undefined : this.statusFilter,
+      appointmentDate: this.selectedDate || undefined,
       page: this.currentPage,
       pageSize: this.pageSize
     };
 
     this.isLoading = true;
-    this.bookingService.getStaffTodayBookings(filters).subscribe({
+    this.bookingService.getStaffBookings(filters).subscribe({
       next: (result: PagedResult<Booking>) => {
         this.bookings = result.items;
         this.currentPage = result.page;
@@ -319,7 +424,7 @@ export class StaffBookingsPage implements OnInit {
         this.bookings = [];
         this.totalPages = 1;
         this.isLoading = false;
-        await this.presentToast(extractApiErrorMessage(error, 'Failed to load today bookings.'), 'danger');
+        await this.presentToast(extractApiErrorMessage(error, 'Failed to load bookings.'), 'danger');
       }
     });
   }
@@ -335,6 +440,12 @@ export class StaffBookingsPage implements OnInit {
       position: 'top'
     });
     await toast.present();
+  }
+
+  private toLocalIsoDate(): string {
+    const now = new Date();
+    const offset = now.getTimezoneOffset() * 60000;
+    return new Date(now.getTime() - offset).toISOString().slice(0, 10);
   }
 }
 

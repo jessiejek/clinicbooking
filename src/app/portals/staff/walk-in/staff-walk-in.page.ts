@@ -314,9 +314,9 @@ type BookingControl = 'doctorId' | 'serviceId' | 'appointmentDate';
             <div class="walk-in-panel__head">
               <div>
                 <div class="section-heading">Slot Selection</div>
-                <p class="panel-hint">Choose the doctor, service, and available same-day slot.</p>
+                <p class="panel-hint">Choose the doctor, service, and an available slot.</p>
               </div>
-              <span class="panel-meta">Walk-in will be added to today's queue.</span>
+              <span class="panel-meta">The booking will be added to the queue for the selected date.</span>
             </div>
 
             <div class="selected-patient-strip" *ngIf="selectedPatient">
@@ -380,10 +380,10 @@ type BookingControl = 'doctorId' | 'serviceId' | 'appointmentDate';
                 <div class="form-field__label">Appointment Date *</div>
                 <ion-item class="clinic-input" lines="none" [class.is-invalid]="showBookingError('appointmentDate')">
                   <ion-label position="stacked">Appointment Date *</ion-label>
-                  <ion-input type="date" formControlName="appointmentDate" [min]="todayIso" [max]="todayIso"></ion-input>
+                  <ion-input type="date" formControlName="appointmentDate" [min]="todayIso"></ion-input>
                 </ion-item>
                 <div class="form-error-message" *ngIf="showBookingError('appointmentDate')">Appointment date is required.</div>
-                <div class="field-hint">Only today's slots are available for walk-ins.</div>
+                <div class="field-hint">Future dates can be selected for walk-in bookings.</div>
               </div>
             </form>
 
@@ -496,7 +496,7 @@ type BookingControl = 'doctorId' | 'serviceId' | 'appointmentDate';
             </div>
 
             <div class="payment-note">
-              Payment will be settled after consultation. Walk-in bookings will be added to today's queue once submitted.
+              Payment will be settled after consultation. Walk-in bookings are added to the queue once submitted.
             </div>
 
             <div class="step-actions">
@@ -560,7 +560,7 @@ type BookingControl = 'doctorId' | 'serviceId' | 'appointmentDate';
             </ng-template>
 
             <div class="summary-card__queue-note">
-              Walk-in bookings will be added to today's queue once submitted.
+              Walk-in bookings are added to the queue once submitted.
             </div>
           </div>
         </aside>

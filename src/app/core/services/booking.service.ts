@@ -234,6 +234,14 @@ export interface StaffTodayBookingsFilters {
   pageSize?: number;
 }
 
+export interface StaffBookingsFilterParams {
+  doctorId?: string;
+  status?: string;
+  appointmentDate?: string;
+  page?: number;
+  pageSize?: number;
+}
+
 export interface StaffForPaymentItem {
   bookingId: string;
   paymentId: string;
@@ -451,6 +459,24 @@ export class BookingService {
         }),
         catchError((error: unknown) =>
           throwError(() => new Error(extractApiErrorMessage(error, 'Failed to load today bookings.')))
+        ),
+        finalize(() => this.endLoading())
+      );
+    });
+  }
+
+  getStaffBookings(filters: StaffBookingsFilterParams = {}): Observable<PagedResult<Booking>> {
+    const params = buildStaffBookingsParams(filters);
+
+    return defer(() => {
+      this.beginLoading();
+      return this.apiService.get<unknown>('/bookings', { params }).pipe(
+        map((payload) => this.normalizePagedBookings(payload)),
+        tap((result) => {
+          this.mergeBookings(result.items);
+        }),
+        catchError((error: unknown) =>
+          throwError(() => new Error(extractApiErrorMessage(error, 'Failed to load bookings.')))
         ),
         finalize(() => this.endLoading())
       );
@@ -1692,6 +1718,31 @@ function buildStaffTodayParams(filters: StaffTodayBookingsFilters): HttpParams {
   }
 
   return params;
+}
+
+function buildStaffBookingsParams(filters: StaffBookingsFilterParams): HttpParams | undefined {
+  let params = new HttpParams()
+    .set('page', String(Math.max(1, filters.page ?? 1)))
+    .set('pageSize', String(Math.max(1, filters.pageSize ?? 20)));
+
+  let hasValue = false;
+
+  const add = (key: string, value: string | undefined): void => {
+    if (value?.trim()) {
+      params = params.set(key, value.trim());
+      hasValue = true;
+    }
+  };
+
+  add('doctorId', filters.doctorId);
+  add('status', filters.status);
+
+  if (filters.appointmentDate?.trim()) {
+    params = params.set('appointmentDate', filters.appointmentDate.trim());
+    hasValue = true;
+  }
+
+  return hasValue ? params : undefined;
 }
 
 function applyBookingFilters(bookings: Booking[], filters?: BookingFilters): Booking[] {
